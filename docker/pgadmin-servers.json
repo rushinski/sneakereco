@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "SneakerEco Dev",
+      "Group": "Local",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "sneakereco_dev",
+      "Username": "postgres",
+      "Password": "postgres",
+      "SSLMode": "prefer"
+    }
+  }
+}
