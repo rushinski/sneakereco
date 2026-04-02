@@ -27,6 +27,9 @@ importers:
         specifier: ^8.13
         version: 8.20.0
     devDependencies:
+      '@types/node':
+        specifier: ^25.5.0
+        version: 25.5.0
       '@types/pg':
         specifier: ^8
         version: 8.20.0
