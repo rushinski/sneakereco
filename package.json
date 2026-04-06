@@ -5,6 +5,9 @@
     "dev": "doppler run -- turbo dev",
     "build": "doppler run -- turbo build",
     "lint": "doppler run -- turbo lint",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "doppler run -- turbo typecheck",
     "test:unit": "doppler run -- turbo test:unit",
     "test:integration": "doppler run -- turbo test:integration",
@@ -15,6 +18,15 @@
     "infra:reset": "docker compose -f docker/docker-compose.yml down -v"
   },
   "devDependencies": {
+    "@next/eslint-plugin-next": "^16.2.2",
+    "@typescript-eslint/eslint-plugin": "^8.58.0",
+    "@typescript-eslint/parser": "^8.58.0",
+    "eslint": "^10.2.0",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-prettier": "^5.5.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "prettier": "^3.8.1",
     "turbo": "^2"
   },
   "packageManager": "pnpm@10.33.0"
