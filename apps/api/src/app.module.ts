@@ -1,19 +1,19 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
-import { AuthModule } from './domains/auth/auth.module';
-import { TenantsModule } from './domains/tenants/tenants.module';
-import { ProductsModule } from './domains/products/products.module';
-import { OrdersModule } from './domains/orders/orders.module';
-import { PaymentsModule } from './domains/payments/payments.module';
-import { FraudModule } from './domains/fraud/fraud.module';
-import { TaxModule } from './domains/tax/tax.module';
-import { ShippingModule } from './domains/shipping/shipping.module';
-import { CustomersModule } from './domains/customers/customers.module';
-import { CommunicationsModule } from './domains/communications/communications.module';
-import { AddressesModule } from './domains/addresses/addresses.module';
-import { FeaturedModule } from './domains/featured/featured.module';
-import { HealthModule } from './domains/health/health.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { TenantsModule } from './modules/tenants/tenants.module';
+import { ProductsModule } from './modules/products/products.module';
+import { OrdersModule } from './modules/orders/orders.module';
+import { PaymentsModule } from './modules/payments/payments.module';
+import { FraudModule } from './modules/fraud/fraud.module';
+import { TaxModule } from './modules/tax/tax.module';
+import { ShippingModule } from './modules/shipping/shipping.module';
+import { CustomersModule } from './modules/customers/customers.module';
+import { CommunicationsModule } from './modules/communications/communications.module';
+import { AddressesModule } from './modules/addresses/addresses.module';
+import { FeaturedModule } from './modules/featured/featured.module';
+import { HealthModule } from './modules/health/health.module';
 
 @Module({
   imports: [
