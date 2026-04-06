@@ -1,21 +1,19 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "nodenext",
     "outDir": "./dist",
     "rootDir": "./src",
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
     "types": ["node"],
 
     // Required for NestJS decorators + dependency injection
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
 
-    // NestJS runs on Node — no DOM types needed
-    "lib": ["ES2022"],
-
-    // Path aliases — keeps imports clean inside the app
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     },
 
     // Project references — tells TS about your workspace packages
