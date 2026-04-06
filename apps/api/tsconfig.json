@@ -4,7 +4,6 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "types": ["node"],
-    "ignoreDeprecations": "6.0",
 
     // Required for NestJS decorators + dependency injection
     "experimentalDecorators": true,
