@@ -8,6 +8,34 @@
       "when": 1775149204643,
       "tag": "0000_little_blob",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1775416192803,
+      "tag": "0001_shallow_boom_boom",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1775416990887,
+      "tag": "0002_loving_mesmero",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1775502654512,
+      "tag": "0003_add_platform_functions_and_triggers",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1775503303433,
+      "tag": "0004_appRole_renamed",
+      "breakpoints": true
     }
   ]
 }
