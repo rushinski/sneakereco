@@ -1,0 +1,30 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "types": ["node"],
+
+    // Required for NestJS decorators + dependency injection
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+
+    // NestJS runs on Node — no DOM types needed
+    "lib": ["ES2022"],
+
+    // Path aliases — keeps imports clean inside the app
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+
+    // Project references — tells TS about your workspace packages
+    "composite": true
+  },
+  "references": [
+    { "path": "../../packages/shared" },
+    { "path": "../../packages/db" }
+  ],
+  "include": ["src"],
+  "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.e2e-spec.ts"]
+}
