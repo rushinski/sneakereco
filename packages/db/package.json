@@ -9,8 +9,7 @@
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",
     "generate": "drizzle-kit generate",
-    "migrate:up": "drizzle-kit migrate",
-    "migrate:push": "drizzle-kit push",
+    "migrate": "drizzle-kit migrate",
     "studio": "drizzle-kit studio"
   },
   "dependencies": {
