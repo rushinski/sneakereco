@@ -1,6 +1,6 @@
 import { pgPolicy } from "drizzle-orm/pg-core";
 
-import { rdkAppRole } from "../shared/roles";
+import { sneakerecoAppRole } from "../shared/roles";
 import { currentTenantScope, tenantAdminScope, tenantUserScope } from "../shared/rls";
 import { auditEvents } from "./audit-events";
 import { chargebackEvidence } from "./chargeback-evidence";
@@ -11,7 +11,7 @@ export const userAddressesCustomerManagePolicy = pgPolicy(
   "user_addresses_customer_manage",
   {
     for: "all",
-    to: rdkAppRole,
+    to: sneakerecoAppRole,
     using: tenantUserScope(userAddresses.tenantId, userAddresses.userId),
     withCheck: tenantUserScope(userAddresses.tenantId, userAddresses.userId),
   },
@@ -19,13 +19,13 @@ export const userAddressesCustomerManagePolicy = pgPolicy(
 
 export const userAddressesAdminReadPolicy = pgPolicy("user_addresses_admin_read", {
   for: "select",
-  to: rdkAppRole,
+  to: sneakerecoAppRole,
   using: tenantAdminScope(userAddresses.tenantId),
 }).link(userAddresses);
 
 export const auditEventsAdminReadPolicy = pgPolicy("audit_events_admin_read", {
   for: "select",
-  to: rdkAppRole,
+  to: sneakerecoAppRole,
   using: tenantAdminScope(auditEvents.tenantId),
 }).link(auditEvents);
 
@@ -33,14 +33,14 @@ export const chargebackEvidenceAdminReadPolicy = pgPolicy(
   "chargeback_evidence_admin_read",
   {
     for: "select",
-    to: rdkAppRole,
+    to: sneakerecoAppRole,
     using: tenantAdminScope(chargebackEvidence.tenantId),
   },
 ).link(chargebackEvidence);
 
 export const featuredItemsPublicReadPolicy = pgPolicy("featured_items_public_read", {
   for: "select",
-  to: rdkAppRole,
+  to: sneakerecoAppRole,
   using: currentTenantScope(featuredItems.tenantId),
 }).link(featuredItems);
 
@@ -48,7 +48,7 @@ export const featuredItemsAdminManagePolicy = pgPolicy(
   "featured_items_admin_manage",
   {
     for: "all",
-    to: rdkAppRole,
+    to: sneakerecoAppRole,
     using: tenantAdminScope(featuredItems.tenantId),
     withCheck: tenantAdminScope(featuredItems.tenantId),
   },

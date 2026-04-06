@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { pgPolicy } from "drizzle-orm/pg-core";
 
-import { rdkAppRole } from "../shared/roles";
+import { sneakerecoAppRole } from "../shared/roles";
 import {
   currentTenantId,
   currentTenantScope,
@@ -15,20 +15,20 @@ import { paymentTransactions } from "./payment-transactions";
 
 export const ordersAdminAllPolicy = pgPolicy("orders_admin_all", {
   for: "all",
-  to: rdkAppRole,
+  to: sneakerecoAppRole,
   using: tenantAdminScope(orders.tenantId),
   withCheck: tenantAdminScope(orders.tenantId),
 }).link(orders);
 
 export const ordersCustomerSelectPolicy = pgPolicy("orders_customer_select", {
   for: "select",
-  to: rdkAppRole,
+  to: sneakerecoAppRole,
   using: sql`${currentTenantScope(orders.tenantId)} and ${orders.userId} = ${currentUserId}`,
 }).link(orders);
 
 export const ordersCustomerInsertPolicy = pgPolicy("orders_customer_insert", {
   for: "insert",
-  to: rdkAppRole,
+  to: sneakerecoAppRole,
   withCheck: sql`${currentTenantScope(orders.tenantId)} and (
     ${orders.userId} = ${currentUserId}
     or ${orders.userId} is null
@@ -39,7 +39,7 @@ export const orderLineItemsAdminAllPolicy = pgPolicy(
   "order_line_items_admin_all",
   {
     for: "all",
-    to: rdkAppRole,
+    to: sneakerecoAppRole,
     using: tenantAdminScope(orderLineItems.tenantId),
     withCheck: tenantAdminScope(orderLineItems.tenantId),
   },
@@ -49,7 +49,7 @@ export const orderLineItemsCustomerReadPolicy = pgPolicy(
   "order_line_items_customer_read",
   {
     for: "select",
-    to: rdkAppRole,
+    to: sneakerecoAppRole,
     using: sql`${currentTenantScope(orderLineItems.tenantId)} and exists (
       select 1
       from ${orders}
@@ -64,7 +64,7 @@ export const orderAddressesAdminAllPolicy = pgPolicy(
   "order_addresses_admin_all",
   {
     for: "all",
-    to: rdkAppRole,
+    to: sneakerecoAppRole,
     using: tenantAdminScope(orderAddresses.tenantId),
     withCheck: tenantAdminScope(orderAddresses.tenantId),
   },
@@ -74,7 +74,7 @@ export const orderAddressesCustomerReadPolicy = pgPolicy(
   "order_addresses_customer_read",
   {
     for: "select",
-    to: rdkAppRole,
+    to: sneakerecoAppRole,
     using: sql`${currentTenantScope(orderAddresses.tenantId)} and exists (
       select 1
       from ${orders}
@@ -89,7 +89,7 @@ export const paymentTransactionsAdminReadPolicy = pgPolicy(
   "payment_transactions_admin_read",
   {
     for: "select",
-    to: rdkAppRole,
+    to: sneakerecoAppRole,
     using: tenantAdminScope(paymentTransactions.tenantId),
   },
 ).link(paymentTransactions);
