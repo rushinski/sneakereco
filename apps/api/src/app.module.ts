@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
+import { DatabaseModule } from './common/database/database.module';
+import { JwtAuthGuard } from './common/guards/auth.guard';
 import { AuthModule } from './modules/auth/auth.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { ProductsModule } from './modules/products/products.module';
@@ -30,6 +33,9 @@ import { HealthModule } from './modules/health/health.module';
       },
     }),
 
+    // Database — global, must come before feature modules
+    DatabaseModule,
+
     // Feature modules
     HealthModule,
     AuthModule,
@@ -44,6 +50,12 @@ import { HealthModule } from './modules/health/health.module';
     CommunicationsModule,
     AddressesModule,
     FeaturedModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
   ],
 })
 export class AppModule {}
