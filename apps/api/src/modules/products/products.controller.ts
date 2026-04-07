@@ -2,5 +2,5 @@ import { Controller } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('products')
-@Controller({ path: 'products', version: '1' })
+@Controller({ path: 'products' })
 export class ProductsController {}
