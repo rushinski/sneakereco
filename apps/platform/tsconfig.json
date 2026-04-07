@@ -1,8 +1,6 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2024",
-    "lib": ["dom", "dom.iterable", "es2024"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "jsx": "preserve",
@@ -11,7 +9,6 @@
     "isolatedModules": true,
     "esModuleInterop": true,
     "plugins": [{ "name": "next" }],
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }

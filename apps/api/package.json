@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test:unit": "jest --config test/jest.unit.config.js",
     "test:integration": "doppler run -- jest --config test/jest.integration.config.js",
-    "clean": "node -e \"require('node:fs').rmSync('dist',{ recursive: true, force: true })\""
+    "clean": "rm -rf dist"
   },
   "dependencies": {
     "@nestjs/common": "^11",
