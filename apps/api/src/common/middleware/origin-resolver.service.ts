@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/consistent-type-imports */
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { eq, or, sql } from 'drizzle-orm';
@@ -16,16 +15,17 @@ export class OriginResolverService {
     private readonly config: ConfigService,
     private readonly db: DatabaseService,
   ) {
-    const configuredPlatformUrl = this.normalizeOrigin(this.config.get<string>('PLATFORM_URL'));
+    const origins: (string | null)[] = [
+      this.normalizeOrigin(this.config.get<string>('PLATFORM_URL')),
+      this.normalizeOrigin(this.config.get<string>('PLATFORM_WWW_URL')),
+    ];
 
-    this.platformOrigins = new Set(
-      [
-        'https://sneakereco.com',
-        'https://www.sneakereco.com',
-        'http://localhost:3002',
-        configuredPlatformUrl,
-      ].filter((value): value is string => Boolean(value)),
-    );
+    // Only include localhost in development — never bleed into staging/production
+    if (this.config.get<string>('NODE_ENV') === 'development') {
+      origins.push(this.normalizeOrigin(this.config.get<string>('PLATFORM_DEV_URL') ?? 'http://localhost:3002'));
+    }
+
+    this.platformOrigins = new Set(origins.filter((v): v is string => Boolean(v)));
   }
 
   normalizeOrigin(origin: string | undefined | null): string | null {

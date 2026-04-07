@@ -1,10 +1,22 @@
 import { Module } from '@nestjs/common';
-import { CommunicationsController } from './communications.controller';
-import { CommunicationsService } from './communications.service';
+
+import { EmailService } from './email/email.service';
+import { ContactController } from './contact/contact.controller';
+import { ContactRepository } from './contact/contact.repository';
+import { ContactService } from './contact/contact.service';
+import { SubscribersController } from './subscribers/subscribers.controller';
+import { SubscribersRepository } from './subscribers/subscribers.repository';
+import { SubscribersService } from './subscribers/subscribers.service';
 
 @Module({
-  controllers: [CommunicationsController],
-  providers: [CommunicationsService],
-  exports: [CommunicationsService],
+  controllers: [ContactController, SubscribersController],
+  providers: [
+    EmailService,
+    ContactRepository,
+    ContactService,
+    SubscribersRepository,
+    SubscribersService,
+  ],
+  exports: [EmailService],
 })
 export class CommunicationsModule {}

@@ -1,26 +1,28 @@
-/* eslint-disable @typescript-eslint/consistent-type-imports */
+import { randomBytes } from 'node:crypto';
+
 import { Controller, Get, Res } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 
-import { Public } from '../../common/decorators/public.decorator';
-import { serializeCookie } from '../../common/utils/cookies';
-
-import { SecurityService } from './security.service';
+import { Public } from './decorators/public.decorator';
+import { serializeCookie } from './utils/cookies';
 
 @ApiTags('security')
 @Controller()
-export class SecurityController {
-  constructor(private readonly securityService: SecurityService) {}
+export class CsrfController {
+  private readonly secureCookies: boolean;
+
+  constructor(config: ConfigService) {
+    this.secureCookies = config.get<string>('NODE_ENV') !== 'development';
+  }
 
   @Public()
   @Get('csrf-token')
-  @ApiOperation({
-    summary: 'Issue a CSRF token cookie and response token',
-  })
+  @ApiOperation({ summary: 'Issue a CSRF token cookie and return the token value' })
   @ApiResponse({ status: 200, description: 'CSRF token issued.' })
   issueCsrfToken(@Res({ passthrough: true }) response: Response) {
-    const token = this.securityService.generateCsrfToken();
+    const token = randomBytes(32).toString('base64url');
 
     response.setHeader(
       'Set-Cookie',
@@ -29,7 +31,7 @@ export class SecurityController {
         maxAge: 60 * 60,
         path: '/',
         sameSite: 'Strict',
-        secure: this.securityService.shouldUseSecureCookies(),
+        secure: this.secureCookies,
       }),
     );
 

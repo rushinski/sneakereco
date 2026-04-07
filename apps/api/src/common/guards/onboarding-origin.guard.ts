@@ -1,11 +1,10 @@
-/* eslint-disable @typescript-eslint/consistent-type-imports */
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 
 import { ONBOARDING_ONLY_KEY } from '../decorators/onboarding-only.decorator';
-import { OriginResolverService } from '../origins/origin-resolver.service';
+import { OriginResolverService } from '../middleware/origin-resolver.service';
 
 @Injectable()
 export class OnboardingOriginGuard implements CanActivate {

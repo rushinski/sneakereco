@@ -2,9 +2,15 @@ import type { NestMiddleware } from '@nestjs/common';
 import { Injectable } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 
-import { OriginResolverService } from '../origins/origin-resolver.service';
+import { OriginResolverService } from './origin-resolver.service';
 
-const ALLOWED_HEADERS = ['Content-Type', 'Authorization', 'X-Request-ID', 'X-CSRF-Token'];
+const ALLOWED_HEADERS = [
+  'Content-Type',
+  'Authorization',
+  'X-Request-ID',
+  'X-CSRF-Token',
+  'X-Tenant-ID',
+];
 const ALLOWED_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'];
 
 @Injectable()

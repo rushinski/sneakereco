@@ -1,17 +1,27 @@
 import { Controller, Get } from '@nestjs/common';
 import { HealthCheck, HealthCheckService } from '@nestjs/terminus';
 import { ApiTags } from '@nestjs/swagger';
+
 import { Public } from '../../common/decorators/public.decorator';
+import { DatabaseHealthIndicator } from './indicators/database.health';
+import { RedisHealthIndicator } from './indicators/redis.health';
 
 @ApiTags('health')
 @Controller({ path: 'health' })
 export class HealthController {
-  constructor(private health: HealthCheckService) {}
+  constructor(
+    private readonly health: HealthCheckService,
+    private readonly db: DatabaseHealthIndicator,
+    private readonly redis: RedisHealthIndicator,
+  ) {}
 
   @Public()
   @Get()
   @HealthCheck()
   check() {
-    return this.health.check([]);
+    return this.health.check([
+      () => this.db.isHealthy('database'),
+      () => this.redis.isHealthy('redis'),
+    ]);
   }
 }

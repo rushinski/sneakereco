@@ -20,6 +20,8 @@
     "typescript": "^5.7"
   },
   "dependencies": {
+    "@sneakereco/db": "workspace:*",
+    "drizzle-orm": "^0.39.3",
     "ulid": "^3.0.2"
   }
 }
