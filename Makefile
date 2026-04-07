@@ -1,22 +1,20 @@
-# Database
-db:studio:
+db-studio:
 	doppler run -- pnpm --filter @sneakereco/db studio
 
-db:migrate:
+db-migrate:
 	doppler run -- pnpm --filter @sneakereco/db migrate
 
-db:generate:
+db-generate:
 	doppler run -- pnpm --filter @sneakereco/db generate
 
-# Docker
-docker:up:
+docker-up:
 	pnpm infra:up
 
-docker:down
+docker-down:
 	pnpm infra:down
 
-docker:reset
+docker-reset:
 	pnpm infra:reset
 
-docker:logs
+docker-logs:
 	pnpm infra:logs
