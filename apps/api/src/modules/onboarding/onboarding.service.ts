@@ -4,6 +4,7 @@ import {
   GoneException,
   Injectable,
   InternalServerErrorException,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -49,6 +50,8 @@ interface InviteRecord {
 
 @Injectable()
 export class OnboardingService {
+  private readonly logger = new Logger(OnboardingService.name);
+
   constructor(
     private readonly db: DatabaseService,
     private readonly cognito: CognitoService,
@@ -73,6 +76,7 @@ export class OnboardingService {
         .limit(1);
 
       if (existing) {
+        this.logger.log(`Skipping admin notification for duplicate onboarding request email=${email}`);
         return { duplicate: true as const };
       }
 
@@ -105,13 +109,21 @@ export class OnboardingService {
     });
 
     if (!requestResult.duplicate) {
-      await this.communications.sendPlatformRequestNotification({
-        businessName: dto.businessName.trim(),
-        email,
-        fullName: dto.fullName.trim(),
-        instagramHandle: normalizedHandle,
-        phoneNumber: dto.phoneNumber.trim(),
-      });
+      this.logger.log(`Created onboarding request and sending admin notification email=${email}`);
+      try {
+        await this.communications.sendPlatformRequestNotification({
+          businessName: dto.businessName.trim(),
+          email,
+          fullName: dto.fullName.trim(),
+          instagramHandle: normalizedHandle,
+          phoneNumber: dto.phoneNumber.trim(),
+        });
+      } catch (error) {
+        this.logger.error(
+          `Admin notification email failed for onboarding request email=${email}`,
+          error instanceof Error ? error.stack : undefined,
+        );
+      }
     }
 
     return { submitted: true };

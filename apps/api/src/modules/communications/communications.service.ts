@@ -1,18 +1,22 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 
 @Injectable()
 export class CommunicationsService {
+  private readonly logger = new Logger(CommunicationsService.name);
   private readonly client: SESClient;
   private readonly fromEmail: string;
   private readonly fromName: string;
   private readonly platformAdminEmail: string;
+  private readonly region: string;
 
   constructor(private readonly config: ConfigService) {
+    this.region =
+      this.config.get<string>('AWS_REGION') ?? this.config.getOrThrow<string>('AWS_REGION');
     this.client = new SESClient({
-      region: this.config.get<string>('AWS_REGION') ?? this.config.getOrThrow<string>('AWS_REGION'),
+      region: this.region,
     });
     this.fromEmail = this.config.getOrThrow<string>('PLATFORM_FROM_EMAIL');
     this.fromName = this.config.get<string>('PLATFORM_FROM_NAME') ?? 'SneakerEco';
@@ -109,29 +113,45 @@ export class CommunicationsService {
     text: string;
     to: string;
   }): Promise<void> {
-    await this.client.send(
-      new SendEmailCommand({
-        Destination: {
-          ToAddresses: [input.to],
-        },
-        Message: {
-          Body: {
-            Html: {
-              Charset: 'UTF-8',
-              Data: input.html,
-            },
-            Text: {
-              Charset: 'UTF-8',
-              Data: input.text,
-            },
-          },
-          Subject: {
-            Charset: 'UTF-8',
-            Data: input.subject,
-          },
-        },
-        Source: `"${this.fromName}" <${this.fromEmail}>`,
-      }),
+    this.logger.log(
+      `Sending SES email to=${input.to} from=${this.fromEmail} region=${this.region} subject="${input.subject}"`,
     );
+
+    try {
+      const response = await this.client.send(
+        new SendEmailCommand({
+          Destination: {
+            ToAddresses: [input.to],
+          },
+          Message: {
+            Body: {
+              Html: {
+                Charset: 'UTF-8',
+                Data: input.html,
+              },
+              Text: {
+                Charset: 'UTF-8',
+                Data: input.text,
+              },
+            },
+            Subject: {
+              Charset: 'UTF-8',
+              Data: input.subject,
+            },
+          },
+          Source: `"${this.fromName}" <${this.fromEmail}>`,
+        }),
+      );
+
+      this.logger.log(
+        `SES accepted email messageId=${response.MessageId ?? 'unknown'} to=${input.to} subject="${input.subject}"`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `SES send failed to=${input.to} region=${this.region} subject="${input.subject}"`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      throw error;
+    }
   }
 }
