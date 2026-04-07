@@ -6,9 +6,11 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import type { ConfigService } from '@nestjs/config';
 import {
+  AdminCreateUserCommand,
   AdminGetUserCommand,
+  AdminSetUserPasswordCommand,
   AssociateSoftwareTokenCommand,
   CognitoIdentityProviderClient,
   CognitoIdentityProviderServiceException,
@@ -30,6 +32,7 @@ import {
   UserNotFoundException,
   VerifySoftwareTokenCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
+
 import type { ConfirmEmailDto } from './dto/confirm-email.dto';
 import type { DisableMfaDto } from './dto/disable-mfa.dto';
 import type { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -56,9 +59,7 @@ export class CognitoService {
       region: config.getOrThrow<string>('AWS_REGION'),
     });
     this.userPoolId = config.getOrThrow<string>('COGNITO_USER_POOL_ID');
-    this.customerClientId = config.getOrThrow<string>(
-      'COGNITO_CUSTOMER_CLIENT_ID',
-    );
+    this.customerClientId = config.getOrThrow<string>('COGNITO_CUSTOMER_CLIENT_ID');
     this.adminClientId = config.getOrThrow<string>('COGNITO_ADMIN_CLIENT_ID');
   }
 
@@ -189,18 +190,13 @@ export class CognitoService {
       return { status: response.Status };
     } catch (error) {
       if (error instanceof CodeMismatchException) {
-        throw new BadRequestException(
-          'Invalid TOTP code — check your authenticator app',
-        );
+        throw new BadRequestException('Invalid TOTP code — check your authenticator app');
       }
       this.mapCognitoError(error);
     }
   }
 
-  async setUserMfaPreference(
-    accessToken: string,
-    enabled: boolean,
-  ): Promise<void> {
+  async setUserMfaPreference(accessToken: string, enabled: boolean): Promise<void> {
     try {
       await this.client.send(
         new SetUserMFAPreferenceCommand({
@@ -272,7 +268,9 @@ export class CognitoService {
         );
       }
       // Swallow UserNotFoundException — do not reveal if email exists
-      if (error instanceof UserNotFoundException) return;
+      if (error instanceof UserNotFoundException) {
+        return;
+      }
       this.mapCognitoError(error);
     }
   }
@@ -287,11 +285,11 @@ export class CognitoService {
       );
     } catch (error) {
       // Swallow UserNotFoundException — never reveal if email exists
-      if (error instanceof UserNotFoundException) return;
+      if (error instanceof UserNotFoundException) {
+        return;
+      }
       if (error instanceof LimitExceededException) {
-        throw new BadRequestException(
-          'Request limit exceeded. Try again later.',
-        );
+        throw new BadRequestException('Request limit exceeded. Try again later.');
       }
       this.mapCognitoError(error);
     }
@@ -348,9 +346,7 @@ export class CognitoService {
 
   async signOut(dto: SignOutDto): Promise<void> {
     try {
-      await this.client.send(
-        new GlobalSignOutCommand({ AccessToken: dto.accessToken }),
-      );
+      await this.client.send(new GlobalSignOutCommand({ AccessToken: dto.accessToken }));
     } catch (error) {
       this.mapCognitoError(error);
     }
@@ -365,22 +361,53 @@ export class CognitoService {
         }),
       );
 
-      const subAttr = response.UserAttributes?.find(
-        (attr) => attr.Name === 'sub',
-      );
+      const subAttr = response.UserAttributes?.find((attr) => attr.Name === 'sub');
       if (!subAttr?.Value) {
-        throw new InternalServerErrorException(
-          'Cognito user sub not found after confirmation',
-        );
+        throw new InternalServerErrorException('Cognito user sub not found after confirmation');
       }
       return subAttr.Value;
     } catch (error) {
-      if (error instanceof InternalServerErrorException) throw error;
+      if (error instanceof InternalServerErrorException) {
+        throw error;
+      }
       this.mapCognitoError(error);
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async createAdminUser(input: {
+    email: string;
+    fullName: string | null;
+    password: string;
+  }): Promise<string> {
+    try {
+      await this.client.send(
+        new AdminCreateUserCommand({
+          MessageAction: 'SUPPRESS',
+          UserAttributes: [
+            { Name: 'email', Value: input.email },
+            { Name: 'email_verified', Value: 'true' },
+            ...(input.fullName ? [{ Name: 'name', Value: input.fullName }] : []),
+          ],
+          UserPoolId: this.userPoolId,
+          Username: input.email,
+        }),
+      );
+
+      await this.client.send(
+        new AdminSetUserPasswordCommand({
+          Password: input.password,
+          Permanent: true,
+          UserPoolId: this.userPoolId,
+          Username: input.email,
+        }),
+      );
+
+      return this.adminGetUser(input.email);
+    } catch (error) {
+      this.mapCognitoError(error);
+    }
+  }
+
   async disableMfa(_dto: DisableMfaDto, accessToken: string): Promise<void> {
     await this.setUserMfaPreference(accessToken, false);
   }

@@ -1,31 +1,32 @@
-import { ulid } from "ulid";
+import { ulid } from 'ulid';
 
 // Every entity type has a 3-4 character prefix
 const PREFIXES = {
-  tenant: "tnt",
-  user: "usr",
-  tenantMember: "mbr",
-  order: "ord",
-  orderLineItem: "oli",
-  product: "prd",
-  variant: "var",
-  paymentTransaction: "ptx",
-  tagBrand: "tbr",
-  tagModel: "tmd",
-  tagAlias: "tal",
-  productFilter: "pfl",
-  productImage: "img",
-  contactMessage: "msg",
-  emailLog: "eml",
-  auditEvent: "evt",
-  webhookEvent: "whk",
-  nexusRegistration: "nxr",
-  stateSales: "ssr",
-  chargebackEvidence: "cbe",
-  featuredItem: "fti",
-  shippingTracking: "stk",
-  orderAccessToken: "oat",
-  tenantOnboarding: "tob",
+  tenant: 'tnt',
+  user: 'usr',
+  tenantMember: 'mbr',
+  order: 'ord',
+  orderLineItem: 'oli',
+  product: 'prd',
+  variant: 'var',
+  paymentTransaction: 'ptx',
+  tagBrand: 'tbr',
+  tagModel: 'tmd',
+  tagAlias: 'tal',
+  productFilter: 'pfl',
+  productImage: 'img',
+  contactMessage: 'msg',
+  emailLog: 'eml',
+  auditEvent: 'evt',
+  webhookEvent: 'whk',
+  nexusRegistration: 'nxr',
+  stateSales: 'ssr',
+  chargebackEvidence: 'cbe',
+  featuredItem: 'fti',
+  shippingTracking: 'stk',
+  orderAccessToken: 'oat',
+  tenantOnboarding: 'tob',
+  tenantDomainConfig: 'tdc',
 } as const;
 
 export type EntityType = keyof typeof PREFIXES;
@@ -46,7 +47,7 @@ export function generateId(entityType: EntityType): string {
  * Example: getEntityType("ord_01HXYZ...") => "order"
  */
 export function getEntityType(id: string): EntityType | null {
-  const prefix = id.split("_")[0];
+  const prefix = id.split('_')[0];
   const entry = Object.entries(PREFIXES).find(([, p]) => p === prefix);
   return entry ? (entry[0] as EntityType) : null;
 }

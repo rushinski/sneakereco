@@ -1,46 +1,46 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import type { MiddlewareConsumer, NestModule } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
 import { LoggerModule } from 'nestjs-pino';
+
 import { DatabaseModule } from './common/database/database.module';
-import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { JwtAuthGuard } from './common/guards/auth.guard';
+import { OnboardingOriginGuard } from './common/guards/onboarding-origin.guard';
 import { TenantGuard } from './common/guards/tenant.guard';
+import { CorsMiddleware } from './common/middleware/cors.middleware';
+import { CsrfMiddleware } from './common/middleware/csrf.middleware';
+import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
+import { OriginResolverService } from './common/origins/origin-resolver.service';
+import { AddressesModule } from './modules/addresses/addresses.module';
 import { AuthModule } from './modules/auth/auth.module';
-import { TenantsModule } from './modules/tenants/tenants.module';
-import { ProductsModule } from './modules/products/products.module';
+import { CommunicationsModule } from './modules/communications/communications.module';
+import { CustomersModule } from './modules/customers/customers.module';
+import { FeaturedModule } from './modules/featured/featured.module';
+import { FraudModule } from './modules/fraud/fraud.module';
+import { HealthModule } from './modules/health/health.module';
+import { OnboardingModule } from './modules/onboarding/onboarding.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { PaymentsModule } from './modules/payments/payments.module';
-import { FraudModule } from './modules/fraud/fraud.module';
-import { TaxModule } from './modules/tax/tax.module';
+import { ProductsModule } from './modules/products/products.module';
+import { SecurityModule } from './modules/security/security.module';
 import { ShippingModule } from './modules/shipping/shipping.module';
-import { CustomersModule } from './modules/customers/customers.module';
-import { CommunicationsModule } from './modules/communications/communications.module';
-import { AddressesModule } from './modules/addresses/addresses.module';
-import { FeaturedModule } from './modules/featured/featured.module';
-import { HealthModule } from './modules/health/health.module';
+import { TaxModule } from './modules/tax/tax.module';
+import { TenantsModule } from './modules/tenants/tenants.module';
 
 @Module({
   imports: [
-    // Config — loaded first, available everywhere
     ConfigModule.forRoot({ isGlobal: true }),
-
-    // Logging
     LoggerModule.forRoot({
       pinoHttp: {
-        transport:
-          process.env.NODE_ENV === 'development'
-            ? { target: 'pino-pretty' }
-            : undefined,
+        transport: process.env.NODE_ENV === 'development' ? { target: 'pino-pretty' } : undefined,
       },
     }),
-
-    // Database — global, must come before feature modules
     DatabaseModule,
-
-    // Feature modules
     HealthModule,
+    SecurityModule,
     AuthModule,
+    OnboardingModule,
     TenantsModule,
     ProductsModule,
     OrdersModule,
@@ -54,14 +54,14 @@ import { HealthModule } from './modules/health/health.module';
     FeaturedModule,
   ],
   providers: [
-    // Order matters: JWT runs first (populates request.user),
-    // then TenantGuard reads request.user and sets tenant context.
+    OriginResolverService,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: TenantGuard },
+    { provide: APP_GUARD, useClass: OnboardingOriginGuard },
   ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(RequestIdMiddleware).forRoutes('*');
+    consumer.apply(RequestIdMiddleware, CorsMiddleware, CsrfMiddleware).forRoutes('*');
   }
 }
