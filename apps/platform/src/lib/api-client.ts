@@ -21,7 +21,8 @@ export class ApiClientError extends Error {
   }
 }
 
-const API_BASE_URL = process.env.API_BASE_URL ?? 'http://localhost:3000';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3000';
 
 interface RequestOptions extends Omit<RequestInit, 'body'> {
   accessToken?: string;

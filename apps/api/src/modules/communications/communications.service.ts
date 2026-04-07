@@ -12,7 +12,7 @@ export class CommunicationsService {
 
   constructor(private readonly config: ConfigService) {
     this.client = new SESClient({
-      region: this.config.get<string>('SES_REGION') ?? this.config.getOrThrow<string>('AWS_REGION'),
+      region: this.config.get<string>('AWS_REGION') ?? this.config.getOrThrow<string>('AWS_REGION'),
     });
     this.fromEmail = this.config.getOrThrow<string>('SES_FROM_EMAIL');
     this.fromName = this.config.get<string>('SES_FROM_NAME') ?? 'SneakerEco';
