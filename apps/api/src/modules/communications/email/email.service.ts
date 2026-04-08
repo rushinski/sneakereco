@@ -24,19 +24,18 @@ export class EmailService {
 
   constructor(config: ConfigService) {
     const fromEmail = config.getOrThrow<string>('PLATFORM_FROM_EMAIL');
-    const fromName = config.get<string>('PLATFORM_FROM_NAME') ?? 'SneakerEco';
+    const fromName = config.getOrThrow<string>('PLATFORM_FROM_NAME');
     this.platformFrom = `"${fromName}" <${fromEmail}>`;
     this.platformAdminEmail = config.getOrThrow<string>('PLATFORM_ADMIN_EMAIL');
 
-    const transport = config.get<string>('MAIL_TRANSPORT') ?? 'ses';
+    const transport = config.getOrThrow<string>('MAIL_TRANSPORT');
 
     if (transport === 'smtp') {
-      // Local development: point SMTP_HOST at Mailpit (port 1025) or MailHog.
-      // No credentials required — local mail catchers accept everything.
+      // Local development: Mailpit listens on localhost:1025 with no auth.
       this.transporter = nodemailer.createTransport({
-        host: config.get<string>('SMTP_HOST') ?? 'localhost',
-        port: config.get<number>('SMTP_PORT') ?? 1025,
-        secure: config.get<boolean>('SMTP_SECURE') ?? false,
+        host: 'localhost',
+        port: 1025,
+        secure: false,
       });
     } else {
       // Staging / Production: AWS SES via SDK v3.
@@ -110,6 +109,31 @@ export class EmailService {
     await this.send({
       to: input.email,
       subject: `Your SneakerEco invite for ${input.businessName}`,
+      html,
+      text,
+    });
+  }
+
+  async sendRequestConfirmation(input: {
+    businessName: string;
+    email: string;
+    fullName: string;
+  }): Promise<void> {
+    const html = renderTemplate('platform-request-confirmation', {
+      businessName: input.businessName,
+      fullName: input.fullName,
+    });
+    const text = [
+      `Hi ${input.fullName},`,
+      '',
+      `Thanks for applying to sell on SneakerEco. We received your request for ${input.businessName}.`,
+      'We review all applications manually and will be in touch within a few business days.',
+      'If you have any questions in the meantime, reply to this email.',
+    ].join('\n');
+
+    await this.send({
+      to: input.email,
+      subject: `We received your SneakerEco application for ${input.businessName}`,
       html,
       text,
     });

@@ -102,6 +102,19 @@ export class OnboardingService {
           error instanceof Error ? error.stack : undefined,
         );
       }
+
+      try {
+        await this.email.sendRequestConfirmation({
+          businessName: dto.businessName.trim(),
+          email,
+          fullName: dto.fullName.trim(),
+        });
+      } catch (error) {
+        this.logger.error(
+          `Request confirmation email failed for onboarding request email=${email}`,
+          error instanceof Error ? error.stack : undefined,
+        );
+      }
     }
 
     return { submitted: true };
@@ -333,6 +346,6 @@ export class OnboardingService {
   }
 
   private getPlatformBaseUrl(): string {
-    return (this.config.get<string>('PLATFORM_URL') ?? 'https://sneakereco.com').replace(/\/$/, '');
+    return this.config.getOrThrow<string>('PLATFORM_URL').replace(/\/$/, '');
   }
 }

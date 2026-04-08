@@ -15,30 +15,22 @@ export class OriginResolverService {
     private readonly config: ConfigService,
     private readonly db: DatabaseService,
   ) {
-    const origins: (string | null)[] = [
-      this.normalizeOrigin(this.config.get<string>('PLATFORM_URL')),
-      this.normalizeOrigin(this.config.get<string>('PLATFORM_WWW_URL')),
-    ];
+    const webUrl = this.normalizeOrigin(this.config.getOrThrow<string>('WEB_URL'));
+    const platformUrl = this.normalizeOrigin(this.config.getOrThrow<string>('PLATFORM_URL'));
 
-    // Only include localhost in development — never bleed into staging/production
-    if (this.config.get<string>('NODE_ENV') === 'development') {
-      origins.push(this.normalizeOrigin(this.config.get<string>('PLATFORM_DEV_URL') ?? 'http://localhost:3002'));
-    }
-
-    this.platformOrigins = new Set(origins.filter((v): v is string => Boolean(v)));
+    this.platformOrigins = new Set(
+      [webUrl, platformUrl].filter((v): v is string => Boolean(v)),
+    );
   }
 
   normalizeOrigin(origin: string | undefined | null): string | null {
-    if (!origin) {
-      return null;
-    }
+    if (!origin) return null;
 
     try {
       const parsed = new URL(origin);
       if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
         return null;
       }
-
       return `${parsed.protocol}//${parsed.host}`.toLowerCase();
     } catch {
       return null;
@@ -52,30 +44,19 @@ export class OriginResolverService {
 
   async classifyOrigin(origin: string | undefined | null): Promise<OriginGroup> {
     const normalized = this.normalizeOrigin(origin);
-    if (!normalized) {
-      return 'unknown';
-    }
+    if (!normalized) return 'unknown';
 
-    if (this.platformOrigins.has(normalized)) {
-      return 'platform';
-    }
+    if (this.platformOrigins.has(normalized)) return 'platform';
 
     const hostname = new URL(normalized).hostname.toLowerCase();
-    if (await this.isAdminHostname(hostname)) {
-      return 'admin';
-    }
-
-    if (await this.isTenantHostname(hostname)) {
-      return 'tenant';
-    }
+    if (await this.isAdminHostname(hostname)) return 'admin';
+    if (await this.isTenantHostname(hostname)) return 'tenant';
 
     return 'unknown';
   }
 
   private async isAdminHostname(hostname: string): Promise<boolean> {
-    if (!hostname.startsWith('admin.')) {
-      return false;
-    }
+    if (!hostname.startsWith('admin.')) return false;
 
     const baseHost = hostname.slice('admin.'.length);
 

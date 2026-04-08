@@ -1,7 +1,8 @@
 import type { MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 
 import { envSchema } from './config/env.schema';
@@ -9,11 +10,11 @@ import { CommonModule } from './common/common.module';
 import { DatabaseModule } from './common/database/database.module';
 import { JwtAuthGuard } from './common/guards/auth.guard';
 import { OnboardingOriginGuard } from './common/guards/onboarding-origin.guard';
+import { RolesGuard } from './common/guards/roles.guard';
 import { TenantGuard } from './common/guards/tenant.guard';
 import { CorsMiddleware } from './common/middleware/cors.middleware';
-import { CsrfMiddleware } from './common/middleware/csrf.middleware';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
-import { OriginResolverService } from './common/middleware/origin-resolver.service';
+import { OriginResolverService } from './common/services/origin-resolver.service';
 import { AddressesModule } from './modules/addresses/addresses.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CommunicationsModule } from './modules/communications/communications.module';
@@ -43,12 +44,50 @@ import { TenantsModule } from './modules/tenants/tenants.module';
         return result.data;
       },
     }),
-    LoggerModule.forRoot({
-      pinoHttp: {
-        transport:
-          process.env.NODE_ENV === 'development' ? { target: 'pino-pretty' } : undefined,
-      },
+
+    LoggerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        pinoHttp: {
+          level: config.getOrThrow<string>('LOG_LEVEL'),
+          transport:
+            config.getOrThrow<string>('NODE_ENV') === 'development'
+              ? { target: 'pino-pretty' }
+              : undefined,
+          // Attach requestId to every log line automatically
+          customProps: (req) => ({
+            requestId: req.headers['x-request-id'],
+          }),
+        },
+      }),
     }),
+
+    // Rate limiting — defaults apply globally, override per-route with @Throttle()
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: () => ({
+        throttlers: [
+          {
+            name: 'short',
+            ttl: 1_000,
+            limit: 3,
+          },
+          {
+            name: 'medium',
+            ttl: 10_000,
+            limit: 20,
+          },
+          {
+            name: 'long',
+            ttl: 60_000,
+            limit: 100,
+          },
+        ],
+      }),
+    }),
+
     CommonModule,
     DatabaseModule,
     HealthModule,
@@ -67,13 +106,20 @@ import { TenantsModule } from './modules/tenants/tenants.module';
   ],
   providers: [
     OriginResolverService,
+    // Guard order matters: auth → tenant → roles → throttle → onboarding
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: TenantGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: OnboardingOriginGuard },
   ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(RequestIdMiddleware, CorsMiddleware, CsrfMiddleware).forRoutes('*');
+    consumer
+      .apply(RequestIdMiddleware, CorsMiddleware)
+      .forRoutes('*');
+    // CSRF protection is applied as Express middleware in main.ts via
+    // csrf-csrf's doubleCsrfProtection, which must run after cookie-parser.
   }
 }

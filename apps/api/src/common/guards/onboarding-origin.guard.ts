@@ -4,7 +4,7 @@ import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 
 import { ONBOARDING_ONLY_KEY } from '../decorators/onboarding-only.decorator';
-import { OriginResolverService } from '../middleware/origin-resolver.service';
+import { OriginResolverService } from '../services/origin-resolver.service';
 
 @Injectable()
 export class OnboardingOriginGuard implements CanActivate {
@@ -19,9 +19,7 @@ export class OnboardingOriginGuard implements CanActivate {
       context.getClass(),
     ]);
 
-    if (!onboardingOnly) {
-      return true;
-    }
+    if (!onboardingOnly) return true;
 
     const request = context.switchToHttp().getRequest<Request>();
     const origin = request.headers.origin;

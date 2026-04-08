@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { CsrfController } from './csrf.controller';
+import { CsrfController } from './middleware/csrf/csrf.controller';
 
 /**
  * Registers HTTP infrastructure controllers that don't belong to any
