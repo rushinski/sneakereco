@@ -1,21 +1,37 @@
+/**
+ * API response envelope for successful responses:
+ * { data: T, meta: { requestId?, timestamp } }
+ */
 export interface ApiEnvelope<T> {
   data: T;
-  success: boolean;
+  meta: {
+    requestId?: string;
+    timestamp: string;
+  };
 }
 
+/**
+ * API response envelope for error responses:
+ * { error: { code, message, details? }, meta: { requestId?, timestamp } }
+ */
 export interface ApiErrorPayload {
-  error?: {
-    message?: string | { message?: string };
-    statusCode?: number;
+  error: {
+    code: string;
+    message: string;
+    details?: unknown;
   };
-  success?: boolean;
+  meta?: {
+    requestId?: string;
+    timestamp: string;
+  };
 }
 
 export class ApiClientError extends Error {
   constructor(
     message: string,
     public readonly status: number,
-    public readonly payload?: ApiErrorPayload,
+    public readonly code?: string,
+    public readonly details?: unknown,
   ) {
     super(message);
   }
@@ -33,7 +49,13 @@ interface RequestOptions extends Omit<RequestInit, 'body'> {
 function isSuccessEnvelope<T>(
   payload: ApiEnvelope<T> | ApiErrorPayload | null,
 ): payload is ApiEnvelope<T> {
-  return Boolean(payload && 'success' in payload && payload.success && 'data' in payload);
+  return Boolean(payload && 'data' in payload && !('error' in payload));
+}
+
+function isErrorEnvelope(
+  payload: ApiEnvelope<unknown> | ApiErrorPayload | null,
+): payload is ApiErrorPayload {
+  return Boolean(payload && 'error' in payload);
 }
 
 async function request<T>(
@@ -70,28 +92,24 @@ async function request<T>(
 
   if (!response.ok || !isSuccessEnvelope(payload)) {
     const message = extractErrorMessage(payload) ?? 'Request failed';
-    throw new ApiClientError(message, response.status, payload ?? undefined);
+    const code = isErrorEnvelope(payload) ? payload.error.code : undefined;
+    const details = isErrorEnvelope(payload) ? payload.error.details : undefined;
+    throw new ApiClientError(message, response.status, code, details);
   }
 
   return payload.data;
 }
 
-function extractErrorMessage(payload: ApiErrorPayload | ApiEnvelope<unknown> | null) {
-  if (!payload || !('error' in payload) || !payload.error) {
-    return null;
-  }
-
-  const { message } = payload.error;
-  if (typeof message === 'string') {
-    return message;
-  }
-
-  if (message && typeof message === 'object' && 'message' in message) {
-    return typeof message.message === 'string' ? message.message : null;
-  }
-
-  return null;
+function extractErrorMessage(
+  payload: ApiEnvelope<unknown> | ApiErrorPayload | null,
+): string | null {
+  if (!payload || !isErrorEnvelope(payload)) return null;
+  return payload.error.message;
 }
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 export interface RequestAccountInput {
   businessName: string;
@@ -117,6 +135,10 @@ export interface CompleteOnboardingResult {
   secretCode: string;
 }
 
+// ---------------------------------------------------------------------------
+// Client
+// ---------------------------------------------------------------------------
+
 export const apiClient = {
   completeOnboarding: (input: { password: string; token: string }, csrfToken: string) =>
     request<CompleteOnboardingResult>('/onboarding/complete', {
@@ -124,20 +146,24 @@ export const apiClient = {
       csrfToken,
       method: 'POST',
     }),
+
   getCsrfToken: () =>
     request<{ token: string }>('/csrf-token', {
       method: 'GET',
     }),
+
   requestAccount: (input: RequestAccountInput, csrfToken: string) =>
     request<{ submitted: boolean }>('/onboarding/request', {
       body: input,
       csrfToken,
       method: 'POST',
     }),
+
   validateInvite: (token: string) =>
     request<InviteSummary>(`/onboarding/invite/${token}`, {
       method: 'GET',
     }),
+
   verifyMfa: (
     input: { deviceName?: string; mfaCode: string },
     csrfToken: string,

@@ -15,11 +15,10 @@ export class OriginResolverService {
     private readonly config: ConfigService,
     private readonly db: DatabaseService,
   ) {
-    const webUrl = this.normalizeOrigin(this.config.getOrThrow<string>('WEB_URL'));
     const platformUrl = this.normalizeOrigin(this.config.getOrThrow<string>('PLATFORM_URL'));
 
     this.platformOrigins = new Set(
-      [webUrl, platformUrl].filter((v): v is string => Boolean(v)),
+      [platformUrl].filter((v): v is string => Boolean(v)),
     );
   }
 
