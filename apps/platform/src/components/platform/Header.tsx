@@ -11,9 +11,6 @@ export function Header() {
           <Link className="button button--ghost" href="/request">
             Join Now
           </Link>
-          <button aria-disabled="true" className="button button--stub" disabled type="button">
-            Login
-          </button>
         </nav>
       </div>
     </header>

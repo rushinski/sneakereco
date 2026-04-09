@@ -123,7 +123,6 @@ export class OnboardingService {
   async approveRequest(tenantId: string) {
     const inviteToken = createInviteToken();
     const inviteTokenHash = hashInviteToken(inviteToken);
-    const inviteLink = `${this.getPlatformBaseUrl()}/invite/${inviteToken}`;
 
     const approval = await this.db.withSystemContext(async (tx) => {
       const record = await this.onboardingRepository.findRequestDetails(tenantId);
@@ -162,6 +161,9 @@ export class OnboardingService {
     if (!approval.email) {
       throw new InternalServerErrorException('Onboarding request is missing the applicant email');
     }
+
+    // Invite link points to the web app's admin setup page on the tenant's subdomain.
+    const inviteLink = `https://${approval.subdomain}.sneakereco.com/admin/setup/${inviteToken}`;
 
     await this.email.sendOnboardingInvite({
       adminDomain: approval.adminDomain,
@@ -303,7 +305,7 @@ export class OnboardingService {
 
     return {
       accessToken: authResult.accessToken,
-      adminRedirectUrl: `https://${inviteRecord.adminDomain}/dashboard`,
+      adminRedirectUrl: `https://${inviteRecord.adminDomain}/admin`,
       expiresIn: authResult.expiresIn,
       idToken: authResult.idToken,
       refreshToken: authResult.refreshToken,

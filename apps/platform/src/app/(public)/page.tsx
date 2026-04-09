@@ -14,7 +14,6 @@ export default function HomePage() {
           <Link className="button button--primary" href="/request">
             Request an Account
           </Link>
-          <span className="button button--stub button--inline">Internal login coming later</span>
         </div>
       </div>
       <div className="hero__aside panel panel--compact">

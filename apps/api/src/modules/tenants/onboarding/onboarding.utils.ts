@@ -27,7 +27,7 @@ export function buildInstagramUrl(handle: string): string {
 }
 
 export function buildAdminDomain(subdomain: string): string {
-  return `admin.${subdomain}.sneakereco.com`;
+  return `${subdomain}.sneakereco.com`;
 }
 
 export function buildCandidateSlug(value: string): string {

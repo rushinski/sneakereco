@@ -135,11 +135,46 @@ export interface CompleteOnboardingResult {
   secretCode: string;
 }
 
+export type AdminSignInResult =
+  | { type: 'tokens'; accessToken: string; idToken: string; refreshToken: string; expiresIn: number }
+  | { type: 'mfa_required'; session: string };
+
+export interface MfaChallengeResult {
+  accessToken: string;
+  idToken: string;
+  refreshToken: string;
+  expiresIn: number;
+}
+
+export interface RequestSummary {
+  tenantId: string;
+  businessName: string | null;
+  requestedByName: string | null;
+  requestedByEmail: string | null;
+  instagramUrl: string | null;
+  requestStatus: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ListRequestsParams {
+  status?: 'pending' | 'approved' | 'rejected' | 'invited';
+  page?: number;
+  pageSize?: number;
+}
+
+export interface ListRequestsResult {
+  items: RequestSummary[];
+  total: number;
+}
+
 // ---------------------------------------------------------------------------
 // Client
 // ---------------------------------------------------------------------------
 
 export const apiClient = {
+  // ---- Onboarding (public) ------------------------------------------------
+
   completeOnboarding: (input: { password: string; token: string }, csrfToken: string) =>
     request<CompleteOnboardingResult>('/onboarding/complete', {
       body: input,
@@ -172,6 +207,50 @@ export const apiClient = {
     request<{ status?: string }>('/auth/mfa/verify', {
       accessToken,
       body: input,
+      csrfToken,
+      method: 'POST',
+    }),
+
+  // ---- Platform admin -----------------------------------------------------
+
+  signInAdmin: (input: { email: string; password: string }, csrfToken: string) =>
+    request<AdminSignInResult>('/platform/auth/sign-in', {
+      body: input,
+      csrfToken,
+      method: 'POST',
+    }),
+
+  mfaChallenge: (
+    input: { email: string; mfaCode: string; session: string },
+    csrfToken: string,
+  ) =>
+    request<MfaChallengeResult>('/auth/mfa/challenge', {
+      body: input,
+      csrfToken,
+      method: 'POST',
+    }),
+
+  listRequests: (params: ListRequestsParams, accessToken: string) => {
+    const query = new URLSearchParams();
+    if (params.status) query.set('status', params.status);
+    if (params.page) query.set('page', String(params.page));
+    if (params.pageSize) query.set('pageSize', String(params.pageSize));
+    return request<ListRequestsResult>(`/platform/requests?${query.toString()}`, {
+      accessToken,
+      method: 'GET',
+    });
+  },
+
+  approveRequest: (tenantId: string, csrfToken: string, accessToken: string) =>
+    request<{ approved: boolean }>(`/platform/requests/${tenantId}/approve`, {
+      accessToken,
+      csrfToken,
+      method: 'POST',
+    }),
+
+  denyRequest: (tenantId: string, csrfToken: string, accessToken: string) =>
+    request<{ denied: boolean }>(`/platform/requests/${tenantId}/deny`, {
+      accessToken,
       csrfToken,
       method: 'POST',
     }),

@@ -37,7 +37,13 @@ export class TenantGuard implements CanActivate {
 
     if (!request.user) return true;
 
-    const { tenantId, cognitoId: userId, role } = request.user;
+    const { tenantId, cognitoId: userId, role, isSuperAdmin } = request.user;
+
+    // Super admins don't have a tenant_id JWT claim — fall back to the
+    // X-Tenant-ID header so they can access any tenant's admin routes.
+    const effectiveTenantId =
+      tenantId ?? (isSuperAdmin ? (request.headers['x-tenant-id'] as string | undefined) : undefined);
+    const effectiveRole = role ?? (isSuperAdmin ? 'admin' : 'customer');
 
     // Resolve the REQUEST-scoped TenantContextService bound to this HTTP
     // request so the same instance is used by all downstream services.
@@ -48,7 +54,7 @@ export class TenantGuard implements CanActivate {
       { strict: false },
     );
 
-    tenantContextService.setContext(tenantId, userId, role);
+    tenantContextService.setContext(effectiveTenantId, userId, effectiveRole);
 
     return true;
   }

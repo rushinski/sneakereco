@@ -1,7 +1,7 @@
 import { Injectable, Scope } from '@nestjs/common';
 
 interface TenantContext {
-  tenantId: string;
+  tenantId: string | undefined;
   userId: string;
   role: string;
 }
@@ -10,7 +10,7 @@ interface TenantContext {
 export class TenantContextService {
   private context: TenantContext | null = null;
 
-  setContext(tenantId: string, userId: string, role: string): void {
+  setContext(tenantId: string | undefined, userId: string, role: string): void {
     this.context = { tenantId, userId, role };
   }
 

@@ -3,15 +3,17 @@ export interface CognitoJwtPayload {
   email: string;
   token_use: string;
   client_id: string;
-  'custom:tenant_id': string;
-  'custom:role': 'admin' | 'customer';
-  'custom:member_id': string;
+  'custom:tenant_id'?: string;
+  'custom:role'?: 'admin' | 'customer';
+  'custom:member_id'?: string;
+  'custom:is_super_admin'?: string;
 }
 
 export interface AuthenticatedUser {
   cognitoId: string;
   email: string;
-  tenantId: string;
-  role: 'admin' | 'customer';
-  memberId: string;
+  tenantId: string | undefined;
+  role: 'admin' | 'customer' | undefined;
+  memberId: string | undefined;
+  isSuperAdmin: boolean;
 }

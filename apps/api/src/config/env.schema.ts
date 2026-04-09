@@ -34,6 +34,8 @@ export const envSchema = z.object({
   // --- URLs ---
   // Public-facing URL of the platform site (sneakereco.com). Used for CORS and invite links.
   PLATFORM_URL: z.string().url('PLATFORM_URL must be a valid URL'),
+  // Public-facing URL of the platform admin dashboard (dashboard.sneakereco.com). Added to CORS allowlist.
+  PLATFORM_DASHBOARD_URL: z.string().url('PLATFORM_DASHBOARD_URL must be a valid URL').optional(),
 
   // --- CSRF ---
   CSRF_SECRET: z.string().min(32, 'CSRF_SECRET must be at least 32 characters'),

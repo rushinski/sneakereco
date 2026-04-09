@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, pgTable, text, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, index, pgTable, text, uniqueIndex } from "drizzle-orm/pg-core";
 
 import { createdAtColumn, updatedAtColumn } from "../shared/columns";
 
@@ -10,6 +10,7 @@ export const users = pgTable(
     email: text("email").notNull(),
     fullName: text("full_name"),
     cognitoSub: text("cognito_sub"),
+    isSuperAdmin: boolean("is_super_admin").notNull().default(false),
     createdAt: createdAtColumn(),
     updatedAt: updatedAtColumn(),
   },

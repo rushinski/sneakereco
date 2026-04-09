@@ -16,9 +16,10 @@ export class OriginResolverService {
     private readonly db: DatabaseService,
   ) {
     const platformUrl = this.normalizeOrigin(this.config.getOrThrow<string>('PLATFORM_URL'));
+    const dashboardUrl = this.normalizeOrigin(this.config.get<string>('PLATFORM_DASHBOARD_URL') ?? '');
 
     this.platformOrigins = new Set(
-      [platformUrl].filter((v): v is string => Boolean(v)),
+      [platformUrl, dashboardUrl].filter((v): v is string => Boolean(v)),
     );
   }
 

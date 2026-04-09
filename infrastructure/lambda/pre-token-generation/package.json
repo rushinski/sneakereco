@@ -1,0 +1,21 @@
+{
+  "name": "pre-token-generation-lambda",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cognito Pre Token Generation Lambda — injects custom JWT claims",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "esbuild index.ts --bundle --platform=node --target=node20 --outfile=dist/index.js --external:pg-native",
+    "build:zip": "pnpm build && cd dist && zip -r ../function.zip index.js"
+  },
+  "dependencies": {
+    "pg": "^8.13.3"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.147",
+    "@types/node": "^20.0.0",
+    "@types/pg": "^8.11.10",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.7.3"
+  }
+}

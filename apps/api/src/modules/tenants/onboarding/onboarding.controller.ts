@@ -32,7 +32,6 @@ export class OnboardingController {
   }
 
   @Public()
-  @OnboardingOnly()
   @Get('invite/:token')
   @ApiOperation({ summary: 'Validate an onboarding invite token' })
   @ApiResponse({ status: 200, description: 'Invite is valid.' })
@@ -42,8 +41,9 @@ export class OnboardingController {
     return this.onboardingService.validateInvite(token);
   }
 
+  // No @OnboardingOnly() — setup page lives in apps/web (tenant origin).
+  // The invite token (256-bit random) is the security mechanism.
   @Public()
-  @OnboardingOnly()
   @Post('complete')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Complete onboarding and provision the first admin account' })

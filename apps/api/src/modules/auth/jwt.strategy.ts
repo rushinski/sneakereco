@@ -35,6 +35,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       tenantId: payload['custom:tenant_id'],
       role: payload['custom:role'],
       memberId: payload['custom:member_id'],
+      isSuperAdmin: payload['custom:is_super_admin'] === 'true',
     };
   }
 }

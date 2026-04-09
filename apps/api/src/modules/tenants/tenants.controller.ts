@@ -1,6 +1,94 @@
-import { Controller } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
-@ApiTags('tenants')
-@Controller({ path: 'tenants' })
-export class TenantsController {}
+import { Public } from '../../common/decorators/public.decorator';
+import { OnboardingOnly } from '../../common/decorators/onboarding-only.decorator';
+import { PlatformAdmin } from '../../common/decorators/platform-admin.decorator';
+import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
+import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
+
+import { TenantsService } from './tenants.service';
+import { ListRequestsDtoSchema, type ListRequestsDto } from './dto/list-requests.dto';
+import {
+  PlatformAdminSignInDtoSchema,
+  type PlatformAdminSignInDto,
+} from './dto/platform-admin-sign-in.dto';
+
+@ApiTags('platform')
+@Controller({ path: 'platform' })
+export class TenantsController {
+  constructor(private readonly tenantsService: TenantsService) {}
+
+  /**
+   * Platform admin sign-in. Only callable from platform/dashboard origins.
+   * Uses the admin Cognito app client (shorter TTL, MFA enforced).
+   */
+  @Public()
+  @OnboardingOnly()
+  @Post('auth/sign-in')
+  @HttpCode(HttpStatus.OK)
+  signInAdmin(
+    @Body(new ZodValidationPipe(PlatformAdminSignInDtoSchema)) dto: PlatformAdminSignInDto,
+  ) {
+    return this.tenantsService.signInAdmin(dto);
+  }
+
+  /**
+   * List tenant onboarding requests (paginated, filterable by status).
+   * Requires super admin JWT from a platform/dashboard origin.
+   */
+  @UseGuards(PlatformAdminGuard)
+  @PlatformAdmin()
+  @Get('requests')
+  listRequests(@Query(new ZodValidationPipe(ListRequestsDtoSchema)) dto: ListRequestsDto) {
+    return this.tenantsService.listRequests(dto);
+  }
+
+  /**
+   * Approve a pending onboarding request.
+   * Sends an invite email with a setup link to apps/web.
+   */
+  @UseGuards(PlatformAdminGuard)
+  @PlatformAdmin()
+  @Post('requests/:tenantId/approve')
+  @HttpCode(HttpStatus.OK)
+  approveRequest(@Param('tenantId') tenantId: string) {
+    return this.tenantsService.approveRequest(tenantId);
+  }
+
+  /**
+   * Deny a pending onboarding request.
+   * Sends a denial notification email.
+   */
+  @UseGuards(PlatformAdminGuard)
+  @PlatformAdmin()
+  @Post('requests/:tenantId/deny')
+  @HttpCode(HttpStatus.OK)
+  denyRequest(@Param('tenantId') tenantId: string) {
+    return this.tenantsService.denyRequest(tenantId);
+  }
+
+  /**
+   * Public endpoint — returns tenant config + theme for the admin login page.
+   * Accepts tenant ID via X-Tenant-ID header or slug via ?slug= query param.
+   */
+  @Public()
+  @Get('config')
+  getTenantConfig(
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Query('slug') slug: string | undefined,
+  ) {
+    return this.tenantsService.getTenantConfig((tenantId ?? slug)!);
+  }
+}
