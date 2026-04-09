@@ -29,6 +29,7 @@ import {
   ResendConfirmationCodeCommand,
   RespondToAuthChallengeCommand,
   SetUserMFAPreferenceCommand,
+  SetUserPoolMfaConfigCommand,
   SignUpCommand,
   UpdateUserPoolCommand,
   UsernameExistsException,
@@ -451,7 +452,6 @@ export class CognitoService {
         UsernameAttributes: ['email'],
         // MFA: optional (authenticator app)
         MfaConfiguration: 'OPTIONAL',
-        EnabledMfas: ['SOFTWARE_TOKEN_MFA'],
         // Account recovery via email
         AccountRecoverySetting: {
           RecoveryMechanisms: [
@@ -496,7 +496,16 @@ export class CognitoService {
       throw new InternalServerErrorException('Failed to create Cognito user pool');
     }
 
-    // 2. Add custom attributes
+    // 2. Enable TOTP MFA for the pool
+    await this.client.send(
+      new SetUserPoolMfaConfigCommand({
+        UserPoolId: userPoolId,
+        MfaConfiguration: 'OPTIONAL',
+        SoftwareTokenMfaConfiguration: { Enabled: true },
+      }),
+    );
+
+    // 3. Add custom attributes
     await this.client.send(
       new AddCustomAttributesCommand({
         UserPoolId: userPoolId,
@@ -508,7 +517,7 @@ export class CognitoService {
       }),
     );
 
-    // 3. Create customer app client (30-day refresh)
+    // 4. Create customer app client (30-day refresh)
     const customerClientResponse = await this.client.send(
       new CreateUserPoolClientCommand({
         UserPoolId: userPoolId,
@@ -533,7 +542,7 @@ export class CognitoService {
       throw new InternalServerErrorException('Failed to create customer app client');
     }
 
-    // 4. Create admin app client (1-day refresh)
+    // 5. Create admin app client (1-day refresh)
     const adminClientResponse = await this.client.send(
       new CreateUserPoolClientCommand({
         UserPoolId: userPoolId,

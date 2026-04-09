@@ -43,6 +43,13 @@
       "when": 1775739890448,
       "tag": "0005_far_masque",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1775751646208,
+      "tag": "0006_fresh_cammi",
+      "breakpoints": true
     }
   ]
 }
