@@ -254,9 +254,6 @@ importers:
 
   packages/db:
     dependencies:
-      '@sneakereco/shared':
-        specifier: workspace:*
-        version: link:../shared
       dotenv:
         specifier: ^16
         version: 16.6.1

@@ -14,7 +14,6 @@ import { RolesGuard } from './common/guards/roles.guard';
 import { TenantGuard } from './common/guards/tenant.guard';
 import { CorsMiddleware } from './common/middleware/cors.middleware';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
-import { OriginResolverService } from './common/services/origin-resolver.service';
 import { AddressesModule } from './modules/addresses/addresses.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CommunicationsModule } from './modules/communications/communications.module';
@@ -105,7 +104,6 @@ import { TenantsModule } from './modules/tenants/tenants.module';
     FeaturedModule,
   ],
   providers: [
-    OriginResolverService,
     // Guard order matters: auth → tenant → roles → throttle → onboarding
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: TenantGuard },
