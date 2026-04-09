@@ -1,8 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { eq } from 'drizzle-orm';
 import { generateId } from '@sneakereco/shared';
-import { users } from '@sneakereco/db';
+import { users, tenantCognitoConfig } from '@sneakereco/db';
+
 import { DatabaseService } from '../../common/database/database.service';
-import { CognitoService } from './cognito.service';
+import { CognitoService, type PoolCredentials } from './cognito.service';
 import type { ConfirmEmailDto } from './dto/confirm-email.dto';
 import type { DisableMfaDto } from './dto/disable-mfa.dto';
 import type { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -22,47 +24,95 @@ export class AuthService {
     private readonly db: DatabaseService,
   ) {}
 
-  async signUp(dto: SignUpDto) {
-    // NO DB write — user is unconfirmed in Cognito, does not exist in DB yet.
-    // Cognito sends the confirmation email automatically.
-    return this.cognito.signUp(dto);
+  // ---------------------------------------------------------------------------
+  // Pool resolution
+  // ---------------------------------------------------------------------------
+
+  private async resolveTenantPool(
+    tenantId: string,
+    clientType: 'customer' | 'admin' = 'customer',
+  ): Promise<PoolCredentials> {
+    const [config] = await this.db.withSystemContext((tx) =>
+      tx
+        .select()
+        .from(tenantCognitoConfig)
+        .where(eq(tenantCognitoConfig.tenantId, tenantId))
+        .limit(1),
+    );
+
+    if (!config) throw new NotFoundException('Tenant authentication is not configured');
+
+    return {
+      userPoolId: config.userPoolId,
+      clientId: clientType === 'admin' ? config.adminClientId : config.customerClientId,
+    };
   }
 
-  async confirmEmail(dto: ConfirmEmailDto) {
-    // Step 1: Confirm the Cognito user (marks them CONFIRMED in Cognito)
-    await this.cognito.confirmSignUp(dto);
+  // ---------------------------------------------------------------------------
+  // Customer self-service (require tenantId)
+  // ---------------------------------------------------------------------------
 
-    // Step 2: Fetch the Cognito sub — only available after confirmation
-    const cognitoSub = await this.cognito.adminGetUser(dto.email);
+  async signUp(dto: SignUpDto, tenantId: string) {
+    const pool = await this.resolveTenantPool(tenantId, 'customer');
+    return this.cognito.signUp(dto, pool);
+  }
 
-    // Step 3: Create the users row using system context (bypasses RLS)
-    // ON CONFLICT DO NOTHING makes this idempotent if called twice
+  async confirmEmail(dto: ConfirmEmailDto, tenantId: string) {
+    const pool = await this.resolveTenantPool(tenantId, 'customer');
+
+    // Step 1: Confirm in Cognito
+    await this.cognito.confirmSignUp(dto, pool);
+
+    // Step 2: Fetch Cognito sub (only available after confirmation)
+    const cognitoSub = await this.cognito.adminGetUser(dto.email, pool.userPoolId);
+
+    // Step 3: Create users row (system context bypasses RLS; idempotent)
     await this.db.withSystemContext(async (tx) => {
       await tx
         .insert(users)
-        .values({
-          id: generateId('user'),
-          email: dto.email,
-          cognitoSub,
-        })
+        .values({ id: generateId('user'), email: dto.email, cognitoSub })
         .onConflictDoNothing({ target: users.cognitoSub });
     });
 
     return { success: true };
   }
 
-  async resendConfirmationCode(dto: ResendConfirmationDto) {
-    await this.cognito.resendConfirmationCode(dto);
+  async resendConfirmationCode(dto: ResendConfirmationDto, tenantId: string) {
+    const pool = await this.resolveTenantPool(tenantId, 'customer');
+    await this.cognito.resendConfirmationCode(dto, pool);
     return { success: true };
   }
 
-  async signIn(dto: SignInDto) {
-    return this.cognito.signIn(dto);
+  async signIn(dto: SignInDto, tenantId: string) {
+    const pool = await this.resolveTenantPool(tenantId, dto.clientType ?? 'customer');
+    return this.cognito.signIn(dto, pool);
   }
 
-  async respondToMfaChallenge(dto: MfaChallengeDto) {
-    return this.cognito.respondToMfaChallenge(dto);
+  async respondToMfaChallenge(dto: MfaChallengeDto, tenantId: string) {
+    const pool = await this.resolveTenantPool(tenantId, dto.clientType ?? 'customer');
+    return this.cognito.respondToMfaChallenge(dto, pool);
   }
+
+  async forgotPassword(dto: ForgotPasswordDto, tenantId: string) {
+    const pool = await this.resolveTenantPool(tenantId, 'customer');
+    await this.cognito.forgotPassword(dto, pool);
+    return { success: true };
+  }
+
+  async resetPassword(dto: ResetPasswordDto, tenantId: string) {
+    const pool = await this.resolveTenantPool(tenantId, 'customer');
+    await this.cognito.confirmForgotPassword(dto, pool);
+    return { success: true };
+  }
+
+  async refreshTokens(dto: RefreshTokenDto, tenantId: string) {
+    const pool = await this.resolveTenantPool(tenantId, dto.clientType ?? 'customer');
+    return this.cognito.refreshTokens(dto, pool);
+  }
+
+  // ---------------------------------------------------------------------------
+  // MFA / token operations (access-token based — no pool needed)
+  // ---------------------------------------------------------------------------
 
   async associateSoftwareToken(accessToken: string) {
     return this.cognito.associateSoftwareToken(accessToken);
@@ -70,7 +120,6 @@ export class AuthService {
 
   async verifyMfa(dto: VerifyMfaDto, accessToken: string) {
     const result = await this.cognito.verifySoftwareToken(accessToken, dto);
-    // Immediately enable MFA preference on successful verification
     await this.cognito.setUserMfaPreference(accessToken, true);
     return result;
   }
@@ -83,20 +132,6 @@ export class AuthService {
   async disableMfa(dto: DisableMfaDto, accessToken: string) {
     await this.cognito.disableMfa(dto, accessToken);
     return { success: true };
-  }
-
-  async forgotPassword(dto: ForgotPasswordDto) {
-    await this.cognito.forgotPassword(dto);
-    return { success: true };
-  }
-
-  async resetPassword(dto: ResetPasswordDto) {
-    await this.cognito.confirmForgotPassword(dto);
-    return { success: true };
-  }
-
-  async refreshTokens(dto: RefreshTokenDto) {
-    return this.cognito.refreshTokens(dto);
   }
 
   async signOut(dto: SignOutDto) {

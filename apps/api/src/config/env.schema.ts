@@ -21,9 +21,11 @@ export const envSchema = z.object({
   AWS_SECRET_ACCESS_KEY: z.string().min(1, 'AWS_SECRET_ACCESS_KEY is required'),
 
   // --- AWS Cognito ---
-  COGNITO_USER_POOL_ID: z.string().min(1, 'COGNITO_USER_POOL_ID is required'),
-  COGNITO_CUSTOMER_CLIENT_ID: z.string().min(1, 'COGNITO_CUSTOMER_CLIENT_ID is required'),
-  COGNITO_ADMIN_CLIENT_ID: z.string().min(1, 'COGNITO_ADMIN_CLIENT_ID is required'),
+  // Platform pool — manually created, used for Jacob's dashboard login only.
+  PLATFORM_COGNITO_POOL_ID: z.string().min(1, 'PLATFORM_COGNITO_POOL_ID is required'),
+  PLATFORM_COGNITO_ADMIN_CLIENT_ID: z.string().min(1, 'PLATFORM_COGNITO_ADMIN_CLIENT_ID is required'),
+  // Pre Token Generation Lambda — deployed once, attached to every tenant pool on creation.
+  COGNITO_PRE_TOKEN_LAMBDA_ARN: z.string().min(1, 'COGNITO_PRE_TOKEN_LAMBDA_ARN is required'),
 
   // --- Email ---
   MAIL_TRANSPORT: z.enum(['smtp', 'ses']).default('ses'),

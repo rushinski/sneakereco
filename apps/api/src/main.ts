@@ -17,6 +17,7 @@ import {
   initCsrf,
   doubleCsrfProtection,
 } from './common/middleware/csrf/csrf.config';
+import { OriginResolverService } from './common/services/origin-resolver.service';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -26,8 +27,31 @@ async function bootstrap() {
   });
 
   const config = app.get(ConfigService);
+  const originResolver = app.get(OriginResolverService);
   const isProduction = config.getOrThrow<string>('NODE_ENV') === 'production';
   const port = config.getOrThrow<number>('PORT');
+
+  // CORS — allow platform, dashboard, and any known tenant origin
+  app.enableCors({
+    origin: (origin, callback) => {
+      // Non-browser requests (curl, server-to-server) have no Origin header
+      if (!origin) return callback(null, true);
+
+      originResolver
+        .classifyOrigin(origin)
+        .then((group) => {
+          if (group === 'unknown') {
+            callback(new Error(`CORS: origin not allowed — ${origin}`));
+          } else {
+            callback(null, true);
+          }
+        })
+        .catch(() => callback(new Error('CORS: origin check failed')));
+    },
+    credentials: true,
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Tenant-ID'],
+  });
 
   // Logger
   app.useLogger(app.get(Logger));

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { and, eq, inArray } from 'drizzle-orm';
-import { tenantDomainConfig, tenantMembers, tenantOnboarding, tenants, users } from '@sneakereco/db';
+import { tenantCognitoConfig, tenantDomainConfig, tenantMembers, tenantOnboarding, tenants, users } from '@sneakereco/db';
 import type {
   NewTenant,
   NewTenantDomainConfig,
@@ -106,6 +106,21 @@ export class OnboardingRepository {
       })
       .from(tenantOnboarding)
       .where(eq(tenantOnboarding.tenantId, tenantId))
+      .limit(1);
+    return row;
+  }
+
+  async findTenantCognitoConfig(
+    tenantId: string,
+  ): Promise<{ userPoolId: string; customerClientId: string; adminClientId: string } | undefined> {
+    const [row] = await this.db.systemDb
+      .select({
+        userPoolId: tenantCognitoConfig.userPoolId,
+        customerClientId: tenantCognitoConfig.customerClientId,
+        adminClientId: tenantCognitoConfig.adminClientId,
+      })
+      .from(tenantCognitoConfig)
+      .where(eq(tenantCognitoConfig.tenantId, tenantId))
       .limit(1);
     return row;
   }

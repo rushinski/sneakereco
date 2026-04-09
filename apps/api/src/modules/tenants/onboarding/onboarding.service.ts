@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { generateId } from '@sneakereco/shared';
+import { tenantCognitoConfig } from '@sneakereco/db';
 
 import type { DrizzleTransaction } from '../../../common/database/database.service';
 import { DatabaseService } from '../../../common/database/database.service';
@@ -147,6 +148,22 @@ export class OnboardingService {
         },
         tx,
       );
+
+      const poolResult = await this.cognito.createTenantPool({
+        businessName: record.businessName ?? record.tenantName,
+        lambdaArn: this.config.getOrThrow('COGNITO_PRE_TOKEN_LAMBDA_ARN'),
+      });
+
+      await tx.insert(tenantCognitoConfig).values({
+        id: generateId('tenantCognitoConfig'),
+        tenantId,
+        userPoolId: poolResult.userPoolId,
+        userPoolArn: poolResult.userPoolArn,
+        customerClientId: poolResult.customerClientId,
+        adminClientId: poolResult.adminClientId,
+        region: this.config.getOrThrow('AWS_REGION'),
+      });
+
       await this.onboardingRepository.markInviteSent(tenantId, inviteTokenHash, tx);
 
       return {
@@ -222,11 +239,15 @@ export class OnboardingService {
       throw new InternalServerErrorException('Onboarding request is missing the applicant email');
     }
 
-    const cognitoSub = await this.cognito.createAdminUser({
-      email,
-      fullName: inviteRecord.requestedByName,
-      password: dto.password,
-    });
+    const cognitoConfig = await this.onboardingRepository.findTenantCognitoConfig(inviteRecord.tenantId);
+    if (!cognitoConfig) {
+      throw new InternalServerErrorException('Tenant Cognito pool not configured');
+    }
+
+    const cognitoSub = await this.cognito.createAdminUser(
+      { email, fullName: inviteRecord.requestedByName, password: dto.password },
+      { userPoolId: cognitoConfig.userPoolId },
+    );
 
     await this.db.withSystemContext(async (tx) => {
       const existingUserBySub = await this.onboardingRepository.findUserByCognitoSub(cognitoSub, tx);
@@ -287,11 +308,10 @@ export class OnboardingService {
       await this.onboardingRepository.markInviteAccepted(inviteRecord.tenantId, tx);
     });
 
-    const authResult = await this.cognito.signIn({
-      clientType: 'admin',
-      email,
-      password: dto.password,
-    });
+    const authResult = await this.cognito.signIn(
+      { clientType: 'admin', email, password: dto.password },
+      { userPoolId: cognitoConfig.userPoolId, clientId: cognitoConfig.adminClientId },
+    );
 
     if (authResult.type !== 'tokens') {
       throw new InternalServerErrorException('Unexpected MFA challenge during onboarding sign-in');
@@ -347,7 +367,4 @@ export class OnboardingService {
     throw new InternalServerErrorException('Unable to allocate a unique tenant subdomain');
   }
 
-  private getPlatformBaseUrl(): string {
-    return this.config.getOrThrow<string>('PLATFORM_URL').replace(/\/$/, '');
-  }
 }

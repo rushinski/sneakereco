@@ -1,12 +1,12 @@
 export interface CognitoJwtPayload {
   sub: string;
   email: string;
+  iss: string;
   token_use: string;
   client_id: string;
   'custom:tenant_id'?: string;
   'custom:role'?: 'admin' | 'customer';
   'custom:member_id'?: string;
-  'custom:is_super_admin'?: string;
 }
 
 export interface AuthenticatedUser {

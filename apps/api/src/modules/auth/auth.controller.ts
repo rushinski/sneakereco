@@ -8,10 +8,12 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiHeader,
   ApiOperation,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+
 import { AuthService } from './auth.service';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/user.decorator';
@@ -38,40 +40,46 @@ export class AuthController {
 
   @Public()
   @Post('signup')
+  @ApiHeader({ name: 'x-tenant-id', required: true, description: "Tenant's database ID" })
   @ApiOperation({
     summary: 'Create a new account',
     description:
-      'Registers an UNCONFIRMED user in Cognito. No database row is created yet. ' +
+      'Registers an UNCONFIRMED user in the tenant Cognito pool. No database row is created yet. ' +
       'Cognito automatically sends a 6-digit confirmation code to the email address.',
   })
   @ApiResponse({ status: 201, description: 'Account created. Confirmation email sent.' })
   @ApiResponse({ status: 400, description: 'Validation error.' })
   @ApiResponse({ status: 409, description: 'An account with this email already exists.' })
-  signUp(@Body(new ZodValidationPipe(SignUpDtoSchema)) dto: SignUpDto) {
-    return this.authService.signUp(dto);
+  signUp(
+    @Headers('x-tenant-id') tenantId: string,
+    @Body(new ZodValidationPipe(SignUpDtoSchema)) dto: SignUpDto,
+  ) {
+    return this.authService.signUp(dto, tenantId);
   }
 
   @Public()
   @Post('confirm')
   @HttpCode(HttpStatus.OK)
+  @ApiHeader({ name: 'x-tenant-id', required: true, description: "Tenant's database ID" })
   @ApiOperation({
     summary: 'Confirm email address',
     description:
       'Confirms the Cognito user with the 6-digit code from the confirmation email. ' +
-      'On success, creates the users row in the database — this is the only place a ' +
-      'users row is ever created.',
+      'On success, creates the users row in the database.',
   })
   @ApiResponse({ status: 200, description: 'Email confirmed. Account is now active.' })
   @ApiResponse({ status: 400, description: 'Invalid or expired confirmation code.' })
   confirmEmail(
+    @Headers('x-tenant-id') tenantId: string,
     @Body(new ZodValidationPipe(ConfirmEmailDtoSchema)) dto: ConfirmEmailDto,
   ) {
-    return this.authService.confirmEmail(dto);
+    return this.authService.confirmEmail(dto, tenantId);
   }
 
   @Public()
   @Post('confirm/resend')
   @HttpCode(HttpStatus.OK)
+  @ApiHeader({ name: 'x-tenant-id', required: true, description: "Tenant's database ID" })
   @ApiOperation({
     summary: 'Resend confirmation code',
     description:
@@ -81,23 +89,23 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Confirmation code resent.' })
   @ApiResponse({ status: 400, description: 'Resend limit exceeded.' })
   resendConfirmation(
-    @Body(new ZodValidationPipe(ResendConfirmationDtoSchema))
-    dto: ResendConfirmationDto,
+    @Headers('x-tenant-id') tenantId: string,
+    @Body(new ZodValidationPipe(ResendConfirmationDtoSchema)) dto: ResendConfirmationDto,
   ) {
-    return this.authService.resendConfirmationCode(dto);
+    return this.authService.resendConfirmationCode(dto, tenantId);
   }
 
   // ─── Sign In ────────────────────────────────────────────────────────────────
 
   @Public()
-  @Post('signin')
+  @Post('sign-in')
   @HttpCode(HttpStatus.OK)
+  @ApiHeader({ name: 'x-tenant-id', required: true, description: "Tenant's database ID" })
   @ApiOperation({
     summary: 'Sign in',
     description:
-      'Authenticates with email + password. Customer accounts return tokens directly. ' +
-      'Admin accounts always return an MFA challenge — pass the session to POST /auth/signin/mfa. ' +
-      'Returns 400 with a clear message if the account is not yet confirmed.',
+      'Authenticates with email + password against the tenant Cognito pool. ' +
+      'Pass clientType: "admin" for admin login (MFA required).',
   })
   @ApiResponse({
     status: 200,
@@ -106,25 +114,28 @@ export class AuthController {
   })
   @ApiResponse({ status: 400, description: 'Email not confirmed.' })
   @ApiResponse({ status: 401, description: 'Invalid email or password.' })
-  signIn(@Body(new ZodValidationPipe(SignInDtoSchema)) dto: SignInDto) {
-    return this.authService.signIn(dto);
+  signIn(
+    @Headers('x-tenant-id') tenantId: string,
+    @Body(new ZodValidationPipe(SignInDtoSchema)) dto: SignInDto,
+  ) {
+    return this.authService.signIn(dto, tenantId);
   }
 
   @Public()
-  @Post('signin/mfa')
+  @Post('mfa/challenge')
   @HttpCode(HttpStatus.OK)
+  @ApiHeader({ name: 'x-tenant-id', required: true, description: "Tenant's database ID" })
   @ApiOperation({
     summary: 'Complete MFA challenge',
-    description:
-      'Submits the 6-digit TOTP code to complete sign-in after an MFA challenge. ' +
-      'Use the session value returned by POST /auth/signin.',
+    description: 'Submits the 6-digit TOTP code to complete sign-in after an MFA challenge.',
   })
   @ApiResponse({ status: 200, description: 'Tokens returned.' })
   @ApiResponse({ status: 401, description: 'Invalid MFA code.' })
   respondToMfaChallenge(
+    @Headers('x-tenant-id') tenantId: string,
     @Body(new ZodValidationPipe(MfaChallengeDtoSchema)) dto: MfaChallengeDto,
   ) {
-    return this.authService.respondToMfaChallenge(dto);
+    return this.authService.respondToMfaChallenge(dto, tenantId);
   }
 
   // ─── Token Refresh ──────────────────────────────────────────────────────────
@@ -132,18 +143,18 @@ export class AuthController {
   @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
+  @ApiHeader({ name: 'x-tenant-id', required: true, description: "Tenant's database ID" })
   @ApiOperation({
     summary: 'Refresh access token',
-    description:
-      'Issues a new access token using a valid refresh token. ' +
-      'The refresh token itself is not rotated.',
+    description: 'Issues a new access token using a valid refresh token.',
   })
   @ApiResponse({ status: 200, description: 'New access token and ID token returned.' })
   @ApiResponse({ status: 401, description: 'Refresh token invalid or expired. Sign in again.' })
   refreshTokens(
+    @Headers('x-tenant-id') tenantId: string,
     @Body(new ZodValidationPipe(RefreshTokenDtoSchema)) dto: RefreshTokenDto,
   ) {
-    return this.authService.refreshTokens(dto);
+    return this.authService.refreshTokens(dto, tenantId);
   }
 
   // ─── Password Reset ─────────────────────────────────────────────────────────
@@ -151,46 +162,46 @@ export class AuthController {
   @Public()
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
+  @ApiHeader({ name: 'x-tenant-id', required: true, description: "Tenant's database ID" })
   @ApiOperation({
     summary: 'Request password reset',
     description:
-      'Triggers Cognito to send a password reset code to the email address. ' +
-      'Always returns success — never reveals whether the email exists.',
+      'Triggers Cognito to send a password reset code. Always returns success.',
   })
   @ApiResponse({ status: 200, description: 'Reset code sent if account exists.' })
   forgotPassword(
+    @Headers('x-tenant-id') tenantId: string,
     @Body(new ZodValidationPipe(ForgotPasswordDtoSchema)) dto: ForgotPasswordDto,
   ) {
-    return this.authService.forgotPassword(dto);
+    return this.authService.forgotPassword(dto, tenantId);
   }
 
   @Public()
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
+  @ApiHeader({ name: 'x-tenant-id', required: true, description: "Tenant's database ID" })
   @ApiOperation({
     summary: 'Reset password with code',
-    description:
-      'Sets a new password using the 6-digit code from the reset email. ' +
-      'Password must contain uppercase, lowercase, number, and special character.',
+    description: 'Sets a new password using the 6-digit code from the reset email.',
   })
   @ApiResponse({ status: 200, description: 'Password updated.' })
   @ApiResponse({ status: 400, description: 'Invalid or expired reset code.' })
   resetPassword(
+    @Headers('x-tenant-id') tenantId: string,
     @Body(new ZodValidationPipe(ResetPasswordDtoSchema)) dto: ResetPasswordDto,
   ) {
-    return this.authService.resetPassword(dto);
+    return this.authService.resetPassword(dto, tenantId);
   }
 
   // ─── Sign Out ────────────────────────────────────────────────────────────────
 
   @ApiBearerAuth()
-  @Post('signout')
+  @Post('sign-out')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Sign out',
     description:
-      'Calls Cognito GlobalSignOut, which invalidates all tokens (access, refresh, ID) ' +
-      'issued to this user across all devices.',
+      'Calls Cognito GlobalSignOut, which invalidates all tokens across all devices.',
   })
   @ApiResponse({ status: 200, description: 'Signed out. All tokens invalidated.' })
   @ApiResponse({ status: 401, description: 'Invalid or expired access token.' })
@@ -209,8 +220,7 @@ export class AuthController {
   @ApiOperation({
     summary: 'Begin TOTP setup',
     description:
-      'Returns a secretCode that the frontend encodes as a QR code for the ' +
-      'authenticator app (Google Authenticator, Authy, etc.). ' +
+      'Returns a secretCode for QR code generation. ' +
       'After scanning, call POST /auth/mfa/verify to activate.',
   })
   @ApiResponse({ status: 200, description: 'secretCode returned for QR code generation.' })
@@ -228,9 +238,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Verify TOTP and activate MFA',
-    description:
-      'Verifies the 6-digit code from the authenticator app to confirm the setup, ' +
-      'then immediately enables TOTP as the preferred MFA method.',
+    description: 'Verifies the 6-digit TOTP code and enables MFA.',
   })
   @ApiResponse({ status: 200, description: 'MFA verified and enabled.' })
   @ApiResponse({ status: 400, description: 'Invalid TOTP code.' })
@@ -247,12 +255,7 @@ export class AuthController {
   @ApiBearerAuth()
   @Post('mfa/enable')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Enable MFA',
-    description:
-      'Re-enables TOTP MFA if it was previously disabled. ' +
-      'The authenticator app must already be associated (see POST /auth/mfa/associate).',
-  })
+  @ApiOperation({ summary: 'Enable MFA' })
   @ApiResponse({ status: 200, description: 'MFA enabled.' })
   @ApiResponse({ status: 401, description: 'Authentication required.' })
   enableMfa(
@@ -266,12 +269,7 @@ export class AuthController {
   @ApiBearerAuth()
   @Post('mfa/disable')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Disable MFA',
-    description:
-      'Disables TOTP MFA on the account. The admin UI prevents admin users from ' +
-      'reaching this endpoint — the API does not enforce user-type restrictions here.',
-  })
+  @ApiOperation({ summary: 'Disable MFA' })
   @ApiResponse({ status: 200, description: 'MFA disabled.' })
   @ApiResponse({ status: 401, description: 'Authentication required.' })
   disableMfa(

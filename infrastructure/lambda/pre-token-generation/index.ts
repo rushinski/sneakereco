@@ -1,27 +1,23 @@
 /**
  * Pre Token Generation Lambda (V2 trigger)
  *
- * Runs after Cognito authenticates a user and before it issues tokens.
- * Injects custom claims into the ID token and access token based on
- * whether the user is a super admin or a regular tenant member.
+ * Attached to every TENANT Cognito user pool (not the platform pool).
+ * Runs after Cognito authenticates a user, before tokens are issued.
  *
- * Super admin:
- *   - custom:is_super_admin = 'true'
- *   - No tenant claims (super admin accesses tenants via X-Tenant-ID header)
+ * Injects tenant membership claims into both the ID token and access token:
+ *   - custom:tenant_id  — the tenant this pool belongs to
+ *   - custom:role       — 'admin' | 'customer'
+ *   - custom:member_id  — tenant_members.id
  *
- * Tenant member:
- *   - custom:is_super_admin = 'false'
- *   - custom:tenant_id = tenant ID
- *   - custom:role = 'admin' | 'customer'
- *   - custom:member_id = tenant_members.id
+ * How the tenant is resolved:
+ *   The event carries the userPoolId. We query tenant_cognito_config to map
+ *   poolId → tenantId, then look up the user's membership for that tenant.
  *
- * The Lambda determines which tenant to bind based on the Cognito app client:
- *   - Admin app client → look for the tenant membership where is_owner = true
- *   - Customer app client → this trigger fires for both; for customer clients
- *     we still inject tenant claims if a membership exists.
+ * If no membership row exists yet (e.g. the user record is being created
+ * during completeOnboarding) we return the event unmodified — Cognito still
+ * issues tokens and the API will handle the missing claims.
  *
- * Connection: Uses SYSTEM_DATABASE_URL (bypasses RLS — Lambda is not
- * tenant-scoped and needs to read across tenants).
+ * Connection: Uses SYSTEM_DATABASE_URL (bypasses RLS).
  */
 
 import { Client } from 'pg';
@@ -78,32 +74,33 @@ async function getDbClient(): Promise<Client> {
   return client;
 }
 
-interface UserRow {
-  id: string;
-  is_super_admin: boolean;
+async function resolveTenantId(client: Client, userPoolId: string): Promise<string | null> {
+  const result = await client.query<{ tenant_id: string }>(
+    'SELECT tenant_id FROM tenant_cognito_config WHERE user_pool_id = $1 LIMIT 1',
+    [userPoolId],
+  );
+  return result.rows[0]?.tenant_id ?? null;
 }
 
-interface MemberRow {
-  id: string;
-  tenant_id: string;
-  role: string;
-}
-
-async function lookupUser(client: Client, cognitoSub: string): Promise<UserRow | null> {
-  const result = await client.query<UserRow>(
-    'SELECT id, is_super_admin FROM users WHERE cognito_sub = $1 LIMIT 1',
+async function lookupUserId(client: Client, cognitoSub: string): Promise<string | null> {
+  const result = await client.query<{ id: string }>(
+    'SELECT id FROM users WHERE cognito_sub = $1 LIMIT 1',
     [cognitoSub],
   );
-  return result.rows[0] ?? null;
+  return result.rows[0]?.id ?? null;
 }
 
-async function lookupOwnerMembership(client: Client, userId: string): Promise<MemberRow | null> {
-  const result = await client.query<MemberRow>(
-    `SELECT id, tenant_id, role
+async function lookupMembership(
+  client: Client,
+  userId: string,
+  tenantId: string,
+): Promise<{ id: string; role: string } | null> {
+  const result = await client.query<{ id: string; role: string }>(
+    `SELECT id, role
      FROM tenant_members
-     WHERE user_id = $1 AND is_owner = true
+     WHERE user_id = $1 AND tenant_id = $2
      LIMIT 1`,
-    [userId],
+    [userId, tenantId],
   );
   return result.rows[0] ?? null;
 }
@@ -116,6 +113,7 @@ export const handler = async (
   event: PreTokenGenerationV2Event,
 ): Promise<PreTokenGenerationV2Event> => {
   const cognitoSub = event.request.userAttributes['sub'];
+  const userPoolId = event.userPoolId;
 
   if (!cognitoSub) {
     console.error('Pre Token Generation: missing sub in userAttributes');
@@ -125,46 +123,42 @@ export const handler = async (
   const client = await getDbClient();
 
   try {
-    const user = await lookupUser(client, cognitoSub);
+    const tenantId = await resolveTenantId(client, userPoolId);
 
-    if (!user) {
-      // User authenticated in Cognito but has no DB record yet.
-      // This can happen transiently; return unmodified so Cognito
-      // still issues tokens (the API will 401 on auth checks).
+    if (!tenantId) {
+      // Should never happen if the Lambda is only attached to tenant pools.
+      console.error(`Pre Token Generation: no tenant found for poolId=${userPoolId}`);
+      return event;
+    }
+
+    const userId = await lookupUserId(client, cognitoSub);
+
+    if (!userId) {
+      // User authenticated in Cognito but has no DB record yet — transient
+      // during completeOnboarding. Return unmodified; the API will handle it.
       console.warn(`Pre Token Generation: no DB user found for sub=${cognitoSub}`);
       return event;
     }
 
-    const customClaims: Record<string, string> = {
-      'custom:is_super_admin': user.is_super_admin ? 'true' : 'false',
-    };
+    const membership = await lookupMembership(client, userId, tenantId);
 
-    if (!user.is_super_admin) {
-      // Inject tenant membership claims.
-      // For the admin app client, bind to the owned tenant.
-      const member = await lookupOwnerMembership(client, user.id);
-
-      if (member) {
-        customClaims['custom:tenant_id'] = member.tenant_id;
-        customClaims['custom:role'] = member.role;
-        customClaims['custom:member_id'] = member.id;
-      } else {
-        // Non-super-admin with no owned tenant yet — likely a customer
-        // who signed up directly. Leave tenant claims absent.
-        console.info(
-          `Pre Token Generation: no owner membership found for userId=${user.id}; skipping tenant claims`,
-        );
-      }
+    if (!membership) {
+      console.warn(
+        `Pre Token Generation: no membership for userId=${userId} tenantId=${tenantId}`,
+      );
+      return event;
     }
+
+    const customClaims: Record<string, string> = {
+      'custom:tenant_id': tenantId,
+      'custom:role': membership.role,
+      'custom:member_id': membership.id,
+    };
 
     event.response = {
       claimsAndScopeOverrideDetails: {
-        idTokenGeneration: {
-          claimsToAddOrOverride: customClaims,
-        },
-        accessTokenGeneration: {
-          claimsToAddOrOverride: customClaims,
-        },
+        idTokenGeneration: { claimsToAddOrOverride: customClaims },
+        accessTokenGeneration: { claimsToAddOrOverride: customClaims },
       },
     };
 
