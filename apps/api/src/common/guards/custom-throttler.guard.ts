@@ -15,10 +15,8 @@ import type { Request } from 'express';
  */
 @Injectable()
 export class CustomThrottlerGuard extends ThrottlerGuard {
-  protected async getTracker(req: Request): Promise<string> {
-    const userId = (req as Record<string, unknown>)['user']
-      ? ((req as Record<string, unknown>)['user'] as Record<string, unknown>)['sub'] as string | undefined
-      : undefined;
+  protected override async getTracker(req: Request): Promise<string> {
+    const userId = (req as Request & { user?: { sub?: string } }).user?.sub;
     const tenantId = req.headers['x-tenant-id'] as string | undefined;
     const ip =
       (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ??
