@@ -22,6 +22,7 @@ const cspDirectives = [
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  allowedDevOrigins: ['*.sneakereco.test', 'heatkings.test', 'admin.heatkings.test'],
   async headers() {
     return [
       {

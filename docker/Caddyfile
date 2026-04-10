@@ -3,40 +3,40 @@
 # Prerequisites:
 #   1. mkcert installed and CA trusted (mkcert -install)
 #   2. Certs generated — see docs/local-dev-setup.md
-#   3. *.sneakereco.test entries in /etc/hosts (or C:\Windows\System32\drivers\etc\hosts)
+#   3. Wildcard DNS resolving *.sneakereco.test → 127.0.0.1
+#      (dnsmasq on macOS/Linux, Acrylic DNS Proxy on Windows)
 #
-# Usage: started automatically via docker compose up caddy
-# Caddy forwards HTTPS → HTTP to the app servers running on localhost.
+# Usage: docker compose --profile https up -d caddy
 
 {
   local_certs
 }
 
+# API
 api.sneakereco.test {
   tls /etc/caddy/certs/sneakereco.test.pem /etc/caddy/certs/sneakereco.test-key.pem
   reverse_proxy host.docker.internal:3000
 }
 
-web.sneakereco.test {
-  tls /etc/caddy/certs/sneakereco.test.pem /etc/caddy/certs/sneakereco.test-key.pem
-  reverse_proxy host.docker.internal:3001
-}
-
-admin.sneakereco.test {
-  tls /etc/caddy/certs/sneakereco.test.pem /etc/caddy/certs/sneakereco.test-key.pem
-  reverse_proxy host.docker.internal:3001
-}
-
-platform.sneakereco.test {
+# Platform admin dashboard
+dashboard.sneakereco.test {
   tls /etc/caddy/certs/sneakereco.test.pem /etc/caddy/certs/sneakereco.test-key.pem
   reverse_proxy host.docker.internal:3002
 }
 
-heatkings.sneakereco.test {
+# Platform site (marketing + tenant onboarding)
+sneakereco.test {
+  tls /etc/caddy/certs/sneakereco.test.pem /etc/caddy/certs/sneakereco.test-key.pem
+  reverse_proxy host.docker.internal:3002
+}
+
+# All tenant subdomains (*.sneakereco.test) — storefronts and tenant admin
+*.sneakereco.test {
   tls /etc/caddy/certs/sneakereco.test.pem /etc/caddy/certs/sneakereco.test-key.pem
   reverse_proxy host.docker.internal:3001
 }
 
+# Simulated tenant custom domain (cross-site to api.sneakereco.test)
 heatkings.test {
   tls /etc/caddy/certs/sneakereco.test.pem /etc/caddy/certs/sneakereco.test-key.pem
   reverse_proxy host.docker.internal:3001

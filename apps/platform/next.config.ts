@@ -21,6 +21,7 @@ const cspDirectives = [
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  allowedDevOrigins: ['sneakereco.test', 'dashboard.sneakereco.test'],
   async headers() {
     return [
       {
