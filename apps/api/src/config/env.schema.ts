@@ -41,6 +41,20 @@ export const envSchema = z.object({
 
   // --- CSRF ---
   CSRF_SECRET: z.string().min(32, 'CSRF_SECRET must be at least 32 characters'),
+
+  // --- Cookies ---
+  // Set to the parent domain (e.g. .sneakereco.com in prod, .sneakereco.test in dev)
+  // so the refresh cookie is accessible across subdomains. Leave unset to use the default
+  // (current host), which is fine for single-domain deployments.
+  COOKIE_DOMAIN: z.string().optional(),
+  // Set to 'true' when running local dev with HTTPS (mkcert + Caddy). Controls the
+  // Secure flag on cookies in non-production environments.
+  USE_HTTPS: z
+    .string()
+    .transform((v) => v === 'true')
+    .pipe(z.boolean())
+    .optional()
+    .default('false'),
 });
 
 export type Env = z.infer<typeof envSchema>;

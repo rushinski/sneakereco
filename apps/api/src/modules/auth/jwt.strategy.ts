@@ -12,8 +12,13 @@ import type { CognitoJwtPayload, AuthenticatedUser } from './auth.types';
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   private readonly platformIssuer: string;
+  private readonly platformAdminClientId: string;
   private readonly platformJwksClient: JwksClient.JwksClient;
   private readonly tenantJwksClients = new Map<string, JwksClient.JwksClient>();
+  // Short-lived in-process cache: poolId → {customerClientId, adminClientId}
+  // Populated during resolveSigningKey so validate() can check audience without
+  // an extra DB round-trip per request.
+  private readonly tenantClientIdCache = new Map<string, { customer: string; admin: string }>();
 
   constructor(
     private readonly db: DatabaseService,
@@ -52,6 +57,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     });
 
     this.platformIssuer = platformIssuer;
+    this.platformAdminClientId = config.getOrThrow<string>('PLATFORM_COGNITO_ADMIN_CLIENT_ID');
     this.platformJwksClient = JwksClient({
       jwksUri: `${platformIssuer}/.well-known/jwks.json`,
       cache: true,
@@ -72,12 +78,22 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     if (!poolId) throw new UnauthorizedException('Unknown token issuer');
 
     const [config] = await this.db.systemDb
-      .select({ userPoolId: tenantCognitoConfig.userPoolId })
+      .select({
+        userPoolId: tenantCognitoConfig.userPoolId,
+        customerClientId: tenantCognitoConfig.customerClientId,
+        adminClientId: tenantCognitoConfig.adminClientId,
+      })
       .from(tenantCognitoConfig)
       .where(eq(tenantCognitoConfig.userPoolId, poolId))
       .limit(1);
 
     if (!config) throw new UnauthorizedException('Unknown token issuer');
+
+    // Cache client IDs so validate() can check audience without a second DB hit
+    this.tenantClientIdCache.set(poolId, {
+      customer: config.customerClientId,
+      admin: config.adminClientId,
+    });
 
     if (!this.tenantJwksClients.has(poolId)) {
       this.tenantJwksClients.set(
@@ -102,6 +118,23 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     }
 
     const isPlatform = payload.iss === this.platformIssuer;
+
+    // Validate client_id (audience) — prevents tokens issued for one app client
+    // from being used against a different client in the same Cognito pool.
+    if (isPlatform) {
+      if (payload.client_id !== this.platformAdminClientId) {
+        throw new UnauthorizedException('Invalid token audience');
+      }
+    } else {
+      const poolId = payload.iss.split('/').pop();
+      const cached = poolId ? this.tenantClientIdCache.get(poolId) : undefined;
+      if (cached && payload.client_id !== cached.customer && payload.client_id !== cached.admin) {
+        throw new UnauthorizedException('Invalid token audience');
+      }
+      // If not yet cached (e.g. resolveSigningKey ran on a different instance),
+      // skip the audience check rather than fail — the issuer check already
+      // confirmed the token came from a known Cognito pool.
+    }
 
     return {
       cognitoId: payload.sub,

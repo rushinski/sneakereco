@@ -33,6 +33,26 @@ services:
       - "1025:1025"   # SMTP — NestJS dev transport sends here
     restart: unless-stopped
 
+  # Optional local HTTPS proxy — mirrors production TLS so Secure cookies and
+  # CSP work exactly as in production. See docs/local-dev-setup.md.
+  #
+  # Prerequisites: mkcert certs must exist at ./certs/ before starting.
+  # Start with: docker compose --profile https up caddy
+  caddy:
+    image: caddy:2
+    profiles: [https]
+    container_name: sneakereco-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./certs:/etc/caddy/certs:ro
+      - caddy_data:/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
 volumes:
   postgres_data:
   valkey_data:
+  caddy_data:

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-import { ApiClientError, apiClient, type RequestSummary } from '../../lib/api-client';
+import { ApiClientError, apiClient, clearAccessToken, getAccessToken, type RequestSummary } from '../../lib/api-client';
 
 type StatusFilter = 'pending' | 'invited' | 'approved' | 'rejected' | undefined;
 
@@ -23,21 +23,22 @@ export function ApprovalDashboard() {
   const [total, setTotal] = useState(0);
   const [filter, setFilter] = useState<StatusFilter>('pending');
   const [page, setPage] = useState(1);
+  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('platform_admin_token') : null;
-
   useEffect(() => {
-    if (!token) {
+    const stored = getAccessToken();
+    if (!stored) {
       router.push('/login');
       return;
     }
+    setToken(stored);
     apiClient.getCsrfToken().then((data) => setCsrfToken(data.token)).catch(() => {
       // Non-fatal — approve/deny actions will fail without it
     });
-  }, [token, router]);
+  }, [router]);
 
   useEffect(() => {
     if (!token) return;
@@ -53,7 +54,7 @@ export function ApprovalDashboard() {
       })
       .catch((err) => {
         if (err instanceof ApiClientError && err.status === 401) {
-          localStorage.removeItem('platform_admin_token');
+          clearAccessToken();
           router.push('/login');
           return;
         }

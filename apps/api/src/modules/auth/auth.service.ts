@@ -9,7 +9,6 @@ import type { ConfirmEmailDto } from './dto/confirm-email.dto';
 import type { DisableMfaDto } from './dto/disable-mfa.dto';
 import type { ForgotPasswordDto } from './dto/forgot-password.dto';
 import type { MfaChallengeDto } from './dto/mfa-challenge.dto';
-import type { RefreshTokenDto } from './dto/refresh-token.dto';
 import type { ResendConfirmationDto } from './dto/resend-confirmation.dto';
 import type { ResetPasswordDto } from './dto/reset-password.dto';
 import type { SignInDto } from './dto/sign-in.dto';
@@ -105,9 +104,13 @@ export class AuthService {
     return { success: true };
   }
 
-  async refreshTokens(dto: RefreshTokenDto, tenantId: string) {
-    const pool = await this.resolveTenantPool(tenantId, dto.clientType ?? 'customer');
-    return this.cognito.refreshTokens(dto, pool);
+  async refreshTokens(
+    refreshToken: string,
+    clientType: 'customer' | 'admin' = 'customer',
+    tenantId: string,
+  ) {
+    const pool = await this.resolveTenantPool(tenantId, clientType);
+    return this.cognito.refreshTokens(refreshToken, pool);
   }
 
   // ---------------------------------------------------------------------------

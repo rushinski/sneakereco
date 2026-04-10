@@ -6,6 +6,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
+import { json, urlencoded } from 'express';
 import { Logger } from 'nestjs-pino';
 
 import { AppModule } from './app.module';
@@ -13,10 +14,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { TimeoutInterceptor } from './common/interceptors/timeout.interceptor';
 import { ZodValidationPipe } from './common/pipes/zod-validation.pipe';
-import {
-  initCsrf,
-  doubleCsrfProtection,
-} from './common/middleware/csrf/csrf.config';
+import { initCsrf } from './common/middleware/csrf/csrf.config';
 import { OriginResolverService } from './common/services/origin-resolver.service';
 
 async function bootstrap() {
@@ -59,16 +57,57 @@ async function bootstrap() {
   // Trust proxy — required for correct IP extraction behind Nginx/Cloudflare
   app.set('trust proxy', 'loopback');
 
-  // Security headers via helmet
-  app.use(helmet());
+  // Explicit request body size limit (defence against request body flooding)
+  app.use(json({ limit: '1mb' }));
+  app.use(urlencoded({ limit: '1mb', extended: true }));
+
+  // Security headers via helmet — custom CSP allows PayRilla, NoFraud, and R2 CDN
+  const r2PublicUrl = config.get<string>('R2_PUBLIC_URL');
+  const awsRegion = config.getOrThrow<string>('AWS_REGION');
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", 'tokenization.payrillagateway.com', 'services.nofraud.com'],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", 'data:', 'https:', ...(r2PublicUrl ? [r2PublicUrl] : [])],
+          fontSrc: ["'self'", 'fonts.gstatic.com'],
+          connectSrc: [
+            "'self'",
+            'tokenization.payrillagateway.com',
+            'services.nofraud.com',
+            `https://cognito-idp.${awsRegion}.amazonaws.com`,
+          ],
+          frameSrc: ['tokenization.payrillagateway.com'],
+          frameAncestors: ["'none'"],
+          baseUri: ["'self'"],
+          formAction: ["'self'"],
+          objectSrc: ["'none'"],
+        },
+      },
+      // crossOriginEmbedderPolicy breaks the PayRilla tokenization iframe
+      crossOriginEmbedderPolicy: false,
+      crossOriginResourcePolicy: { policy: 'cross-origin' }, // required for R2 CDN assets
+      hsts: { maxAge: 31_536_000, includeSubDomains: true },
+      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+      // X-XSS-Protection is deprecated — CSP replaces it. Setting it to 1;mode=block
+      // can introduce vulnerabilities in older browsers; suppress it entirely.
+      xXssProtection: false,
+    }),
+  );
 
   // Cookie parser — required by csrf-csrf
   app.use(cookieParser());
 
-  // CSRF protection via csrf-csrf (Double Submit Cookie Pattern)
+  // Initialise csrf-csrf so generateCsrfToken and doubleCsrfProtection are
+  // available to CsrfGuard and the CSRF token controller.
   const csrfSecret = config.getOrThrow<string>('CSRF_SECRET');
   initCsrf(csrfSecret, isProduction);
-  app.use(doubleCsrfProtection);
+  // doubleCsrfProtection is no longer applied globally here.
+  // It is applied selectively via CsrfGuard on cookie-authenticated routes only
+  // (currently: POST /v1/auth/refresh). Bearer-token routes and webhooks are
+  // excluded from CSRF checks — they are not cookie-based.
 
   // API versioning
   app.enableVersioning({ type: VersioningType.URI });

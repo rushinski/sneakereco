@@ -5,7 +5,12 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Req,
+  Res,
+  UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import {
   ApiBearerAuth,
   ApiHeader,
@@ -13,11 +18,14 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
+import type { Request, Response } from 'express';
 
 import { AuthService } from './auth.service';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/user.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
+import { CsrfGuard } from '../../common/guards/csrf.guard';
 import type { AuthenticatedUser } from './auth.types';
 import { SignUpDtoSchema, type SignUpDto } from './dto/sign-up.dto';
 import { ConfirmEmailDtoSchema, type ConfirmEmailDto } from './dto/confirm-email.dto';
@@ -31,14 +39,57 @@ import { SignOutDtoSchema, type SignOutDto } from './dto/sign-out.dto';
 import { VerifyMfaDtoSchema, type VerifyMfaDto } from './dto/verify-mfa.dto';
 import { DisableMfaDtoSchema, type DisableMfaDto } from './dto/disable-mfa.dto';
 
+const REFRESH_COOKIE = '__sneakereco_refresh';
+// admin client uses a 1-day refresh; customer client uses 30 days (matches Cognito config)
+const REFRESH_MAX_AGE_CUSTOMER = 30 * 24 * 60 * 60 * 1000;
+const REFRESH_MAX_AGE_ADMIN = 24 * 60 * 60 * 1000;
+
 @ApiTags('auth')
 @Controller({ path: 'auth' })
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  private readonly cookieSecure: boolean;
+  private readonly cookieDomain: string | undefined;
+
+  constructor(
+    private readonly authService: AuthService,
+    config: ConfigService,
+  ) {
+    const isProduction = config.getOrThrow<string>('NODE_ENV') === 'production';
+    const useHttps = config.get<boolean>('USE_HTTPS') ?? false;
+    this.cookieSecure = isProduction || useHttps;
+    this.cookieDomain = config.get<string>('COOKIE_DOMAIN');
+  }
+
+  private setRefreshCookie(
+    res: Response,
+    refreshToken: string,
+    clientType: 'customer' | 'admin',
+  ): void {
+    res.cookie(REFRESH_COOKIE, refreshToken, {
+      httpOnly: true,
+      secure: this.cookieSecure,
+      sameSite: 'strict',
+      path: '/v1/auth',
+      maxAge:
+        clientType === 'admin' ? REFRESH_MAX_AGE_ADMIN : REFRESH_MAX_AGE_CUSTOMER,
+      domain: this.cookieDomain,
+    });
+  }
+
+  private clearRefreshCookie(res: Response): void {
+    res.clearCookie(REFRESH_COOKIE, {
+      httpOnly: true,
+      secure: this.cookieSecure,
+      sameSite: 'strict',
+      path: '/v1/auth',
+      domain: this.cookieDomain,
+    });
+  }
 
   // ─── Registration & Confirmation ───────────────────────────────────────────
 
   @Public()
+  @Throttle({ auth: { ttl: 3_600_000, limit: 5 } })
   @Post('signup')
   @ApiHeader({ name: 'x-tenant-id', required: true, description: "Tenant's database ID" })
   @ApiOperation({
@@ -77,6 +128,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ auth: { ttl: 3_600_000, limit: 3 } })
   @Post('confirm/resend')
   @HttpCode(HttpStatus.OK)
   @ApiHeader({ name: 'x-tenant-id', required: true, description: "Tenant's database ID" })
@@ -98,6 +150,7 @@ export class AuthController {
   // ─── Sign In ────────────────────────────────────────────────────────────────
 
   @Public()
+  @Throttle({ auth: { ttl: 60_000, limit: 5 } })
   @Post('sign-in')
   @HttpCode(HttpStatus.OK)
   @ApiHeader({ name: 'x-tenant-id', required: true, description: "Tenant's database ID" })
@@ -114,11 +167,18 @@ export class AuthController {
   })
   @ApiResponse({ status: 400, description: 'Email not confirmed.' })
   @ApiResponse({ status: 401, description: 'Invalid email or password.' })
-  signIn(
+  async signIn(
     @Headers('x-tenant-id') tenantId: string,
     @Body(new ZodValidationPipe(SignInDtoSchema)) dto: SignInDto,
+    @Res({ passthrough: true }) res: Response,
   ) {
-    return this.authService.signIn(dto, tenantId);
+    const result = await this.authService.signIn(dto, tenantId);
+    if (result?.type === 'tokens') {
+      const { refreshToken, ...clientResult } = result;
+      this.setRefreshCookie(res, refreshToken, dto.clientType ?? 'customer');
+      return clientResult;
+    }
+    return result; // mfa_required — no tokens yet
   }
 
   @Public()
@@ -131,16 +191,25 @@ export class AuthController {
   })
   @ApiResponse({ status: 200, description: 'Tokens returned.' })
   @ApiResponse({ status: 401, description: 'Invalid MFA code.' })
-  respondToMfaChallenge(
+  async respondToMfaChallenge(
     @Headers('x-tenant-id') tenantId: string,
     @Body(new ZodValidationPipe(MfaChallengeDtoSchema)) dto: MfaChallengeDto,
+    @Res({ passthrough: true }) res: Response,
   ) {
-    return this.authService.respondToMfaChallenge(dto, tenantId);
+    const result = await this.authService.respondToMfaChallenge(dto, tenantId);
+    if (result?.type === 'tokens') {
+      const { refreshToken, ...clientResult } = result;
+      this.setRefreshCookie(res, refreshToken, dto.clientType ?? 'customer');
+      return clientResult;
+    }
+    return result;
   }
 
   // ─── Token Refresh ──────────────────────────────────────────────────────────
 
   @Public()
+  @Throttle({ auth: { ttl: 60_000, limit: 20 } })
+  @UseGuards(CsrfGuard)
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiHeader({ name: 'x-tenant-id', required: true, description: "Tenant's database ID" })
@@ -150,16 +219,24 @@ export class AuthController {
   })
   @ApiResponse({ status: 200, description: 'New access token and ID token returned.' })
   @ApiResponse({ status: 401, description: 'Refresh token invalid or expired. Sign in again.' })
-  refreshTokens(
+  async refreshTokens(
     @Headers('x-tenant-id') tenantId: string,
+    @Req() req: Request,
     @Body(new ZodValidationPipe(RefreshTokenDtoSchema)) dto: RefreshTokenDto,
   ) {
-    return this.authService.refreshTokens(dto, tenantId);
+    // Same-site flow: refresh token arrives via httpOnly cookie.
+    // Cross-site custom-domain flow: refresh token sent in the request body.
+    const refreshToken = (req.cookies as Record<string, string>)[REFRESH_COOKIE] ?? dto.refreshToken;
+    if (!refreshToken) {
+      throw new UnauthorizedException('No refresh token provided');
+    }
+    return this.authService.refreshTokens(refreshToken, dto.clientType, tenantId);
   }
 
   // ─── Password Reset ─────────────────────────────────────────────────────────
 
   @Public()
+  @Throttle({ auth: { ttl: 3_600_000, limit: 3 } })
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   @ApiHeader({ name: 'x-tenant-id', required: true, description: "Tenant's database ID" })
@@ -205,11 +282,14 @@ export class AuthController {
   })
   @ApiResponse({ status: 200, description: 'Signed out. All tokens invalidated.' })
   @ApiResponse({ status: 401, description: 'Invalid or expired access token.' })
-  signOut(
+  async signOut(
     @Body(new ZodValidationPipe(SignOutDtoSchema)) dto: SignOutDto,
     @CurrentUser() _user: AuthenticatedUser,
+    @Res({ passthrough: true }) res: Response,
   ) {
-    return this.authService.signOut(dto);
+    const result = await this.authService.signOut(dto);
+    this.clearRefreshCookie(res);
+    return result;
   }
 
   // ─── MFA Lifecycle ───────────────────────────────────────────────────────────

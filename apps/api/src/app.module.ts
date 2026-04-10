@@ -2,7 +2,8 @@ import type { MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+
+import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
 import { LoggerModule } from 'nestjs-pino';
 
 import { envSchema } from './config/env.schema';
@@ -62,31 +63,6 @@ import { TenantsModule } from './modules/tenants/tenants.module';
       }),
     }),
 
-    // Rate limiting — defaults apply globally, override per-route with @Throttle()
-    ThrottlerModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: () => ({
-        throttlers: [
-          {
-            name: 'short',
-            ttl: 1_000,
-            limit: 3,
-          },
-          {
-            name: 'medium',
-            ttl: 10_000,
-            limit: 20,
-          },
-          {
-            name: 'long',
-            ttl: 60_000,
-            limit: 100,
-          },
-        ],
-      }),
-    }),
-
     CommonModule,
     DatabaseModule,
     HealthModule,
@@ -108,7 +84,7 @@ import { TenantsModule } from './modules/tenants/tenants.module';
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: TenantGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: CustomThrottlerGuard },
     { provide: APP_GUARD, useClass: OnboardingOriginGuard },
   ],
 })

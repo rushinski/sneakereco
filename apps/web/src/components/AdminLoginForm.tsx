@@ -3,7 +3,7 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-import { ApiClientError, apiClient } from '../lib/api-client';
+import { ApiClientError, apiClient, setAccessToken } from '../lib/api-client';
 
 type Stage = 'login' | 'mfa';
 
@@ -41,10 +41,7 @@ export function AdminLoginForm() {
         return;
       }
 
-      // Store tokens — httpOnly cookies via server actions would be ideal in
-      // production; localStorage is sufficient for the initial scaffold.
-      localStorage.setItem('admin_access_token', result.accessToken);
-      localStorage.setItem('admin_id_token', result.idToken);
+      setAccessToken(result.accessToken);
       router.push('/admin');
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : 'Sign in failed. Try again.');
@@ -66,8 +63,7 @@ export function AdminLoginForm() {
         csrfToken,
       );
 
-      localStorage.setItem('admin_access_token', result.accessToken);
-      localStorage.setItem('admin_id_token', result.idToken);
+      setAccessToken(result.accessToken);
       router.push('/admin');
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : 'MFA verification failed.');

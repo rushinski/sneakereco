@@ -40,6 +40,14 @@ export class ApiClientError extends Error {
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3000';
 
+// ---------------------------------------------------------------------------
+// In-memory access token store (never persisted to localStorage/sessionStorage)
+// ---------------------------------------------------------------------------
+let _accessToken: string | null = null;
+export function setAccessToken(token: string): void { _accessToken = token; }
+export function getAccessToken(): string | null { return _accessToken; }
+export function clearAccessToken(): void { _accessToken = null; }
+
 interface RequestOptions extends Omit<RequestInit, 'body'> {
   accessToken?: string;
   body?: unknown;
@@ -136,14 +144,21 @@ export interface CompleteOnboardingResult {
 }
 
 export type AdminSignInResult =
-  | { type: 'tokens'; accessToken: string; idToken: string; refreshToken: string; expiresIn: number }
+  | {
+      type: 'tokens';
+      accessToken: string;
+      idToken: string;
+      expiresIn: number;
+      // refreshToken is no longer returned in the body — it is set as an
+      // httpOnly cookie by the API so JavaScript cannot read it.
+    }
   | { type: 'mfa_required'; session: string };
 
 export interface MfaChallengeResult {
   accessToken: string;
   idToken: string;
-  refreshToken: string;
   expiresIn: number;
+  // refreshToken is no longer returned in the body — set as httpOnly cookie.
 }
 
 export interface RequestSummary {

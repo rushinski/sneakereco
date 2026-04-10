@@ -43,7 +43,6 @@ import type { ConfirmEmailDto } from './dto/confirm-email.dto';
 import type { DisableMfaDto } from './dto/disable-mfa.dto';
 import type { ForgotPasswordDto } from './dto/forgot-password.dto';
 import type { MfaChallengeDto } from './dto/mfa-challenge.dto';
-import type { RefreshTokenDto } from './dto/refresh-token.dto';
 import type { ResendConfirmationDto } from './dto/resend-confirmation.dto';
 import type { ResetPasswordDto } from './dto/reset-password.dto';
 import type { SignInDto } from './dto/sign-in.dto';
@@ -195,7 +194,7 @@ export class CognitoService {
     }
   }
 
-  async refreshTokens(dto: RefreshTokenDto, pool?: PoolCredentials) {
+  async refreshTokens(refreshToken: string, pool?: PoolCredentials) {
     const clientId = pool?.clientId ?? this.platformAdminClientId;
 
     try {
@@ -203,7 +202,7 @@ export class CognitoService {
         new InitiateAuthCommand({
           AuthFlow: 'REFRESH_TOKEN_AUTH',
           ClientId: clientId,
-          AuthParameters: { REFRESH_TOKEN: dto.refreshToken },
+          AuthParameters: { REFRESH_TOKEN: refreshToken },
         }),
       );
 

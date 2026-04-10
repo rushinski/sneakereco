@@ -3,7 +3,7 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-import { ApiClientError, apiClient } from '../../lib/api-client';
+import { ApiClientError, apiClient, setAccessToken } from '../../lib/api-client';
 
 type Stage = 'login' | 'mfa';
 
@@ -41,7 +41,7 @@ export function DashboardLoginForm() {
         return;
       }
 
-      localStorage.setItem('platform_admin_token', result.accessToken);
+      setAccessToken(result.accessToken);
       router.push('/');
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : 'Sign in failed. Try again.');
@@ -63,7 +63,7 @@ export function DashboardLoginForm() {
         csrfToken,
       );
 
-      localStorage.setItem('platform_admin_token', result.accessToken);
+      setAccessToken(result.accessToken);
       router.push('/');
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : 'MFA verification failed.');
