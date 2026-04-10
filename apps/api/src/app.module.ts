@@ -2,7 +2,8 @@ import type { MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
-
+import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
 import { LoggerModule } from 'nestjs-pino';
 
@@ -60,6 +61,29 @@ import { TenantsModule } from './modules/tenants/tenants.module';
             requestId: req.headers['x-request-id'],
           }),
         },
+      }),
+    }),
+
+    // Rate limiting — tiered profiles; override per-route with @Throttle().
+    // State is persisted in Valkey so limits survive restarts and work across
+    // multiple API instances (PM2 cluster, future horizontal scaling).
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        throttlers: [
+          // Auth endpoints — tightest limits to slow brute-force attacks
+          { name: 'auth', ttl: 60_000, limit: 5 },
+          // Checkout — prevent cart/order flooding
+          { name: 'checkout', ttl: 60_000, limit: 10 },
+          // Storefront reads — generous limit for browsing
+          { name: 'api-read', ttl: 60_000, limit: 120 },
+          // Mutations (admin writes, cart updates, etc.)
+          { name: 'api-write', ttl: 60_000, limit: 60 },
+          // Inbound webhooks (PayRilla, Shippo)
+          { name: 'webhook', ttl: 60_000, limit: 100 },
+        ],
+        storage: new ThrottlerStorageRedisService(config.getOrThrow<string>('VALKEY_URL')),
       }),
     }),
 
