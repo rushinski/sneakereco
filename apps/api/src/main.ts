@@ -15,14 +15,7 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 import { TimeoutInterceptor } from './common/interceptors/timeout.interceptor';
 import { ZodValidationPipe } from './common/pipes/zod-validation.pipe';
 import { initCsrf } from './common/middleware/csrf/csrf.config';
-import { OriginResolverService } from './common/services/origin-resolver.service';
-import {
-  SecurityConfig,
-  BODY_SIZE_LIMIT,
-  CORS_ALLOWED_HEADERS,
-  CORS_ALLOWED_METHODS,
-  HSTS_MAX_AGE,
-} from './config/security.config';
+import { SecurityConfig, BODY_SIZE_LIMIT, HSTS_MAX_AGE } from './config/security.config';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -32,32 +25,9 @@ async function bootstrap() {
   });
 
   const config = app.get(ConfigService);
-  const originResolver = app.get(OriginResolverService);
   const security = app.get(SecurityConfig);
   const isProduction = config.getOrThrow<string>('NODE_ENV') === 'production';
   const port = config.getOrThrow<number>('PORT');
-
-  // CORS — allow platform, dashboard, and any known tenant origin
-  app.enableCors({
-    origin: (origin, callback) => {
-      // Non-browser requests (curl, server-to-server) have no Origin header
-      if (!origin) return callback(null, true);
-
-      originResolver
-        .classifyOrigin(origin)
-        .then((group) => {
-          if (group === 'unknown') {
-            callback(new Error(`CORS: origin not allowed — ${origin}`));
-          } else {
-            callback(null, true);
-          }
-        })
-        .catch(() => callback(new Error('CORS: origin check failed')));
-    },
-    credentials: true,
-    methods: CORS_ALLOWED_METHODS,
-    allowedHeaders: CORS_ALLOWED_HEADERS,
-  });
 
   // Logger
   app.useLogger(app.get(Logger));

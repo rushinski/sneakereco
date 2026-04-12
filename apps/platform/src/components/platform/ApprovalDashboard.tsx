@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-import { ApiClientError, apiClient, clearAccessToken, getAccessToken, type RequestSummary } from '../../lib/api-client';
+import { ApiClientError, apiClient, clearAccessToken, getAccessToken, setAccessToken, type RequestSummary } from '../../lib/api-client';
 
 type StatusFilter = 'pending' | 'invited' | 'approved' | 'rejected' | undefined;
 
