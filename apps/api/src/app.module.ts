@@ -8,6 +8,7 @@ import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
 import { LoggerModule } from 'nestjs-pino';
 
 import { envSchema } from './config/env.schema';
+import { THROTTLE } from './config/security.config';
 import { CommonModule } from './common/common.module';
 import { DatabaseModule } from './common/database/database.module';
 import { JwtAuthGuard } from './common/guards/auth.guard';
@@ -72,16 +73,9 @@ import { TenantsModule } from './modules/tenants/tenants.module';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         throttlers: [
-          // Auth endpoints — tightest limits to slow brute-force attacks
-          { name: 'auth', ttl: 60_000, limit: 5 },
-          // Checkout — prevent cart/order flooding
-          { name: 'checkout', ttl: 60_000, limit: 10 },
-          // Storefront reads — generous limit for browsing
-          { name: 'api-read', ttl: 60_000, limit: 120 },
-          // Mutations (admin writes, cart updates, etc.)
-          { name: 'api-write', ttl: 60_000, limit: 60 },
-          // Inbound webhooks (PayRilla, Shippo)
-          { name: 'webhook', ttl: 60_000, limit: 100 },
+          // Only 'default' is registered globally — it applies to every route.
+          // Auth/commerce routes tighten this via @Throttle({ default: {...} }).
+          { name: 'default', ...THROTTLE.default },
         ],
         storage: new ThrottlerStorageRedisService(config.getOrThrow<string>('VALKEY_URL')),
       }),

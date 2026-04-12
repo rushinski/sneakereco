@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { DatabaseModule } from './database/database.module';
 import { CsrfController } from './middleware/csrf/csrf.controller';
 import { OriginResolverService } from './services/origin-resolver.service';
+import { SecurityConfig } from '../config/security.config';
 
 /**
  * Registers HTTP infrastructure controllers that don't belong to any
@@ -11,7 +12,7 @@ import { OriginResolverService } from './services/origin-resolver.service';
 @Module({
   imports: [DatabaseModule],
   controllers: [CsrfController],
-  providers: [OriginResolverService],
-  exports: [OriginResolverService],
+  providers: [OriginResolverService, SecurityConfig],
+  exports: [OriginResolverService, SecurityConfig],
 })
 export class CommonModule {}

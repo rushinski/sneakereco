@@ -8,15 +8,21 @@ import {
   Param,
   Post,
   Query,
+  Req,
+  Res,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import type { Request, Response } from 'express';
 
 import { Public } from '../../common/decorators/public.decorator';
 import { OnboardingOnly } from '../../common/decorators/onboarding-only.decorator';
 import { PlatformAdmin } from '../../common/decorators/platform-admin.decorator';
 import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
+import { CsrfGuard } from '../../common/guards/csrf.guard';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
+import { SecurityConfig, REFRESH_COOKIE_NAME, PLATFORM_REFRESH_COOKIE_PATH, REFRESH_MAX_AGE } from '../../config/security.config';
 
 import { TenantsService } from './tenants.service';
 import { ListRequestsDtoSchema, type ListRequestsDto } from './dto/list-requests.dto';
@@ -28,20 +34,68 @@ import {
 @ApiTags('platform')
 @Controller({ path: 'platform' })
 export class TenantsController {
-  constructor(private readonly tenantsService: TenantsService) {}
+  constructor(
+    private readonly tenantsService: TenantsService,
+    private readonly security: SecurityConfig,
+  ) {}
+
+  private setRefreshCookie(res: Response, refreshToken: string): void {
+    res.cookie(REFRESH_COOKIE_NAME, refreshToken, {
+      httpOnly: true,
+      secure: this.security.cookieSecure,
+      sameSite: 'strict',
+      path: PLATFORM_REFRESH_COOKIE_PATH,
+      maxAge: REFRESH_MAX_AGE.admin,
+      domain: this.security.cookieDomain,
+    });
+  }
+
+  private clearRefreshCookie(res: Response): void {
+    res.clearCookie(REFRESH_COOKIE_NAME, {
+      httpOnly: true,
+      secure: this.security.cookieSecure,
+      sameSite: 'strict',
+      path: PLATFORM_REFRESH_COOKIE_PATH,
+      domain: this.security.cookieDomain,
+    });
+  }
 
   /**
    * Platform admin sign-in. Only callable from platform/dashboard origins.
-   * Uses the admin Cognito app client (shorter TTL, MFA enforced).
+   * Uses the platform Cognito pool (not a tenant pool).
+   * Sets the refresh token as an httpOnly cookie; access token returned in body.
    */
   @Public()
   @OnboardingOnly()
   @Post('auth/sign-in')
   @HttpCode(HttpStatus.OK)
-  signInAdmin(
+  async signInAdmin(
     @Body(new ZodValidationPipe(PlatformAdminSignInDtoSchema)) dto: PlatformAdminSignInDto,
+    @Res({ passthrough: true }) res: Response,
   ) {
-    return this.tenantsService.signInAdmin(dto);
+    const result = await this.tenantsService.signInAdmin(dto);
+    if (result?.type === 'tokens') {
+      const { refreshToken, ...clientResult } = result;
+      this.setRefreshCookie(res, refreshToken);
+      return clientResult;
+    }
+    return result; // mfa_required
+  }
+
+  /**
+   * Platform admin token refresh. Reads the httpOnly refresh cookie and
+   * returns a new access token. CSRF-protected.
+   */
+  @Public()
+  @UseGuards(CsrfGuard)
+  @Post('auth/refresh')
+  @HttpCode(HttpStatus.OK)
+  async refreshAdmin(@Req() req: Request) {
+    const refreshToken = (req.cookies as Record<string, string>)[REFRESH_COOKIE_NAME];
+    if (!refreshToken) {
+      throw new UnauthorizedException('No refresh token provided');
+    }
+    return this.tenantsService.refreshAdmin(refreshToken);
   }
 
   /**

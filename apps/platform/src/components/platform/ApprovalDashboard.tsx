@@ -30,14 +30,25 @@ export function ApprovalDashboard() {
 
   useEffect(() => {
     const stored = getAccessToken();
-    if (!stored) {
-      router.push('/login');
+    if (stored) {
+      setToken(stored);
+      apiClient.getCsrfToken().then((data) => setCsrfToken(data.token)).catch(() => {});
       return;
     }
-    setToken(stored);
-    apiClient.getCsrfToken().then((data) => setCsrfToken(data.token)).catch(() => {
-      // Non-fatal — approve/deny actions will fail without it
-    });
+
+    // No in-memory token — try to restore session from the httpOnly refresh cookie
+    apiClient.getCsrfToken()
+      .then((data) => {
+        setCsrfToken(data.token);
+        return apiClient.refreshAdmin(data.token);
+      })
+      .then((result) => {
+        setAccessToken(result.accessToken);
+        setToken(result.accessToken);
+      })
+      .catch(() => {
+        router.push('/login');
+      });
   }, [router]);
 
   useEffect(() => {

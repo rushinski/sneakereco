@@ -5,10 +5,10 @@ import { tenantDomainConfig } from '@sneakereco/db';
 import Redis from 'ioredis';
 
 import { DatabaseService } from '../database/database.service';
+import { ORIGIN_CACHE_TTL_SECONDS } from '../../config/security.config';
 
 export type OriginGroup = 'platform' | 'tenant' | 'admin' | 'unknown';
 
-const CACHE_TTL_SECONDS = 300; // 5 minutes
 const CACHE_KEY_PREFIX = 'cors:origin:';
 
 @Injectable()
@@ -77,7 +77,7 @@ export class OriginResolverService implements OnModuleDestroy {
     const group = await this.resolveFromDb(hostname);
 
     try {
-      await this.cache.setex(cacheKey, CACHE_TTL_SECONDS, group);
+      await this.cache.setex(cacheKey, ORIGIN_CACHE_TTL_SECONDS, group);
     } catch {
       // Non-fatal: continue without caching
     }

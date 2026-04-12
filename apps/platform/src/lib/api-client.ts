@@ -235,6 +235,12 @@ export const apiClient = {
       method: 'POST',
     }),
 
+  refreshAdmin: (csrfToken: string) =>
+    request<{ accessToken: string; idToken: string; expiresIn: number }>('/platform/auth/refresh', {
+      csrfToken,
+      method: 'POST',
+    }),
+
   mfaChallenge: (
     input: { email: string; mfaCode: string; session: string },
     csrfToken: string,

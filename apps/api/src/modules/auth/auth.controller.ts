@@ -18,7 +18,6 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { ConfigService } from '@nestjs/config';
 import type { Request, Response } from 'express';
 
 import { AuthService } from './auth.service';
@@ -26,6 +25,7 @@ import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/user.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { CsrfGuard } from '../../common/guards/csrf.guard';
+import { SecurityConfig, REFRESH_COOKIE_NAME, REFRESH_COOKIE_PATH, REFRESH_MAX_AGE, THROTTLE } from '../../config/security.config';
 import type { AuthenticatedUser } from './auth.types';
 import { SignUpDtoSchema, type SignUpDto } from './dto/sign-up.dto';
 import { ConfirmEmailDtoSchema, type ConfirmEmailDto } from './dto/confirm-email.dto';
@@ -39,57 +39,43 @@ import { SignOutDtoSchema, type SignOutDto } from './dto/sign-out.dto';
 import { VerifyMfaDtoSchema, type VerifyMfaDto } from './dto/verify-mfa.dto';
 import { DisableMfaDtoSchema, type DisableMfaDto } from './dto/disable-mfa.dto';
 
-const REFRESH_COOKIE = '__sneakereco_refresh';
-// admin client uses a 1-day refresh; customer client uses 30 days (matches Cognito config)
-const REFRESH_MAX_AGE_CUSTOMER = 30 * 24 * 60 * 60 * 1000;
-const REFRESH_MAX_AGE_ADMIN = 24 * 60 * 60 * 1000;
-
 @ApiTags('auth')
 @Controller({ path: 'auth' })
 export class AuthController {
-  private readonly cookieSecure: boolean;
-  private readonly cookieDomain: string | undefined;
-
   constructor(
     private readonly authService: AuthService,
-    config: ConfigService,
-  ) {
-    const isProduction = config.getOrThrow<string>('NODE_ENV') === 'production';
-    const useHttps = config.get<boolean>('USE_HTTPS') ?? false;
-    this.cookieSecure = isProduction || useHttps;
-    this.cookieDomain = config.get<string>('COOKIE_DOMAIN');
-  }
+    private readonly security: SecurityConfig,
+  ) {}
 
   private setRefreshCookie(
     res: Response,
     refreshToken: string,
     clientType: 'customer' | 'admin',
   ): void {
-    res.cookie(REFRESH_COOKIE, refreshToken, {
+    res.cookie(REFRESH_COOKIE_NAME, refreshToken, {
       httpOnly: true,
-      secure: this.cookieSecure,
+      secure: this.security.cookieSecure,
       sameSite: 'strict',
-      path: '/v1/auth',
-      maxAge:
-        clientType === 'admin' ? REFRESH_MAX_AGE_ADMIN : REFRESH_MAX_AGE_CUSTOMER,
-      domain: this.cookieDomain,
+      path: REFRESH_COOKIE_PATH,
+      maxAge: REFRESH_MAX_AGE[clientType],
+      domain: this.security.cookieDomain,
     });
   }
 
   private clearRefreshCookie(res: Response): void {
-    res.clearCookie(REFRESH_COOKIE, {
+    res.clearCookie(REFRESH_COOKIE_NAME, {
       httpOnly: true,
-      secure: this.cookieSecure,
+      secure: this.security.cookieSecure,
       sameSite: 'strict',
-      path: '/v1/auth',
-      domain: this.cookieDomain,
+      path: REFRESH_COOKIE_PATH,
+      domain: this.security.cookieDomain,
     });
   }
 
   // ─── Registration & Confirmation ───────────────────────────────────────────
 
   @Public()
-  @Throttle({ auth: { ttl: 3_600_000, limit: 5 } })
+  @Throttle({ default: THROTTLE.signup })
   @Post('signup')
   @ApiHeader({ name: 'x-tenant-id', required: true, description: "Tenant's database ID" })
   @ApiOperation({
@@ -128,7 +114,7 @@ export class AuthController {
   }
 
   @Public()
-  @Throttle({ auth: { ttl: 3_600_000, limit: 3 } })
+  @Throttle({ default: THROTTLE.confirmResend })
   @Post('confirm/resend')
   @HttpCode(HttpStatus.OK)
   @ApiHeader({ name: 'x-tenant-id', required: true, description: "Tenant's database ID" })
@@ -150,7 +136,7 @@ export class AuthController {
   // ─── Sign In ────────────────────────────────────────────────────────────────
 
   @Public()
-  @Throttle({ auth: { ttl: 60_000, limit: 5 } })
+  @Throttle({ default: THROTTLE.auth })
   @Post('sign-in')
   @HttpCode(HttpStatus.OK)
   @ApiHeader({ name: 'x-tenant-id', required: true, description: "Tenant's database ID" })
@@ -208,7 +194,7 @@ export class AuthController {
   // ─── Token Refresh ──────────────────────────────────────────────────────────
 
   @Public()
-  @Throttle({ auth: { ttl: 60_000, limit: 20 } })
+  @Throttle({ default: THROTTLE.refresh })
   @UseGuards(CsrfGuard)
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
@@ -226,7 +212,7 @@ export class AuthController {
   ) {
     // Same-site flow: refresh token arrives via httpOnly cookie.
     // Cross-site custom-domain flow: refresh token sent in the request body.
-    const refreshToken = (req.cookies as Record<string, string>)[REFRESH_COOKIE] ?? dto.refreshToken;
+    const refreshToken = (req.cookies as Record<string, string>)[REFRESH_COOKIE_NAME] ?? dto.refreshToken;
     if (!refreshToken) {
       throw new UnauthorizedException('No refresh token provided');
     }
@@ -236,7 +222,7 @@ export class AuthController {
   // ─── Password Reset ─────────────────────────────────────────────────────────
 
   @Public()
-  @Throttle({ auth: { ttl: 3_600_000, limit: 3 } })
+  @Throttle({ default: THROTTLE.forgotPassword })
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   @ApiHeader({ name: 'x-tenant-id', required: true, description: "Tenant's database ID" })

@@ -142,6 +142,18 @@ export class CognitoService {
         return { type: 'mfa_required' as const, session: response.Session! };
       }
 
+      if (response.ChallengeName === 'NEW_PASSWORD_REQUIRED') {
+        throw new UnauthorizedException(
+          'Account requires a password reset. Use the AWS console or CLI to set a permanent password (AdminSetUserPassword) before signing in.',
+        );
+      }
+
+      if (response.ChallengeName) {
+        throw new UnauthorizedException(
+          `Unexpected auth challenge: ${response.ChallengeName}`,
+        );
+      }
+
       const result = response.AuthenticationResult!;
       return {
         type: 'tokens' as const,

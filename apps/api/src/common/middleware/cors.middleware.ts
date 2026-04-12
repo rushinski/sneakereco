@@ -3,15 +3,7 @@ import { Injectable } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 
 import { OriginResolverService } from '../services/origin-resolver.service';
-
-const ALLOWED_HEADERS = [
-  'Content-Type',
-  'Authorization',
-  'X-Request-ID',
-  'X-CSRF-Token',
-  'X-Tenant-ID',
-];
-const ALLOWED_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'];
+import { CORS_ALLOWED_HEADERS, CORS_ALLOWED_METHODS, CORS_PUBLIC_PATHS } from '../../config/security.config';
 
 @Injectable()
 export class CorsMiddleware implements NestMiddleware {
@@ -30,7 +22,7 @@ export class CorsMiddleware implements NestMiddleware {
       }
 
       const allowAnyOrigin =
-        request.path === '/v1/csrf-token' &&
+        CORS_PUBLIC_PATHS.has(request.path) &&
         (request.method === 'GET' || request.method === 'OPTIONS');
       const originGroup = allowAnyOrigin
         ? 'platform'
@@ -39,8 +31,8 @@ export class CorsMiddleware implements NestMiddleware {
 
       if (isAllowed) {
         response.header('Access-Control-Allow-Origin', origin);
-        response.header('Access-Control-Allow-Headers', ALLOWED_HEADERS.join(', '));
-        response.header('Access-Control-Allow-Methods', ALLOWED_METHODS.join(', '));
+        response.header('Access-Control-Allow-Headers', CORS_ALLOWED_HEADERS.join(', '));
+        response.header('Access-Control-Allow-Methods', CORS_ALLOWED_METHODS.join(', '));
         response.header('Access-Control-Allow-Credentials', 'true');
         response.append('Vary', 'Origin');
       }

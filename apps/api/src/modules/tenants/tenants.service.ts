@@ -20,6 +20,11 @@ export class TenantsService {
     return this.cognito.signIn({ email: dto.email, password: dto.password, clientType: 'admin' });
   }
 
+  refreshAdmin(refreshToken: string) {
+    // No pool passed — falls back to platformAdminClientId in CognitoService
+    return this.cognito.refreshTokens(refreshToken);
+  }
+
   listRequests(dto: ListRequestsDto) {
     return this.tenantsRepository.listRequests(dto);
   }
