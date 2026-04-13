@@ -24,9 +24,6 @@ export const envSchema = z.object({
   // Platform pool — manually created, used for Jacob's dashboard login only.
   PLATFORM_COGNITO_POOL_ID: z.string().min(1, 'PLATFORM_COGNITO_POOL_ID is required'),
   PLATFORM_COGNITO_ADMIN_CLIENT_ID: z.string().min(1, 'PLATFORM_COGNITO_ADMIN_CLIENT_ID is required'),
-  // Pre Token Generation Lambda — deployed once, attached to every tenant pool on creation.
-  COGNITO_PRE_TOKEN_LAMBDA_ARN: z.string().min(1, 'COGNITO_PRE_TOKEN_LAMBDA_ARN is required'),
-
   // --- Email ---
   MAIL_TRANSPORT: z.enum(['smtp', 'ses']).default('ses'),
   PLATFORM_FROM_EMAIL: z.string().email('PLATFORM_FROM_EMAIL must be a valid email'),

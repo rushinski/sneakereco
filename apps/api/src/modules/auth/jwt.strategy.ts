@@ -4,10 +4,11 @@ import { PassportStrategy } from '@nestjs/passport';
 import { eq } from 'drizzle-orm';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import JwksClient from 'jwks-rsa';
-import { tenantCognitoConfig } from '@sneakereco/db';
+import { tenantCognitoConfig, users, tenantMembers } from '@sneakereco/db';
 
 import { DatabaseService } from '../../common/database/database.service';
 import type { CognitoJwtPayload, AuthenticatedUser } from './auth.types';
+import type { TenantMemberRole } from '@sneakereco/db';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
@@ -15,10 +16,15 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   private readonly platformAdminClientId: string;
   private readonly platformJwksClient: JwksClient.JwksClient;
   private readonly tenantJwksClients = new Map<string, JwksClient.JwksClient>();
-  // Short-lived in-process cache: poolId → {customerClientId, adminClientId}
-  // Populated during resolveSigningKey so validate() can check audience without
-  // an extra DB round-trip per request.
+  // poolId → {customerClientId, adminClientId}
   private readonly tenantClientIdCache = new Map<string, { customer: string; admin: string }>();
+  // sub → tenant membership — TTL matches access token lifetime (60 min)
+  private readonly membershipCache = new Map<string, {
+    tenantId: string;
+    role: TenantMemberRole;
+    memberId: string;
+    expiresAt: number;
+  }>();
 
   constructor(
     private readonly db: DatabaseService,
@@ -112,37 +118,84 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     return key.getPublicKey();
   }
 
-  validate(payload: CognitoJwtPayload): AuthenticatedUser {
+  async validate(payload: CognitoJwtPayload): Promise<AuthenticatedUser> {
     if (payload.token_use !== 'access') {
       throw new UnauthorizedException('Invalid token type');
     }
 
     const isPlatform = payload.iss === this.platformIssuer;
 
-    // Validate client_id (audience) — prevents tokens issued for one app client
-    // from being used against a different client in the same Cognito pool.
     if (isPlatform) {
       if (payload.client_id !== this.platformAdminClientId) {
         throw new UnauthorizedException('Invalid token audience');
       }
-    } else {
-      const poolId = payload.iss.split('/').pop();
-      const cached = poolId ? this.tenantClientIdCache.get(poolId) : undefined;
-      if (cached && payload.client_id !== cached.customer && payload.client_id !== cached.admin) {
-        throw new UnauthorizedException('Invalid token audience');
-      }
-      // If not yet cached (e.g. resolveSigningKey ran on a different instance),
-      // skip the audience check rather than fail — the issuer check already
-      // confirmed the token came from a known Cognito pool.
+      return {
+        cognitoId: payload.sub,
+        email: payload.email,
+        isSuperAdmin: true,
+        tenantId: undefined,
+        role: 'admin',
+        memberId: undefined,
+      };
+    }
+
+    // Validate audience for tenant tokens
+    const poolId = payload.iss.split('/').pop();
+    const cached = poolId ? this.tenantClientIdCache.get(poolId) : undefined;
+    if (cached && payload.client_id !== cached.customer && payload.client_id !== cached.admin) {
+      throw new UnauthorizedException('Invalid token audience');
+    }
+
+    // Resolve tenant membership from DB.
+    // Cache result for the lifetime of the access token (60 min) to avoid
+    // a DB hit on every request while still reflecting role changes promptly
+    // after the next token refresh.
+    const membership = await this.resolveMembership(payload.sub);
+    if (!membership) {
+      throw new UnauthorizedException('User has no tenant membership');
     }
 
     return {
       cognitoId: payload.sub,
       email: payload.email,
-      isSuperAdmin: isPlatform,
-      tenantId: isPlatform ? undefined : payload['custom:tenant_id'],
-      role: isPlatform ? 'admin' : payload['custom:role'],
-      memberId: isPlatform ? undefined : payload['custom:member_id'],
+      isSuperAdmin: false,
+      tenantId: membership.tenantId,
+      role: membership.role,
+      memberId: membership.memberId,
     };
+  }
+
+  private async resolveMembership(sub: string): Promise<{
+    tenantId: string;
+    role: TenantMemberRole;
+    memberId: string;
+  } | null> {
+    const cached = this.membershipCache.get(sub);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached;
+    }
+
+    const [row] = await this.db.systemDb
+      .select({
+        tenantId: tenantMembers.tenantId,
+        role: tenantMembers.role,
+        memberId: tenantMembers.id,
+      })
+      .from(users)
+      .innerJoin(tenantMembers, eq(tenantMembers.userId, users.id))
+      .where(eq(users.cognitoSub, sub))
+      .limit(1);
+
+    if (!row) return null;
+
+    const entry = {
+      tenantId: row.tenantId,
+      role: row.role as TenantMemberRole,
+      memberId: row.memberId,
+      expiresAt: Date.now() + 60 * 60 * 1000, // 60 minutes — matches access token TTL
+    };
+    this.membershipCache.set(sub, entry);
+
+    return entry;
   }
 }

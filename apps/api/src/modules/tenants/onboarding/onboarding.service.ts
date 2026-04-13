@@ -6,7 +6,6 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { generateId } from '@sneakereco/shared';
 import { tenantCognitoConfig } from '@sneakereco/db';
 
@@ -38,7 +37,6 @@ export class OnboardingService {
     private readonly onboardingRepository: OnboardingRepository,
     private readonly cognito: CognitoService,
     private readonly email: EmailService,
-    private readonly config: ConfigService,
   ) {}
 
   async requestAccount(dto: RequestOnboardingDto) {
@@ -125,6 +123,8 @@ export class OnboardingService {
     const inviteToken = createInviteToken();
     const inviteTokenHash = hashInviteToken(inviteToken);
 
+    this.logger.log(`Approving onboarding request tenantId=${tenantId}`);
+
     const approval = await this.db.withSystemContext(async (tx) => {
       const record = await this.onboardingRepository.findRequestDetails(tenantId);
 
@@ -149,10 +149,11 @@ export class OnboardingService {
         tx,
       );
 
+      this.logger.log(`Creating Cognito pool for tenantId=${tenantId}`);
       const poolResult = await this.cognito.createTenantPool({
         businessName: record.businessName ?? record.tenantName,
-        lambdaArn: this.config.getOrThrow('COGNITO_PRE_TOKEN_LAMBDA_ARN'),
       });
+      this.logger.log(`Cognito pool created userPoolId=${poolResult.userPoolId} tenantId=${tenantId}`);
 
       await tx.insert(tenantCognitoConfig).values({
         id: generateId('tenantCognitoConfig'),
@@ -161,7 +162,7 @@ export class OnboardingService {
         userPoolArn: poolResult.userPoolArn,
         customerClientId: poolResult.customerClientId,
         adminClientId: poolResult.adminClientId,
-        region: this.config.getOrThrow('AWS_REGION'),
+        region: poolResult.region,
       });
 
       await this.onboardingRepository.markInviteSent(tenantId, inviteTokenHash, tx);

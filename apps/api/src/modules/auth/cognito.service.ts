@@ -37,8 +37,6 @@ import {
   UserNotFoundException,
   VerifySoftwareTokenCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
-import { AddPermissionCommand, LambdaClient } from '@aws-sdk/client-lambda';
-
 import type { ConfirmEmailDto } from './dto/confirm-email.dto';
 import type { DisableMfaDto } from './dto/disable-mfa.dto';
 import type { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -61,22 +59,21 @@ export interface TenantPoolResult {
   userPoolArn: string;
   customerClientId: string;
   adminClientId: string;
+  region: string;
 }
 
 @Injectable()
 export class CognitoService {
   private readonly client: CognitoIdentityProviderClient;
-  private readonly lambdaClient: LambdaClient;
   private readonly region: string;
 
   // Platform pool credentials (Jacob's dashboard only)
   private readonly platformPoolId: string;
   private readonly platformAdminClientId: string;
 
-  constructor(private readonly config: ConfigService) {
+  constructor(config: ConfigService) {
     this.region = config.getOrThrow<string>('AWS_REGION');
     this.client = new CognitoIdentityProviderClient({ region: this.region });
-    this.lambdaClient = new LambdaClient({ region: this.region });
     this.platformPoolId = config.getOrThrow<string>('PLATFORM_COGNITO_POOL_ID');
     this.platformAdminClientId = config.getOrThrow<string>('PLATFORM_COGNITO_ADMIN_CLIENT_ID');
   }
@@ -453,7 +450,6 @@ export class CognitoService {
 
   async createTenantPool(params: {
     businessName: string;
-    lambdaArn: string;
   }): Promise<TenantPoolResult> {
     // 1. Create the user pool
     const poolResponse = await this.client.send(
@@ -467,7 +463,6 @@ export class CognitoService {
         AccountRecoverySetting: {
           RecoveryMechanisms: [
             { Name: 'verified_email', Priority: 1 },
-            { Name: 'verified_phone_number', Priority: 2 },
           ],
         },
         // Email verification required
@@ -486,13 +481,6 @@ export class CognitoService {
             RequireNumbers: true,
             RequireSymbols: false,
             TemporaryPasswordValidityDays: 7,
-          },
-        },
-        // Attach Pre Token Generation Lambda (V2 trigger)
-        LambdaConfig: {
-          PreTokenGenerationConfig: {
-            LambdaArn: params.lambdaArn,
-            LambdaVersion: 'V2_0',
           },
         },
         Schema: [
@@ -578,17 +566,6 @@ export class CognitoService {
       throw new InternalServerErrorException('Failed to create admin app client');
     }
 
-    // 5. Grant Cognito permission to invoke the Lambda for this pool
-    await this.lambdaClient.send(
-      new AddPermissionCommand({
-        FunctionName: params.lambdaArn,
-        StatementId: `cognito-${userPoolId.replace(/_/g, '-')}`,
-        Action: 'lambda:InvokeFunction',
-        Principal: 'cognito-idp.amazonaws.com',
-        SourceArn: userPoolArn,
-      }),
-    );
-
-    return { userPoolId, userPoolArn, customerClientId, adminClientId };
+    return { userPoolId, userPoolArn, customerClientId, adminClientId, region: this.region };
   }
 }
