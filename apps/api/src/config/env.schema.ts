@@ -29,6 +29,10 @@ export const envSchema = z.object({
   PLATFORM_FROM_EMAIL: z.string().email('PLATFORM_FROM_EMAIL must be a valid email'),
   PLATFORM_FROM_NAME: z.string().default('SneakerEco'),
   PLATFORM_ADMIN_EMAIL: z.string().email('PLATFORM_ADMIN_EMAIL must be a valid email'),
+  // ARN of the SES verified domain identity for sneakereco.com.
+  // Required in staging/production to send tenant-branded emails via SES.
+  // Not required in development (MAIL_TRANSPORT=smtp bypasses SES).
+  SES_IDENTITY_ARN: z.string().min(1).optional(),
 
   // --- URLs ---
   // Public-facing URL of the platform site (sneakereco.com). Used for CORS and invite links.

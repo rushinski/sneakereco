@@ -156,6 +156,7 @@ export class OnboardingService {
       this.logger.log(`Creating Cognito pool for tenantId=${tenantId}`);
       const poolResult = await this.cognito.createTenantPool({
         businessName: record.businessName ?? record.tenantName,
+        subdomain,
       });
       this.logger.log(`Cognito pool created userPoolId=${poolResult.userPoolId} tenantId=${tenantId}`);
 

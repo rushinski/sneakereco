@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { generateId } from '@sneakereco/shared';
-import { users, tenantCognitoConfig } from '@sneakereco/db';
+import { users, tenants, tenantCognitoConfig } from '@sneakereco/db';
 
 import { DatabaseService } from '../../common/database/database.service';
+import { EmailService } from '../communications/email/email.service';
 import { CognitoService, type PoolCredentials } from './cognito.service';
 import type { ConfirmEmailDto } from './dto/confirm-email.dto';
 import type { DisableMfaDto } from './dto/disable-mfa.dto';
@@ -18,9 +19,12 @@ import type { VerifyMfaDto } from './dto/verify-mfa.dto';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly cognito: CognitoService,
     private readonly db: DatabaseService,
+    private readonly email: EmailService,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -73,7 +77,31 @@ export class AuthService {
         .onConflictDoNothing({ target: users.cognitoSub });
     });
 
+    // Step 4: Enqueue welcome email (non-blocking — failure doesn't affect the response)
+    void this.sendWelcomeEmail(dto.email, tenantId);
+
     return { success: true };
+  }
+
+  private async sendWelcomeEmail(email: string, tenantId: string): Promise<void> {
+    try {
+      const [tenant] = await this.db.withSystemContext((tx) =>
+        tx
+          .select({ slug: tenants.slug, name: tenants.name })
+          .from(tenants)
+          .where(eq(tenants.id, tenantId))
+          .limit(1),
+      );
+      if (!tenant) return;
+
+      await this.email.sendCustomerWelcome({
+        email,
+        tenantName: tenant.name,
+        from: `no-reply@auth-${tenant.slug}.sneakereco.com`,
+      });
+    } catch (err) {
+      this.logger.error('Failed to enqueue welcome email', err instanceof Error ? err.stack : undefined);
+    }
   }
 
   async resendConfirmationCode(dto: ResendConfirmationDto, tenantId: string) {

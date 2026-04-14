@@ -1,11 +1,13 @@
 import type { MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
+import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
 import { LoggerModule } from 'nestjs-pino';
+import { JobsModule } from './jobs/jobs.module';
 
 import { envSchema } from './config/env.schema';
 import { THROTTLE } from './config/security.config';
@@ -65,6 +67,16 @@ import { TenantsModule } from './modules/tenants/tenants.module';
       }),
     }),
 
+    // Email queue — backed by the same Valkey instance as throttling.
+    // Jobs survive restarts; the EmailProcessor worker processes them async.
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        connection: { url: config.getOrThrow<string>('VALKEY_URL') },
+      }),
+    }),
+
     // Rate limiting — tiered profiles; override per-route with @Throttle().
     // State is persisted in Valkey so limits survive restarts and work across
     // multiple API instances (PM2 cluster, future horizontal scaling).
@@ -81,6 +93,7 @@ import { TenantsModule } from './modules/tenants/tenants.module';
       }),
     }),
 
+    JobsModule,
     CommonModule,
     DatabaseModule,
     HealthModule,

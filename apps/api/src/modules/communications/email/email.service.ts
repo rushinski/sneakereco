@@ -1,9 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
 import { ConfigService } from '@nestjs/config';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 import * as nodemailer from 'nodemailer';
 import type Mail from 'nodemailer/lib/mailer';
+import type { Queue } from 'bullmq';
 
+import type { EmailJob } from '../../../jobs/email.processor';
 import { renderTemplate } from './template.renderer';
 
 interface SendMailOptions {
@@ -22,7 +25,10 @@ export class EmailService {
   private readonly platformFrom: string;
   private readonly platformAdminEmail: string;
 
-  constructor(config: ConfigService) {
+  constructor(
+    config: ConfigService,
+    @InjectQueue('email') private readonly queue: Queue<EmailJob>,
+  ) {
     const fromEmail = config.getOrThrow<string>('PLATFORM_FROM_EMAIL');
     const fromName = config.getOrThrow<string>('PLATFORM_FROM_NAME');
     this.platformFrom = `"${fromName}" <${fromEmail}>`;
@@ -76,7 +82,7 @@ export class EmailService {
       `Instagram:  ${input.instagramHandle}`,
     ].join('\n');
 
-    await this.send({
+    await this.enqueue({
       to: this.platformAdminEmail,
       subject: `New onboarding request: ${input.businessName}`,
       html,
@@ -106,7 +112,7 @@ export class EmailService {
       `Admin dashboard: ${input.adminDomain}`,
     ].join('\n');
 
-    await this.send({
+    await this.enqueue({
       to: input.email,
       subject: `Your SneakerEco invite for ${input.businessName}`,
       html,
@@ -131,7 +137,7 @@ export class EmailService {
       'If you have any questions in the meantime, reply to this email.',
     ].join('\n');
 
-    await this.send({
+    await this.enqueue({
       to: input.email,
       subject: `We received your SneakerEco application for ${input.businessName}`,
       html,
@@ -154,11 +160,31 @@ export class EmailService {
       `We reviewed your request for ${businessName}, but we are not moving forward with it at this time.`,
     ].join('\n');
 
-    await this.send({
+    await this.enqueue({
       to: input.email,
       subject: `SneakerEco request update for ${businessName}`,
       html,
       text,
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Customer auth emails
+  // ---------------------------------------------------------------------------
+
+  async sendCustomerWelcome(input: {
+    email: string;
+    tenantName: string;
+    from: string;
+  }): Promise<void> {
+    const html = renderTemplate('customer-welcome', { tenantName: input.tenantName });
+    const text = `Welcome to ${input.tenantName}! Your account is confirmed and ready to use.`;
+    await this.enqueue({
+      to: input.email,
+      subject: `Welcome to ${input.tenantName}`,
+      html,
+      text,
+      from: input.from,
     });
   }
 
@@ -174,6 +200,12 @@ export class EmailService {
     return `"${fromName}" <${fromEmail}>`;
   }
 
+  /** Enqueues an email job for async delivery via the BullMQ processor. */
+  private async enqueue(options: SendMailOptions): Promise<void> {
+    await this.queue.add('send', options);
+  }
+
+  /** Low-level transport — called by EmailProcessor only. Not for direct use. */
   async send(options: SendMailOptions): Promise<void> {
     const from = options.from ?? this.platformFrom;
 

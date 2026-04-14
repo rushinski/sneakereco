@@ -1,3 +1,4 @@
+import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 
 import { EmailService } from './email/email.service';
@@ -9,6 +10,7 @@ import { SubscribersRepository } from './subscribers/subscribers.repository';
 import { SubscribersService } from './subscribers/subscribers.service';
 
 @Module({
+  imports: [BullModule.forFeature({ name: 'email' })],
   controllers: [ContactController, SubscribersController],
   providers: [
     EmailService,

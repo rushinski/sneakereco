@@ -65,11 +65,13 @@ export class CognitoService {
   private readonly client: CognitoIdentityProviderClient;
   private readonly region: string;
   private readonly platformAdminClientId: string;
+  private readonly sesIdentityArn: string | undefined;
 
   constructor(config: ConfigService) {
     this.region = config.getOrThrow<string>('AWS_REGION');
     this.client = new CognitoIdentityProviderClient({ region: this.region });
     this.platformAdminClientId = config.getOrThrow<string>('PLATFORM_COGNITO_ADMIN_CLIENT_ID');
+    this.sesIdentityArn = config.get<string>('SES_IDENTITY_ARN');
   }
 
   // ---------------------------------------------------------------------------
@@ -532,6 +534,7 @@ export class CognitoService {
 
   async createTenantPool(params: {
     businessName: string;
+    subdomain: string;
   }): Promise<TenantPoolResult> {
     // 1. Create the user pool.
     // MfaConfiguration is set to 'OFF' here to avoid Cognito requiring an SMS
@@ -575,6 +578,22 @@ export class CognitoService {
         Schema: [
           { Name: 'email', AttributeDataType: 'String', Required: true, Mutable: true },
         ],
+        // Use SES for tenant-branded FROM addresses when the identity ARN is configured.
+        // Falls back to Cognito's default email sender in local dev (no SES).
+        ...(this.sesIdentityArn
+          ? {
+              EmailConfiguration: {
+                EmailSendingAccount: 'DEVELOPER' as const,
+                From: `no-reply@auth-${params.subdomain}.sneakereco.com`,
+                SourceArn: this.sesIdentityArn,
+              },
+              VerificationMessageTemplate: {
+                DefaultEmailOption: 'CONFIRM_WITH_CODE' as const,
+                EmailMessage: 'Your verification code is {####}',
+                EmailSubject: 'Verify your email address',
+              },
+            }
+          : {}),
       }),
     );
 
