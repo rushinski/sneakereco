@@ -8,7 +8,6 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
-  AddCustomAttributesCommand,
   AdminCreateUserCommand,
   AdminGetUserCommand,
   AdminSetUserPasswordCommand,
@@ -31,7 +30,6 @@ import {
   SetUserMFAPreferenceCommand,
   SetUserPoolMfaConfigCommand,
   SignUpCommand,
-  UpdateUserPoolCommand,
   UsernameExistsException,
   UserNotConfirmedException,
   UserNotFoundException,
@@ -66,15 +64,11 @@ export interface TenantPoolResult {
 export class CognitoService {
   private readonly client: CognitoIdentityProviderClient;
   private readonly region: string;
-
-  // Platform pool credentials (Jacob's dashboard only)
-  private readonly platformPoolId: string;
   private readonly platformAdminClientId: string;
 
   constructor(config: ConfigService) {
     this.region = config.getOrThrow<string>('AWS_REGION');
     this.client = new CognitoIdentityProviderClient({ region: this.region });
-    this.platformPoolId = config.getOrThrow<string>('PLATFORM_COGNITO_POOL_ID');
     this.platformAdminClientId = config.getOrThrow<string>('PLATFORM_COGNITO_ADMIN_CLIENT_ID');
   }
 
@@ -451,15 +445,18 @@ export class CognitoService {
   async createTenantPool(params: {
     businessName: string;
   }): Promise<TenantPoolResult> {
-    // 1. Create the user pool
+    // 1. Create the user pool.
+    // MfaConfiguration is set to 'OFF' here to avoid Cognito requiring an SMS
+    // configuration at creation time. Step 2 (SetUserPoolMfaConfig) upgrades it
+    // to OPTIONAL with TOTP-only — no SMS is ever involved.
     const poolResponse = await this.client.send(
       new CreateUserPoolCommand({
         PoolName: params.businessName,
         // Email is the only sign-in alias
         UsernameAttributes: ['email'],
-        // MFA: optional (authenticator app)
-        MfaConfiguration: 'OPTIONAL',
-        // Account recovery via email
+        // Deferred to step 2 — setting OPTIONAL here requires SMS config
+        MfaConfiguration: 'OFF',
+        // Account recovery: email only — no SMS fallback
         AccountRecoverySetting: {
           RecoveryMechanisms: [
             { Name: 'verified_email', Priority: 1 },
@@ -472,8 +469,8 @@ export class CognitoService {
           ChallengeRequiredOnNewDevice: false,
           DeviceOnlyRememberedOnUserPrompt: false,
         },
-        // Cognito default password policy
         Policies: {
+          // Password requirements
           PasswordPolicy: {
             MinimumLength: 8,
             RequireUppercase: true,
@@ -481,6 +478,10 @@ export class CognitoService {
             RequireNumbers: true,
             RequireSymbols: false,
             TemporaryPasswordValidityDays: 7,
+          },
+          // Choice-based sign-in: password or email OTP as first factor
+          SignInPolicy: {
+            AllowedFirstAuthFactors: ['PASSWORD', 'EMAIL_OTP'],
           },
         },
         Schema: [
@@ -504,24 +505,12 @@ export class CognitoService {
       }),
     );
 
-    // 3. Add custom attributes
-    await this.client.send(
-      new AddCustomAttributesCommand({
-        UserPoolId: userPoolId,
-        CustomAttributes: [
-          { Name: 'tenant_id', AttributeDataType: 'String', Mutable: false },
-          { Name: 'role', AttributeDataType: 'String', Mutable: true },
-          { Name: 'member_id', AttributeDataType: 'String', Mutable: true },
-        ],
-      }),
-    );
-
-    // 4. Create customer app client (30-day refresh)
+    // 3. Create customer app client (30-day refresh)
     const customerClientResponse = await this.client.send(
       new CreateUserPoolClientCommand({
         UserPoolId: userPoolId,
         ClientName: 'customer',
-        ExplicitAuthFlows: ['ALLOW_USER_PASSWORD_AUTH', 'ALLOW_REFRESH_TOKEN_AUTH'],
+        ExplicitAuthFlows: ['ALLOW_USER_PASSWORD_AUTH', 'ALLOW_USER_AUTH', 'ALLOW_REFRESH_TOKEN_AUTH'],
         AuthSessionValidity: 10,            // minutes
         RefreshTokenValidity: 30,           // days
         AccessTokenValidity: 60,            // minutes
@@ -546,7 +535,7 @@ export class CognitoService {
       new CreateUserPoolClientCommand({
         UserPoolId: userPoolId,
         ClientName: 'admin',
-        ExplicitAuthFlows: ['ALLOW_USER_PASSWORD_AUTH', 'ALLOW_REFRESH_TOKEN_AUTH'],
+        ExplicitAuthFlows: ['ALLOW_USER_PASSWORD_AUTH', 'ALLOW_USER_AUTH', 'ALLOW_REFRESH_TOKEN_AUTH'],
         AuthSessionValidity: 10,            // minutes
         RefreshTokenValidity: 1,            // day
         AccessTokenValidity: 60,            // minutes
