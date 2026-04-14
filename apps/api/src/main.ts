@@ -15,7 +15,7 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 import { TimeoutInterceptor } from './common/interceptors/timeout.interceptor';
 import { ZodValidationPipe } from './common/pipes/zod-validation.pipe';
 import { initCsrf } from './common/middleware/csrf/csrf.config';
-import { SecurityConfig, BODY_SIZE_LIMIT, HSTS_MAX_AGE } from './config/security.config';
+import { SecurityConfig, BODY_SIZE_LIMIT } from './config/security.config';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -39,20 +39,8 @@ async function bootstrap() {
   app.use(json({ limit: BODY_SIZE_LIMIT }));
   app.use(urlencoded({ limit: BODY_SIZE_LIMIT, extended: true }));
 
-  // Security headers via helmet
-  app.use(
-    helmet({
-      contentSecurityPolicy: { directives: security.cspDirectives },
-      // crossOriginEmbedderPolicy breaks the PayRilla tokenization iframe
-      crossOriginEmbedderPolicy: false,
-      crossOriginResourcePolicy: { policy: 'cross-origin' }, // required for R2 CDN assets
-      hsts: { maxAge: HSTS_MAX_AGE, includeSubDomains: true },
-      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
-      // X-XSS-Protection is deprecated — CSP replaces it. Setting it to 1;mode=block
-      // can introduce vulnerabilities in older browsers; suppress it entirely.
-      xXssProtection: false,
-    }),
-  );
+  // Security headers — all policy decisions live in SecurityConfig.helmetOptions
+  app.use(helmet(security.helmetOptions));
 
   // Cookie parser — required by csrf-csrf
   app.use(cookieParser());

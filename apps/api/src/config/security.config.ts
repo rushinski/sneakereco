@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { HelmetOptions } from 'helmet';
 
 // ---------------------------------------------------------------------------
 // Cookie constants
@@ -17,6 +18,8 @@ export const REFRESH_MAX_AGE = {
 // ---------------------------------------------------------------------------
 // CORS constants
 // ---------------------------------------------------------------------------
+
+export const CORS_CREDENTIALS = true as const;
 
 export const CORS_ALLOWED_HEADERS = [
   'Content-Type',
@@ -54,9 +57,14 @@ export const THROTTLE = {
   // Per-route overrides — referenced directly in @Throttle() decorators.
   auth:           { ttl: 60_000,     limit: 5   },
   signup:         { ttl: 3_600_000,  limit: 5   },
+  confirmEmail:   { ttl: 3_600_000,  limit: 10  }, // code submission — brute-forceable
   confirmResend:  { ttl: 3_600_000,  limit: 3   },
   forgotPassword: { ttl: 3_600_000,  limit: 3   },
+  resetPassword:  { ttl: 3_600_000,  limit: 5   }, // code submission — matches forgotPassword
+  mfaChallenge:   { ttl: 60_000,     limit: 5   }, // TOTP brute-force vector
+  mfaSetup:       { ttl: 60_000,     limit: 5   }, // MFA setup completion
   refresh:        { ttl: 60_000,     limit: 20  },
+  onboarding:     { ttl: 3_600_000,  limit: 5   }, // one-time flow, low volume
   checkout:       { ttl: 60_000,     limit: 10  },
   apiWrite:       { ttl: 60_000,     limit: 60  },
   webhook:        { ttl: 60_000,     limit: 100 },
@@ -89,8 +97,18 @@ export class SecurityConfig {
    *  Undefined in environments where a shared domain is not needed. */
   readonly cookieDomain: string | undefined;
 
-  /** Pre-built Helmet CSP directives object, ready to pass to helmet(). */
+  /**
+   * Content-Security-Policy directive map. Building block for helmetOptions —
+   * exposed separately so it can be referenced in tests or docs without
+   * pulling in the full helmet config.
+   */
   readonly cspDirectives: Record<string, string[]>;
+
+  /**
+   * Full Helmet options object. Pass directly to helmet() in main.ts.
+   * All security header policy decisions live here, not in main.ts.
+   */
+  readonly helmetOptions: HelmetOptions;
 
   constructor(config: ConfigService) {
     const isProduction = config.getOrThrow<string>('NODE_ENV') === 'production';
@@ -120,6 +138,18 @@ export class SecurityConfig {
       baseUri:       ["'self'"],
       formAction:    ["'self'"],
       objectSrc:     ["'none'"],
+    };
+
+    this.helmetOptions = {
+      contentSecurityPolicy: { directives: this.cspDirectives },
+      // PayRilla tokenization iframe requires cross-origin embedding
+      crossOriginEmbedderPolicy: false,
+      // R2 CDN assets must be loadable cross-origin by the browser
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+      hsts: { maxAge: HSTS_MAX_AGE, includeSubDomains: true },
+      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+      // Deprecated — modern CSP supersedes it; setting it can harm older browsers
+      xXssProtection: false,
     };
   }
 }

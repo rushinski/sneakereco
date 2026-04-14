@@ -13,6 +13,7 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 
@@ -22,7 +23,7 @@ import { PlatformAdmin } from '../../common/decorators/platform-admin.decorator'
 import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 import { CsrfGuard } from '../../common/guards/csrf.guard';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
-import { SecurityConfig, REFRESH_COOKIE_NAME, PLATFORM_REFRESH_COOKIE_PATH, REFRESH_MAX_AGE } from '../../config/security.config';
+import { SecurityConfig, REFRESH_COOKIE_NAME, PLATFORM_REFRESH_COOKIE_PATH, REFRESH_MAX_AGE, THROTTLE } from '../../config/security.config';
 
 import { TenantsService } from './tenants.service';
 import { ListRequestsDtoSchema, type ListRequestsDto } from './dto/list-requests.dto';
@@ -31,7 +32,8 @@ import {
   type PlatformAdminSignInDto,
 } from './dto/platform-admin-sign-in.dto';
 import { MfaChallengeDtoSchema, type MfaChallengeDto } from '../auth/dto/mfa-challenge.dto';
-import { z } from 'zod';
+import { MfaSetupAssociateDtoSchema, type MfaSetupAssociateDto } from '../auth/dto/mfa-setup-associate.dto';
+import { MfaSetupCompleteDtoSchema, type MfaSetupCompleteDto } from '../auth/dto/mfa-setup-complete.dto';
 
 @ApiTags('platform')
 @Controller({ path: 'platform' })
@@ -59,6 +61,7 @@ export class TenantsController {
    */
   @Public()
   @OnboardingOnly()
+  @Throttle({ default: THROTTLE.auth })
   @Post('auth/sign-in')
   @HttpCode(HttpStatus.OK)
   async signInAdmin(
@@ -80,6 +83,7 @@ export class TenantsController {
    */
   @Public()
   @UseGuards(CsrfGuard)
+  @Throttle({ default: THROTTLE.refresh })
   @Post('auth/refresh')
   @HttpCode(HttpStatus.OK)
   async refreshAdmin(@Req() req: Request) {
@@ -95,6 +99,8 @@ export class TenantsController {
    * Uses the platform pool — no tenant context needed.
    */
   @Public()
+  @OnboardingOnly()
+  @Throttle({ default: THROTTLE.mfaChallenge })
   @Post('auth/mfa/challenge')
   @HttpCode(HttpStatus.OK)
   async mfaChallengeAdmin(
@@ -115,11 +121,12 @@ export class TenantsController {
    * Called when sign-in returns mfa_setup. Returns the TOTP secret for QR display.
    */
   @Public()
+  @OnboardingOnly()
+  @Throttle({ default: THROTTLE.mfaSetup })
   @Post('auth/mfa/setup/associate')
   @HttpCode(HttpStatus.OK)
   associateMfaAdmin(
-    @Body(new ZodValidationPipe(z.object({ session: z.string().min(1) })))
-    body: { session: string },
+    @Body(new ZodValidationPipe(MfaSetupAssociateDtoSchema)) body: MfaSetupAssociateDto,
   ) {
     return this.tenantsService.associateSoftwareTokenAdmin(body.session);
   }
@@ -129,15 +136,12 @@ export class TenantsController {
    * Verifies the TOTP code and completes sign-in, returning tokens.
    */
   @Public()
+  @OnboardingOnly()
+  @Throttle({ default: THROTTLE.mfaSetup })
   @Post('auth/mfa/setup/complete')
   @HttpCode(HttpStatus.OK)
   async completeMfaSetupAdmin(
-    @Body(new ZodValidationPipe(z.object({
-      email: z.string().email(),
-      session: z.string().min(1),
-      mfaCode: z.string().length(6),
-    })))
-    body: { email: string; session: string; mfaCode: string },
+    @Body(new ZodValidationPipe(MfaSetupCompleteDtoSchema)) body: MfaSetupCompleteDto,
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.tenantsService.completeMfaSetupAdmin(body);

@@ -1,9 +1,11 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import { OnboardingOnly } from '../../../common/decorators/onboarding-only.decorator';
 import { Public } from '../../../common/decorators/public.decorator';
 import { ZodValidationPipe } from '../../../common/pipes/zod-validation.pipe';
+import { THROTTLE } from '../../../config/security.config';
 
 import {
   CompleteOnboardingDtoSchema,
@@ -22,6 +24,7 @@ export class OnboardingController {
 
   @Public()
   @OnboardingOnly()
+  @Throttle({ default: THROTTLE.onboarding })
   @Post('request')
   @ApiOperation({ summary: 'Submit a tenant onboarding request' })
   @ApiResponse({ status: 201, description: 'Request received.' })
@@ -44,6 +47,7 @@ export class OnboardingController {
   // No @OnboardingOnly() — setup page lives in apps/web (tenant origin).
   // The invite token (256-bit random) is the security mechanism.
   @Public()
+  @Throttle({ default: THROTTLE.onboarding })
   @Post('complete')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Complete onboarding and provision the first admin account' })

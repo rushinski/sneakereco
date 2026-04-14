@@ -42,8 +42,9 @@ All security constants and environment-dependent security values live in this fi
 | `REFRESH_MAX_AGE.admin` | 1 day (ms) | Auth controller, Tenants controller |
 | `CORS_ALLOWED_HEADERS` | Content-Type, Authorization, X-Request-ID, X-CSRF-Token, X-Tenant-ID | CORS middleware |
 | `CORS_ALLOWED_METHODS` | GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS | CORS middleware |
+| `CORS_CREDENTIALS` | `true` | CORS middleware (`Access-Control-Allow-Credentials`) |
 | `CORS_PUBLIC_PATHS` | `/v1/csrf-token` | CORS middleware |
-| `HSTS_MAX_AGE` | 31,536,000 seconds (1 year) | main.ts helmet config |
+| `HSTS_MAX_AGE` | 31,536,000 seconds (1 year) | `SecurityConfig.helmetOptions` |
 | `BODY_SIZE_LIMIT` | `1mb` | main.ts |
 | `ORIGIN_CACHE_TTL_SECONDS` | 300 (5 minutes) | OriginResolverService |
 | `THROTTLE.*` | See § 5 | All controllers |
@@ -62,9 +63,10 @@ Injected into controllers and middleware that need environment-aware values:
 
 ## 2. Security Headers
 
-**Configured in:** `apps/api/src/main.ts` via `helmet()`
+**Defined in:** `apps/api/src/config/security.config.ts` → `SecurityConfig.helmetOptions`
+**Applied in:** `apps/api/src/main.ts` via `helmet(security.helmetOptions)`
 
-All security headers are set by the API. The values are environment-aware and built in `SecurityConfig`.
+All security header policy decisions live in `SecurityConfig`. `main.ts` contains no header logic — it only wires the middleware. CSP directives are built first as `SecurityConfig.cspDirectives` (env-aware), then composed into `helmetOptions` alongside the static header settings.
 
 ### Headers Applied
 
@@ -364,7 +366,7 @@ Raw body access requires that the NestJS body parser is configured to preserve `
 
 ### Development
 
-Secrets live in `.env` files (git-ignored). The `env.schema.ts` Zod schema validates all required secrets are present at startup.
+Secrets are managed via **Doppler** (same tool as production, different environment). The `.env` file in the repo is used only as a fallback for contributors who haven't set up Doppler — it contains placeholder values only and is git-ignored. The `env.schema.ts` Zod schema validates all required secrets are present at startup regardless of source.
 
 ### Production
 
@@ -414,22 +416,9 @@ SneakerEco targets **SAQ A** compliance — the lowest scope tier, applicable wh
 
 ## 14. Known Gaps & Remediation Plan
 
-### Gap 1 — Missing Rate Limits on Sensitive Endpoints
+### ~~Gap 1 — Missing Rate Limits on Sensitive Endpoints~~ ✓ Resolved
 
-**Issue:** The following endpoints use the global default (120/min) instead of tighter auth-appropriate limits.
-
-| Endpoint | Current | Recommended |
-|---|---|---|
-| `POST /v1/auth/confirm` | 120/min | 5/hour (brute-force on email codes) |
-| `POST /v1/auth/reset-password` | 120/min | 3/hour (matches forgot-password) |
-| `POST /v1/auth/mfa/challenge` | 120/min | 5/min (TOTP brute-force) |
-| `POST /v1/auth/mfa/setup/associate` | 120/min | 5/min |
-| `POST /v1/auth/mfa/setup/complete` | 120/min | 5/min |
-| `POST /v1/platform/auth/sign-in` | 120/min | 5/min (same as tenant sign-in) |
-| `POST /v1/platform/auth/mfa/challenge` | 120/min | 5/min |
-| `POST /v1/onboarding/complete` | 120/min | 10/hour (invite token guessing) |
-
-**Remediation:** Add `THROTTLE.mfa`, `THROTTLE.resetPassword`, `THROTTLE.onboardingComplete` profiles to `security.config.ts` and apply `@Throttle()` decorators to the listed routes.
+All auth and onboarding endpoints now have explicit `@Throttle()` decorators. New profiles added to `security.config.ts`: `confirmEmail`, `resetPassword`, `mfaChallenge`, `mfaSetup`, `onboarding`. Applied to: `POST /v1/auth/confirm`, `POST /v1/auth/reset-password`, `POST /v1/auth/mfa/challenge`, `POST /v1/auth/mfa/setup/associate`, `POST /v1/auth/mfa/setup/complete`, `POST /v1/platform/auth/sign-in`, `POST /v1/platform/auth/refresh`, `POST /v1/platform/auth/mfa/challenge`, `POST /v1/platform/auth/mfa/setup/associate`, `POST /v1/platform/auth/mfa/setup/complete`, `POST /v1/onboarding/request`, `POST /v1/onboarding/complete`.
 
 ### Gap 2 — CSP `style-src 'unsafe-inline'`
 

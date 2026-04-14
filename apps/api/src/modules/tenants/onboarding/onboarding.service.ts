@@ -12,6 +12,7 @@ import { tenantCognitoConfig } from '@sneakereco/db';
 
 import type { DrizzleTransaction } from '../../../common/database/database.service';
 import { DatabaseService } from '../../../common/database/database.service';
+import { OriginResolverService } from '../../../common/services/origin-resolver.service';
 import { CognitoService } from '../../auth/cognito.service';
 import { EmailService } from '../../communications/email/email.service';
 
@@ -39,6 +40,7 @@ export class OnboardingService {
     private readonly cognito: CognitoService,
     private readonly email: EmailService,
     private readonly config: ConfigService,
+    private readonly originResolver: OriginResolverService,
   ) {}
 
   async requestAccount(dto: RequestOnboardingDto) {
@@ -185,6 +187,10 @@ export class OnboardingService {
     // Invite link points to the web app's admin setup page on the tenant's subdomain.
     // Derive the base domain from PLATFORM_URL (e.g. http://sneakereco.test:3002 → sneakereco.test).
     const platformHost = new URL(this.config.getOrThrow<string>('PLATFORM_URL')).hostname;
+
+    // Invalidate the CORS origin cache for the new tenant's hostname so the
+    // 5-minute cache doesn't serve a stale 'unknown' classification.
+    await this.originResolver.invalidateOriginCache(`${approval.subdomain}.${platformHost}`);
     const inviteLink = `https://${approval.subdomain}.${platformHost}/admin/setup/${inviteToken}`;
 
     await this.email.sendOnboardingInvite({

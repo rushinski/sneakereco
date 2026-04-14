@@ -20,8 +20,6 @@ import {
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 
-import { z } from 'zod';
-
 import { AuthService } from './auth.service';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/user.decorator';
@@ -38,6 +36,8 @@ import { RefreshTokenDtoSchema, type RefreshTokenDto } from './dto/refresh-token
 import { ForgotPasswordDtoSchema, type ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDtoSchema, type ResetPasswordDto } from './dto/reset-password.dto';
 import { SignOutDtoSchema, type SignOutDto } from './dto/sign-out.dto';
+import { MfaSetupAssociateDtoSchema, type MfaSetupAssociateDto } from './dto/mfa-setup-associate.dto';
+import { MfaSetupCompleteDtoSchema, type MfaSetupCompleteDto } from './dto/mfa-setup-complete.dto';
 import { VerifyMfaDtoSchema, type VerifyMfaDto } from './dto/verify-mfa.dto';
 import { DisableMfaDtoSchema, type DisableMfaDto } from './dto/disable-mfa.dto';
 
@@ -97,6 +97,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: THROTTLE.confirmEmail })
   @Post('confirm')
   @HttpCode(HttpStatus.OK)
   @ApiHeader({ name: 'x-tenant-id', required: true, description: "Tenant's database ID" })
@@ -170,6 +171,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: THROTTLE.mfaChallenge })
   @Post('mfa/challenge')
   @HttpCode(HttpStatus.OK)
   @ApiHeader({ name: 'x-tenant-id', required: true, description: "Tenant's database ID" })
@@ -242,6 +244,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: THROTTLE.resetPassword })
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   @ApiHeader({ name: 'x-tenant-id', required: true, description: "Tenant's database ID" })
@@ -283,6 +286,7 @@ export class AuthController {
   // ─── MFA Setup During Sign-In Challenge ─────────────────────────────────────
 
   @Public()
+  @Throttle({ default: THROTTLE.mfaSetup })
   @Post('mfa/setup/associate')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -290,12 +294,13 @@ export class AuthController {
     description: 'Associates a software token using a session from an MFA_SETUP challenge.',
   })
   mfaSetupAssociate(
-    @Body(new ZodValidationPipe(z.object({ session: z.string() }))) dto: { session: string },
+    @Body(new ZodValidationPipe(MfaSetupAssociateDtoSchema)) dto: MfaSetupAssociateDto,
   ) {
     return this.authService.mfaSetupAssociate(dto.session);
   }
 
   @Public()
+  @Throttle({ default: THROTTLE.mfaSetup })
   @Post('mfa/setup/complete')
   @HttpCode(HttpStatus.OK)
   @ApiHeader({ name: 'x-tenant-id', required: true, description: "Tenant's database ID" })
@@ -305,8 +310,7 @@ export class AuthController {
   })
   async mfaSetupComplete(
     @Headers('x-tenant-id') tenantId: string,
-    @Body(new ZodValidationPipe(z.object({ email: z.string(), session: z.string(), mfaCode: z.string() })))
-    dto: { email: string; session: string; mfaCode: string },
+    @Body(new ZodValidationPipe(MfaSetupCompleteDtoSchema)) dto: MfaSetupCompleteDto,
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.authService.mfaSetupComplete(dto, tenantId);

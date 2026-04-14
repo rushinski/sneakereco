@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 
 import { OriginResolverService } from '../services/origin-resolver.service';
-import { CORS_ALLOWED_HEADERS, CORS_ALLOWED_METHODS, CORS_PUBLIC_PATHS } from '../../config/security.config';
+import { CORS_ALLOWED_HEADERS, CORS_ALLOWED_METHODS, CORS_CREDENTIALS, CORS_PUBLIC_PATHS } from '../../config/security.config';
 
 @Injectable()
 export class CorsMiddleware implements NestMiddleware {
@@ -33,7 +33,7 @@ export class CorsMiddleware implements NestMiddleware {
         response.header('Access-Control-Allow-Origin', origin);
         response.header('Access-Control-Allow-Headers', CORS_ALLOWED_HEADERS.join(', '));
         response.header('Access-Control-Allow-Methods', CORS_ALLOWED_METHODS.join(', '));
-        response.header('Access-Control-Allow-Credentials', 'true');
+        response.header('Access-Control-Allow-Credentials', String(CORS_CREDENTIALS));
         response.append('Vary', 'Origin');
       }
 
