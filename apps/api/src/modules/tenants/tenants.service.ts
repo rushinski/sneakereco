@@ -5,6 +5,7 @@ import { OnboardingService } from './onboarding/onboarding.service';
 import { TenantConfigService } from './tenant-config/tenant-config.service';
 import { TenantsRepository } from './tenants.repository';
 import type { ListRequestsDto } from './dto/list-requests.dto';
+import type { MfaChallengeDto } from '../auth/dto/mfa-challenge.dto';
 import type { PlatformAdminSignInDto } from './dto/platform-admin-sign-in.dto';
 
 @Injectable()
@@ -23,6 +24,19 @@ export class TenantsService {
   refreshAdmin(refreshToken: string) {
     // No pool passed — falls back to platformAdminClientId in CognitoService
     return this.cognito.refreshTokens(refreshToken);
+  }
+
+  mfaChallengeAdmin(dto: MfaChallengeDto) {
+    // No pool passed — falls back to platformAdminClientId in CognitoService
+    return this.cognito.respondToMfaChallenge(dto);
+  }
+
+  associateSoftwareTokenAdmin(session: string) {
+    return this.cognito.associateSoftwareTokenWithSession(session);
+  }
+
+  completeMfaSetupAdmin(params: { email: string; session: string; mfaCode: string }) {
+    return this.cognito.completeMfaSetupChallenge(params);
   }
 
   listRequests(dto: ListRequestsDto) {

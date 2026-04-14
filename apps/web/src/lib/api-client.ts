@@ -172,7 +172,8 @@ export type AdminSignInResult =
       // refreshToken is no longer returned in the body — it is set as an
       // httpOnly cookie by the API so JavaScript cannot read it.
     }
-  | { type: 'mfa_required'; session: string };
+  | { type: 'mfa_required'; session: string }
+  | { type: 'mfa_setup'; session: string; email: string };
 
 // ---------------------------------------------------------------------------
 // Client
@@ -208,20 +209,29 @@ export const apiClient = {
       method: 'POST',
     }),
 
-  signIn: (input: { email: string; password: string }, csrfToken: string) =>
-    request<AdminSignInResult>('/auth/sign-in', {
-      body: input,
+  signIn: (
+    input: { email: string; password: string; clientType: 'admin'; tenantId: string },
+    csrfToken: string,
+  ) => {
+    const { tenantId, ...body } = input;
+    return request<AdminSignInResult>('/auth/sign-in', {
+      body,
       csrfToken,
       method: 'POST',
-    }),
+      tenantId,
+    });
+  },
 
   mfaChallenge: (
-    input: { email: string; mfaCode: string; session: string },
+    input: { email: string; mfaCode: string; session: string; tenantId: string },
     csrfToken: string,
-  ) =>
-    request<CompleteOnboardingResult>('/auth/mfa/challenge', {
-      body: input,
+  ) => {
+    const { tenantId, ...body } = input;
+    return request<{ accessToken: string; idToken: string; expiresIn: number }>('/auth/mfa/challenge', {
+      body,
       csrfToken,
       method: 'POST',
-    }),
+      tenantId,
+    });
+  },
 };

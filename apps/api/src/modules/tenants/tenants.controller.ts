@@ -30,6 +30,8 @@ import {
   PlatformAdminSignInDtoSchema,
   type PlatformAdminSignInDto,
 } from './dto/platform-admin-sign-in.dto';
+import { MfaChallengeDtoSchema, type MfaChallengeDto } from '../auth/dto/mfa-challenge.dto';
+import { z } from 'zod';
 
 @ApiTags('platform')
 @Controller({ path: 'platform' })
@@ -46,16 +48,6 @@ export class TenantsController {
       sameSite: 'strict',
       path: PLATFORM_REFRESH_COOKIE_PATH,
       maxAge: REFRESH_MAX_AGE.admin,
-      domain: this.security.cookieDomain,
-    });
-  }
-
-  private clearRefreshCookie(res: Response): void {
-    res.clearCookie(REFRESH_COOKIE_NAME, {
-      httpOnly: true,
-      secure: this.security.cookieSecure,
-      sameSite: 'strict',
-      path: PLATFORM_REFRESH_COOKIE_PATH,
       domain: this.security.cookieDomain,
     });
   }
@@ -96,6 +88,65 @@ export class TenantsController {
       throw new UnauthorizedException('No refresh token provided');
     }
     return this.tenantsService.refreshAdmin(refreshToken);
+  }
+
+  /**
+   * Platform admin MFA challenge. Completes TOTP sign-in after password step.
+   * Uses the platform pool — no tenant context needed.
+   */
+  @Public()
+  @Post('auth/mfa/challenge')
+  @HttpCode(HttpStatus.OK)
+  async mfaChallengeAdmin(
+    @Body(new ZodValidationPipe(MfaChallengeDtoSchema)) dto: MfaChallengeDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.tenantsService.mfaChallengeAdmin(dto);
+    if (result?.type === 'tokens') {
+      const { refreshToken, ...clientResult } = result;
+      this.setRefreshCookie(res, refreshToken);
+      return clientResult;
+    }
+    return result;
+  }
+
+  /**
+   * Platform admin MFA first-time setup — step 1.
+   * Called when sign-in returns mfa_setup. Returns the TOTP secret for QR display.
+   */
+  @Public()
+  @Post('auth/mfa/setup/associate')
+  @HttpCode(HttpStatus.OK)
+  associateMfaAdmin(
+    @Body(new ZodValidationPipe(z.object({ session: z.string().min(1) })))
+    body: { session: string },
+  ) {
+    return this.tenantsService.associateSoftwareTokenAdmin(body.session);
+  }
+
+  /**
+   * Platform admin MFA first-time setup — step 2.
+   * Verifies the TOTP code and completes sign-in, returning tokens.
+   */
+  @Public()
+  @Post('auth/mfa/setup/complete')
+  @HttpCode(HttpStatus.OK)
+  async completeMfaSetupAdmin(
+    @Body(new ZodValidationPipe(z.object({
+      email: z.string().email(),
+      session: z.string().min(1),
+      mfaCode: z.string().length(6),
+    })))
+    body: { email: string; session: string; mfaCode: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.tenantsService.completeMfaSetupAdmin(body);
+    if (result?.type === 'tokens') {
+      const { refreshToken, ...clientResult } = result;
+      this.setRefreshCookie(res, refreshToken);
+      return clientResult;
+    }
+    return result;
   }
 
   /**

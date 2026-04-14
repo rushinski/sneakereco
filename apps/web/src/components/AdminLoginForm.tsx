@@ -7,7 +7,7 @@ import { ApiClientError, apiClient, setAccessToken } from '../lib/api-client';
 
 type Stage = 'login' | 'mfa';
 
-export function AdminLoginForm() {
+export function AdminLoginForm({ tenantId }: { tenantId: string | null }) {
   const router = useRouter();
 
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
@@ -33,7 +33,7 @@ export function AdminLoginForm() {
     setError(null);
 
     try {
-      const result = await apiClient.signIn({ email, password }, csrfToken);
+      const result = await apiClient.signIn({ email, password, clientType: 'admin', tenantId: tenantId ?? '' }, csrfToken);
 
       if (result.type === 'mfa_required') {
         setMfaSession(result.session);
@@ -59,7 +59,7 @@ export function AdminLoginForm() {
 
     try {
       const result = await apiClient.mfaChallenge(
-        { email, mfaCode, session: mfaSession },
+        { email, mfaCode, session: mfaSession, tenantId: tenantId ?? '' },
         csrfToken,
       );
 

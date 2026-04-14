@@ -133,6 +133,12 @@ export class CognitoService {
         return { type: 'mfa_required' as const, session: response.Session! };
       }
 
+      // Returned when the user has never set up TOTP. The client must call
+      // AssociateSoftwareToken → VerifySoftwareToken → RespondToAuthChallenge(MFA_SETUP).
+      if (response.ChallengeName === 'MFA_SETUP') {
+        return { type: 'mfa_setup' as const, session: response.Session!, email: dto.email };
+      }
+
       if (response.ChallengeName === 'NEW_PASSWORD_REQUIRED') {
         throw new UnauthorizedException(
           'Account requires a password reset. Use the AWS console or CLI to set a permanent password (AdminSetUserPassword) before signing in.',
@@ -234,6 +240,70 @@ export class CognitoService {
       );
       return { secretCode: response.SecretCode! };
     } catch (error) {
+      this.mapCognitoError(error);
+    }
+  }
+
+  /**
+   * Used during the MFA_SETUP sign-in challenge. Takes the session token from
+   * the challenge response instead of an access token.
+   */
+  async associateSoftwareTokenWithSession(session: string) {
+    try {
+      const response = await this.client.send(
+        new AssociateSoftwareTokenCommand({ Session: session }),
+      );
+      return { secretCode: response.SecretCode!, session: response.Session! };
+    } catch (error) {
+      this.mapCognitoError(error);
+    }
+  }
+
+  /**
+   * Completes the MFA_SETUP sign-in challenge:
+   *   1. VerifySoftwareToken with the session from associateSoftwareTokenWithSession
+   *   2. RespondToAuthChallenge(MFA_SETUP) to finish sign-in and receive tokens
+   */
+  async completeMfaSetupChallenge(
+    params: { email: string; session: string; mfaCode: string },
+    pool?: PoolCredentials,
+  ) {
+    const clientId = pool?.clientId ?? this.platformAdminClientId;
+
+    try {
+      const verifyResponse = await this.client.send(
+        new VerifySoftwareTokenCommand({
+          Session: params.session,
+          UserCode: params.mfaCode,
+          FriendlyDeviceName: 'Authenticator App',
+        }),
+      );
+
+      if (verifyResponse.Status !== 'SUCCESS') {
+        throw new UnauthorizedException('MFA code verification failed');
+      }
+
+      const challengeResponse = await this.client.send(
+        new RespondToAuthChallengeCommand({
+          ClientId: clientId,
+          ChallengeName: 'MFA_SETUP',
+          Session: verifyResponse.Session!,
+          ChallengeResponses: { USERNAME: params.email },
+        }),
+      );
+
+      const result = challengeResponse.AuthenticationResult!;
+      return {
+        type: 'tokens' as const,
+        accessToken: result.AccessToken!,
+        refreshToken: result.RefreshToken!,
+        idToken: result.IdToken!,
+        expiresIn: result.ExpiresIn!,
+      };
+    } catch (error) {
+      if (error instanceof CodeMismatchException) {
+        throw new UnauthorizedException('Invalid TOTP code — check your authenticator app');
+      }
       this.mapCognitoError(error);
     }
   }

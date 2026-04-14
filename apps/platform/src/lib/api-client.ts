@@ -152,7 +152,8 @@ export type AdminSignInResult =
       // refreshToken is no longer returned in the body — it is set as an
       // httpOnly cookie by the API so JavaScript cannot read it.
     }
-  | { type: 'mfa_required'; session: string };
+  | { type: 'mfa_required'; session: string }
+  | { type: 'mfa_setup'; session: string; email: string };
 
 export interface MfaChallengeResult {
   accessToken: string;
@@ -245,7 +246,24 @@ export const apiClient = {
     input: { email: string; mfaCode: string; session: string },
     csrfToken: string,
   ) =>
-    request<MfaChallengeResult>('/auth/mfa/challenge', {
+    request<MfaChallengeResult>('/platform/auth/mfa/challenge', {
+      body: input,
+      csrfToken,
+      method: 'POST',
+    }),
+
+  mfaSetupAssociate: (session: string, csrfToken: string) =>
+    request<{ secretCode: string; session: string }>('/platform/auth/mfa/setup/associate', {
+      body: { session },
+      csrfToken,
+      method: 'POST',
+    }),
+
+  mfaSetupComplete: (
+    input: { email: string; session: string; mfaCode: string },
+    csrfToken: string,
+  ) =>
+    request<MfaChallengeResult>('/platform/auth/mfa/setup/complete', {
       body: input,
       csrfToken,
       method: 'POST',

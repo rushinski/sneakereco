@@ -14,8 +14,8 @@ export function middleware(request: NextRequest) {
   // Strip port suffix (e.g. localhost:3001)
   const host = hostname.split(':')[0] ?? '';
 
-  // {slug}.sneakereco.com
-  const sneakerecoMatch = host.match(/^([a-z0-9-]+)\.sneakereco\.com$/);
+  // {slug}.sneakereco.com (prod) or {slug}.sneakereco.test (dev)
+  const sneakerecoMatch = host.match(/^([a-z0-9-]+)\.sneakereco\.(?:com|test)$/);
   if (sneakerecoMatch) {
     const slug = sneakerecoMatch[1];
     // Exclude 'www' and 'dashboard' — not tenant subdomains
