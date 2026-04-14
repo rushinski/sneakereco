@@ -4,6 +4,8 @@
 > See [MASTER_PLAN.md](../MASTER_PLAN.md) § 5 for the original architecture decision rationale.
 > This document is the authoritative reference for everything auth-related: Cognito configuration, token flows, cookie strategy, API layer, frontend integration, and isolation guarantees.
 
+> **Domain examples used in this document:** `heatkings` is used as the representative tenant slug and `heatkings.com` / `admin.heatkings.com` as the representative custom domain pair. In practice, a tenant's custom domain is whatever they configure — it could be `store.heatkings.com`, `kicks.somebrand.com`, etc. The `admin.` prefix on a custom domain is the convention for distinguishing the admin interface from the storefront when a tenant brings their own domain.
+
 ---
 
 ## Table of Contents
@@ -175,7 +177,7 @@ Business owner clicks invite link → `POST /v1/onboarding/complete`:
 ### Sign-in Flow (subsequent logins)
 
 ```
-User: admin.{slug}.sneakereco.com/admin/login
+User: heatkings.sneakereco.com/admin/login  (or admin.heatkings.com/login on a custom domain)
   ↓
 POST /v1/auth/sign-in
   { email, password, clientType: 'admin' }
@@ -422,16 +424,40 @@ All require `X-Tenant-ID` header. `clientType: 'admin' | 'customer'` in the body
 
 Cookie name: `__sneakereco_refresh`
 
-| | Platform Admin | Tenant Admin | Customer |
+| Attribute | Platform Admin | Tenant Admin | Customer |
 |---|---|---|---|
-| Path | `/v1/platform/auth` | `/v1/auth` | `/v1/auth` |
-| Max-age | 1 day | 1 day | 30 days |
-| httpOnly | ✓ | ✓ | ✓ |
-| Secure | `true` in prod / when `USE_HTTPS=true` | same | same |
-| SameSite | `strict` | `strict` | `strict` |
-| Domain | `COOKIE_DOMAIN` env var (e.g. `.sneakereco.test`) | same | same |
+| `Path` | `/v1/platform/auth` | `/v1/auth` | `/v1/auth` |
+| `Max-Age` | 1 day | 1 day | 30 days |
+| `HttpOnly` | ✓ | ✓ | ✓ |
+| `Secure` | `true` in prod / when `USE_HTTPS=true` | same | same |
+| `SameSite` | `Strict` | `Strict` | `Strict` |
+| `Domain` | `COOKIE_DOMAIN` env var | same | same |
 
-The platform admin cookie path (`/v1/platform/auth`) means the browser will only send it to the platform refresh endpoint, never to the tenant auth endpoints. A tenant admin/customer cookie at `/v1/auth` will never be sent to `/v1/platform/auth`. The paths provide hard separation even though both cookies carry the same name.
+### What each attribute does
+
+**`HttpOnly`** — Prevents JavaScript from reading the cookie via `document.cookie`. This is the primary XSS defense for the refresh token. Even if an attacker injects a script into the page, they cannot steal the refresh token. The access token (stored in memory) is what gets stolen in an XSS attack, but it expires in 60 minutes, limiting the damage window.
+
+**`Secure`** — Instructs the browser to only send the cookie over HTTPS. In local dev this is only set when `USE_HTTPS=true` (i.e. when running behind Caddy with a real TLS cert). Without it, the cookie wouldn't be sent on `http://localhost` if `Secure` were always on.
+
+**`SameSite: Strict`** — The browser will not send this cookie on any cross-site request, including cross-site form submissions and navigations. This is the primary CSRF defense. Combined with double-submit CSRF tokens on mutating endpoints, CSRF attacks against the refresh endpoint are blocked at two layers.
+
+**`Path`** — Scopes the cookie to a URL prefix. The browser only attaches the cookie to requests whose URL starts with this path. This is what separates platform and tenant refresh cookies even though they share the same cookie name:
+- Platform admin cookie (`/v1/platform/auth`) is never sent to `/v1/auth/refresh`
+- Tenant/customer cookie (`/v1/auth`) is never sent to `/v1/platform/auth/refresh`
+
+**`Domain`** — Set to the value of `COOKIE_DOMAIN` (e.g. `.sneakereco.test` in dev, `.sneakereco.com` in prod). The leading dot makes the cookie available to all subdomains of that domain. This is necessary because the API is at `api.sneakereco.com` but the cookie is set by responses from that API and needs to be sent back to it from any subdomain (e.g. `heatkings.sneakereco.com` hitting the API).
+
+**`Max-Age`** — How long the browser keeps the cookie before deleting it. This is the refresh token's effective lifetime from the user's perspective. See below.
+
+### Refresh token duration — UX implications
+
+The `Max-Age` controls how long a user stays "logged in" without re-entering their credentials:
+
+- **Platform admin (1 day):** The platform admin must re-authenticate once per day. Given that this is a sensitive privileged account with access to all tenants, a short session is intentional.
+- **Tenant admin (1 day):** Same reasoning — store management is a privileged operation.
+- **Customer (30 days):** Customers get a 30-day session. If they visit a store and sign in, they remain signed in for a month of inactivity. This matches the expectation of a normal e-commerce sign-in experience (comparable to "stay signed in" on most consumer apps).
+
+When `Max-Age` expires, the browser discards the cookie. The next time the frontend tries to refresh the access token, the API receives no cookie and returns 401. The user is sent back to the login page. They must sign in from scratch — there is no "silent re-authentication" path.
 
 ---
 
@@ -441,12 +467,25 @@ The platform admin cookie path (`/v1/platform/auth`) means the browser will only
 
 Every cross-origin request has its `Origin` header classified into one of four groups:
 
-| Group | Example | Allowed |
+| Group | Example origins | Allowed |
 |---|---|---|
-| `platform` | `https://dashboard.sneakereco.com` | Yes |
-| `tenant` | `https://heatkings.sneakereco.com` | Yes |
-| `admin` | `https://admin.heatkings.sneakereco.com` | Yes |
+| `platform` | `https://sneakereco.com`, `https://dashboard.sneakereco.com` | Yes |
+| `tenant` | `https://heatkings.sneakereco.com`, `https://heatkings.com` | Yes |
+| `admin` | `https://admin.heatkings.com` | Yes |
 | `unknown` | Anything else | No |
+
+**Domain structure reference** — all possible origin variants across environments:
+
+| URL | What it is |
+|---|---|
+| `https://sneakereco.com` | Platform marketing / account request page |
+| `https://dashboard.sneakereco.com` | Platform admin dashboard |
+| `https://api.sneakereco.com` | API — not a browser origin, never appears as `Origin` header |
+| `https://heatkings.sneakereco.com` | Tenant storefront **and** admin login (`/admin/login` path) — `heatkings` is an example tenant slug |
+| `https://heatkings.com` | Same tenant on a custom domain (storefront) |
+| `https://admin.heatkings.com` | Same tenant's admin interface on a custom domain |
+
+The `admin` origin group only applies to custom domains (`admin.heatkings.com`). There is no nested `admin.{slug}.sneakereco.com` subdomain — the admin login for a SneakerEco-hosted tenant is served at `heatkings.sneakereco.com/admin/login`, which falls under the `tenant` origin group.
 
 Classification is DB-backed (queries `tenant_domain_config`) with a 5-minute Valkey cache to avoid a DB hit on every preflight. The `baseDomain` is derived from `PLATFORM_URL` at startup, so dev (`.sneakereco.test`) and prod (`.sneakereco.com`) work without separate configuration.
 
@@ -456,20 +495,32 @@ Any tenant added to `tenant_domain_config` is automatically allowed. No manual C
 
 ## 11. MFA Policy Enforcement
 
-The Cognito pool has `MfaConfiguration: 'OPTIONAL'` — not `'REQUIRED'`. This is intentional:
+### Platform Admin — MFA Required (pool-level)
 
-- **Customers** can use the platform without MFA. They may optionally enable it via the MFA lifecycle endpoints.
-- **Tenant admins** are required to set up TOTP. This is enforced by our code, not by Cognito's pool-level setting. During onboarding completion, the tenant admin is signed in and immediately presented with the TOTP QR setup flow before they can access the dashboard. The `secretCode` is returned from `POST /v1/onboarding/complete`.
+Platform admins **must** have MFA. This is enforced at the Cognito pool level — `MfaConfiguration: 'REQUIRED'` on the platform pool. A platform admin account that hasn't completed TOTP setup cannot sign in at all; Cognito returns an `MFA_SETUP` challenge on first login and the sign-in flow will not complete until TOTP is registered and verified.
 
-If `MfaConfiguration` were set to `'REQUIRED'` on the pool, customers would also be forced through TOTP — which is not the intended UX.
+### Tenant Pool — MFA Optional (pool-level), Required for Admins (application-level)
 
-The net effect: tenants admins have MFA, customers don't (unless they opt in), and we control this entirely in our application layer.
+The per-tenant Cognito pool has `MfaConfiguration: 'OPTIONAL'`. This is intentional and distinct from the platform pool:
+
+- **Customers** can use the platform without MFA. They may optionally enable it via the MFA lifecycle endpoints after signing in.
+- **Tenant admins** are required to set up TOTP. This is enforced by our application code, not by Cognito's pool-level setting. During onboarding completion, the tenant admin is signed in and immediately presented with the TOTP QR setup flow before they can access the dashboard. The `secretCode` is returned from `POST /v1/onboarding/complete`.
+
+If the tenant pool's `MfaConfiguration` were set to `'REQUIRED'`, customers would also be forced through TOTP — which is not the intended UX. The split — pool-level Required for platform, application-level Required for tenant admins — is what allows customers and admins to coexist in the same pool with different MFA expectations.
+
+**Summary:**
+
+| User type | MFA | Enforcement mechanism |
+|---|---|---|
+| Platform admin | Required | Cognito pool (`MfaConfiguration: 'REQUIRED'`) |
+| Tenant admin | Required | Application code (onboarding flow forces TOTP setup) |
+| Customer | Optional | User-controlled via `/auth/mfa/*` endpoints |
 
 ---
 
 ## 12. Platform Admin Login at Tenant Dashboards
 
-A platform admin can authenticate at any tenant's admin login page (`admin.{slug}.sneakereco.com/admin/login`) using their platform credentials. This supports impersonation and operational access without needing separate tenant admin credentials.
+A platform admin can authenticate at any tenant's admin login page (`heatkings.sneakereco.com/admin/login` or `admin.heatkings.com/login` on a custom domain) using their platform credentials. This supports impersonation and operational access without needing separate tenant admin credentials.
 
 **How it works:**
 
@@ -525,9 +576,11 @@ Auth-relevant env vars. Full list in `apps/api/.env.example`.
 
 | Variable | Purpose |
 |---|---|
+| `AWS_ACCESS_KEY_ID` | AWS IAM access key — authenticates the API server to AWS so it can call Cognito APIs (create pools, initiate auth, etc.) |
+| `AWS_SECRET_ACCESS_KEY` | AWS IAM secret key — paired with `AWS_ACCESS_KEY_ID` |
+| `AWS_REGION` | AWS region for Cognito and other services |
 | `PLATFORM_COGNITO_POOL_ID` | Platform admin Cognito pool ID |
 | `PLATFORM_COGNITO_ADMIN_CLIENT_ID` | Platform admin app client ID |
-| `AWS_REGION` | AWS region for Cognito and other services |
 | `PLATFORM_URL` | Canonical platform URL — used to derive `baseDomain` for CORS and invite link generation (e.g. `https://dashboard.sneakereco.test`) |
 | `COOKIE_DOMAIN` | Domain attribute for refresh cookies (e.g. `.sneakereco.test`) — enables cross-subdomain cookie sharing within the same top-level domain |
 | `USE_HTTPS` | When `true`, sets `Secure` flag on cookies (local dev with Caddy + mkcert) |

@@ -867,7 +867,7 @@ ALTER TABLE tenants ADD COLUMN launched_at TIMESTAMPTZ;
 
 Three user types — platform admin, tenant admin, customer — each with isolated Cognito pools or clients, separate cookie paths, and distinct identity resolution in the API JWT strategy. Token storage contract: refresh token in httpOnly cookie, access token in memory, applied uniformly across all channels.
 
-> **Full specification:** [docs/plans/subplans/AUTH_PLAN.md](./subplans/AUTH_PLAN.md)
+> **Full specification:** [docs/subdocs/AUTH_PLAN.md](./subdocs/AUTH_PLAN.md)
 >
 > That document covers: Cognito pool configuration for all three user types, token flows, cookie isolation, CORS origin classification, MFA enforcement strategy, platform admin login at tenant dashboards, and flow isolation guarantees.
 
