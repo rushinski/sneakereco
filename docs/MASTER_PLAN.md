@@ -2232,46 +2232,19 @@ const logger = pino({
 
 ## 25. Security Posture
 
-### Non-Negotiable Security Requirements
+> **Full specification:** [docs/subdocs/SECURITY_PLAN.md](./subdocs/SECURITY_PLAN.md)
+>
+> That document covers: security headers, CORS, CSRF, rate limiting, input validation, cookie security, tenant isolation, webhook signature verification, secrets management, audit trail, dependency auditing, and known gaps with remediation plans.
 
-1. **No secrets in code or `.env` files in production.** All secrets via Doppler (app config) or AWS SSM (tenant credentials).
+### High-Level Security Principles
 
-2. **HTTPS everywhere.** Cloudflare Full (Strict) SSL mode. HSTS headers.
-
-3. **Input validation on every endpoint.** Zod schemas validated via NestJS pipes. No unvalidated user input reaches business logic.
-
-4. **SQL injection prevention.** Drizzle ORM parameterized queries only. No string concatenation in queries.
-
-5. **XSS prevention.** React auto-escapes by default. CSP headers via Cloudflare.
-
-6. **CSRF protection.** SameSite cookies, double-submit CSRF tokens for state-changing operations.
-
-7. **Rate limiting.** Per-IP and per-tenant rate limits on all endpoints. Stricter on auth endpoints (5 attempts/minute).
-
-8. **Webhook signature verification.** HMAC-SHA256 verification on all incoming webhooks (PayRilla, Shippo).
-
-9. **PCI DSS SAQ A compliance.** Card data never touches our servers. PayRilla Hosted Tokenization handles all card input via iframes.
-
-10. **Tenant isolation.** PostgreSQL RLS enforces tenant boundaries at the database level. Application-level checks are defense-in-depth, not the primary mechanism.
-
-11. **Secrets rotation.** Doppler supports rotation. SSM Parameter Store supports versioning.
-
-12. **Dependency auditing.** `pnpm audit` in CI. Dependabot or Renovate for automated updates.
-
-13. **Admin MFA required.** TOTP enforced via Cognito admin app client.
-
-14. **Audit trail.** All admin actions logged in `audit_events`. Append-only (no DELETE RLS policy on this table).
-
-### Security Headers (via Cloudflare)
-
-```
-Strict-Transport-Security: max-age=31536000; includeSubDomains
-X-Content-Type-Options: nosniff
-X-Frame-Options: DENY
-X-XSS-Protection: 1; mode=block
-Referrer-Policy: strict-origin-when-cross-origin
-Content-Security-Policy: default-src 'self'; script-src 'self' tokenization.payrillagateway.com services.nofraud.com; frame-src tokenization.payrillagateway.com;
-```
+- No secrets in code or `.env` files in production — Doppler in app, AWS SSM for per-tenant credentials
+- HTTPS everywhere — Cloudflare Full (Strict) SSL, HSTS with `includeSubDomains`
+- All user input validated at the API boundary via Zod schemas before reaching business logic
+- Drizzle ORM parameterized queries throughout — no raw string SQL concatenation
+- PostgreSQL RLS enforces tenant data isolation at the database layer
+- PCI DSS SAQ A — card data never touches our servers; PayRilla hosted tokenization via iframe
+- MFA required for all admin-class accounts (platform pool: enforced by Cognito; tenant admins: enforced by application onboarding flow)
 
 ---
 
@@ -2548,25 +2521,7 @@ Staging mirrors production infrastructure but:
 
 The following items were identified as gaps after the initial draft and are now addressed:
 
-### 30.1 CORS Configuration
-
-The API must handle CORS carefully because requests come from multiple origins (each tenant's domain). The NestJS CORS config must dynamically allow origins based on registered tenant domains:
-
-```typescript
-// In main.ts
-app.enableCors({
-  origin: async (origin, callback) => {
-    if (!origin) return callback(null, true); // Allow non-browser requests
-    const isAllowed = await tenantDomainService.isRegisteredDomain(origin);
-    callback(isAllowed ? null : new Error('CORS blocked'), isAllowed);
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant-ID', 'X-Request-ID'],
-});
-```
-
-### 30.2 Cart System Architecture
+### 30.1 Cart System Architecture
 
 The current cart lives entirely in localStorage/sessionStorage (client-side). For the multi-tenant rebuild, cart remains client-side (no server-side cart table needed) with one key change: the cart key is scoped by tenant slug to prevent cross-tenant cart bleed:
 

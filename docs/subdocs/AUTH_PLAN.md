@@ -4,6 +4,9 @@
 > See [MASTER_PLAN.md](../MASTER_PLAN.md) § 5 for the original architecture decision rationale.
 > This document is the authoritative reference for everything auth-related: Cognito configuration, token flows, cookie strategy, API layer, frontend integration, and isolation guarantees.
 
+**Supporting documents:**
+- [SECURITY_PLAN.md](./SECURITY_PLAN.md) — security headers, CORS, CSRF, rate limiting, input validation, tenant isolation, webhook verification, secrets management
+
 > **Domain examples used in this document:** `heatkings` is used as the representative tenant slug and `heatkings.com` / `admin.heatkings.com` as the representative custom domain pair. In practice, a tenant's custom domain is whatever they configure — it could be `store.heatkings.com`, `kicks.somebrand.com`, etc. The `admin.` prefix on a custom domain is the convention for distinguishing the admin interface from the storefront when a tenant brings their own domain.
 
 ---
@@ -23,7 +26,10 @@
 11. [MFA Policy Enforcement](#11-mfa-policy-enforcement)
 12. [Platform Admin Login at Tenant Dashboards](#12-platform-admin-login-at-tenant-dashboards)
 13. [Flow Isolation Guarantees](#13-flow-isolation-guarantees)
-14. [Environment Variables](#14-environment-variables)
+14. [Session Lifecycle & Revocation](#14-session-lifecycle--revocation)
+15. [Membership Cache — Authorization Consistency](#15-membership-cache--authorization-consistency)
+16. [Rate Limiting on Auth Endpoints](#16-rate-limiting-on-auth-endpoints)
+17. [Environment Variables](#17-environment-variables)
 
 ---
 
@@ -504,17 +510,24 @@ Platform admins **must** have MFA. This is enforced at the Cognito pool level �
 The per-tenant Cognito pool has `MfaConfiguration: 'OPTIONAL'`. This is intentional and distinct from the platform pool:
 
 - **Customers** can use the platform without MFA. They may optionally enable it via the MFA lifecycle endpoints after signing in.
-- **Tenant admins** are required to set up TOTP. This is enforced by our application code, not by Cognito's pool-level setting. During onboarding completion, the tenant admin is signed in and immediately presented with the TOTP QR setup flow before they can access the dashboard. The `secretCode` is returned from `POST /v1/onboarding/complete`.
+- **Tenant admins** are required to set up TOTP. This is enforced by our application code during onboarding — the `secretCode` is returned from `POST /v1/onboarding/complete` and the dashboard is not accessible until TOTP setup is verified.
 
-If the tenant pool's `MfaConfiguration` were set to `'REQUIRED'`, customers would also be forced through TOTP — which is not the intended UX. The split — pool-level Required for platform, application-level Required for tenant admins — is what allows customers and admins to coexist in the same pool with different MFA expectations.
+If the tenant pool's `MfaConfiguration` were set to `'REQUIRED'`, customers would also be forced through TOTP — which is not the intended UX.
+
+**Important limitation:** Tenant admin MFA is a process guarantee, not an identity-provider guarantee. The Cognito pool itself will not block a sign-in from a tenant admin account that has no TOTP registered. This means:
+
+- Admin accounts created outside the normal onboarding flow (via AWS console, CLI, migration, or a future admin management feature) can sign in without MFA unless the application layer explicitly checks for it.
+- Currently there is no post-authentication guard that verifies a TOTP device is registered on the Cognito user object. MFA enforcement relies entirely on the onboarding flow being the only account creation path.
+
+**Planned hardening:** A guard that checks `cognito:mfa_enabled` on every admin API request (rejecting with 403 if MFA is not registered) would convert this from a process guarantee to a technical one. This is the correct long-term posture and should be added when admin account management features are built.
 
 **Summary:**
 
-| User type | MFA | Enforcement mechanism |
-|---|---|---|
-| Platform admin | Required | Cognito pool (`MfaConfiguration: 'REQUIRED'`) |
-| Tenant admin | Required | Application code (onboarding flow forces TOTP setup) |
-| Customer | Optional | User-controlled via `/auth/mfa/*` endpoints |
+| User type | MFA | Enforcement mechanism | Strength |
+|---|---|---|---|
+| Platform admin | Required | Cognito pool (`MfaConfiguration: 'REQUIRED'`) | Technical — IdP enforces it |
+| Tenant admin | Required at onboarding | Application onboarding flow only | Process — relies on controlled account creation path |
+| Customer | Optional | User-controlled via `/auth/mfa/*` endpoints | N/A |
 
 ---
 
@@ -570,9 +583,99 @@ The following properties prevent cross-contamination between user types:
 
 ---
 
-## 14. Environment Variables
+## 14. Session Lifecycle & Revocation
 
-Auth-relevant env vars. Full list in `apps/api/.env.example`.
+### Normal Sign-Out
+
+`POST /v1/auth/sign-out` (Bearer token required) calls Cognito `GlobalSignOut`, which **invalidates all refresh tokens for that user across all devices and sessions** — not just the current one. The API also clears the `__sneakereco_refresh` httpOnly cookie in the response. The access token itself cannot be revoked (JWTs are stateless); it remains valid until it expires (60 minutes). This is the standard JWT trade-off.
+
+For platform admins, the same applies via the platform sign-out path.
+
+### Refresh Token Rotation
+
+Cognito does **not** rotate refresh tokens by default — the same refresh token remains valid until it expires or until `GlobalSignOut` is called. There is no server-side single-use enforcement on the refresh token. The security model relies on the `httpOnly` cookie (not readable by JavaScript) and the short access token TTL to limit the damage window if a refresh token is compromised.
+
+### Forced Revocation (Incident Response)
+
+If a session needs to be immediately terminated (compromised account, suspended tenant, rogue admin):
+
+1. Call `AdminUserGlobalSignOut` via the AWS SDK / console — this invalidates all of the user's refresh tokens in Cognito immediately.
+2. The user's next access token use will still succeed until that token expires (up to 60 minutes). There is no mechanism to revoke an issued access token short of Cognito token revocation endpoints (not currently wired).
+3. For tenant suspension, removing the tenant's row from `tenant_cognito_config` causes `JwtStrategy` to reject all subsequent tokens from that pool immediately (the pool ID is no longer resolvable).
+
+### What Happens When the Refresh Cookie Expires
+
+The browser discards the cookie at `Max-Age`. The next refresh attempt returns 401. The user is redirected to the login page. There is no silent re-authentication path — they must sign in from scratch with credentials and MFA.
+
+---
+
+## 15. Membership Cache — Authorization Consistency
+
+**File:** `apps/api/src/modules/auth/jwt.strategy.ts`
+
+Resolved tenant memberships (role, tenantId, memberId) are cached in the `JwtStrategy` instance for 60 minutes, keyed by Cognito `sub`. This avoids a DB round-trip on every authenticated request.
+
+### Trade-offs
+
+The 60-minute TTL matches the access token TTL, which means the cache does not extend the staleness window beyond what the token itself already creates. If a role is changed at `t=0`, a user with an access token issued at `t=-55min` would have that stale access token valid for 5 more minutes regardless of the cache — and their next token refresh would pick up the new role.
+
+However, the cache **does** create a worst-case window of up to 60 minutes for authorization changes to take effect:
+
+| Change | Cache behavior | Effective delay |
+|---|---|---|
+| Customer role upgraded to admin | Cache serves old role until expiry | Up to 60 min |
+| Admin role downgraded | Cache serves old (elevated) role | Up to 60 min |
+| Tenant admin removed from `tenant_members` | Cache still returns membership | Up to 60 min |
+| Tenant suspended / deleted from DB | Cache still returns membership | Up to 60 min |
+
+### Urgent Revocation
+
+For cases where 60-minute delay is unacceptable (compromised admin, tenant suspension):
+
+- Call `AdminUserGlobalSignOut` via the AWS SDK. This invalidates the user's refresh tokens immediately, so they cannot obtain a new access token after their current one expires.
+- Evict the specific cache entry in `JwtStrategy.membershipCache` (requires a service restart or a cache invalidation endpoint — not currently implemented).
+- The combination of these two steps bounds the exposure to the remaining lifetime of the current access token (at most 60 minutes, typically much less).
+
+### Planned Improvement
+
+A cache invalidation endpoint callable by platform admins (or triggered by membership change events) would reduce the worst-case window to seconds. This is the correct long-term approach for admin removal and tenant suspension scenarios.
+
+---
+
+## 16. Rate Limiting on Auth Endpoints
+
+Rate limits are defined in `apps/api/src/config/security.config.ts` and enforced by `CustomThrottlerGuard` via Valkey (distributed, not in-process). Keys are composite: `{tenantId}:{userId}` for authenticated requests, `{tenantId}:{ip}` for unauthenticated tenant-scoped requests, IP-only for platform routes.
+
+| Endpoint | Limit | Rationale |
+|---|---|---|
+| `POST /v1/auth/sign-in` | 5 / min | Brute-force protection |
+| `POST /v1/auth/signup` | 5 / hour | Account creation spam prevention |
+| `POST /v1/auth/confirm/resend` | 3 / hour | Email abuse prevention |
+| `POST /v1/auth/forgot-password` | 3 / hour | Email abuse / enumeration prevention |
+| `POST /v1/auth/refresh` | 20 / min | Normal refresh cadence |
+| All other routes | 120 / min (global default) | General abuse prevention |
+
+### Known Gaps
+
+The following auth-adjacent endpoints currently fall back to the global 120/min default, which is too permissive for their sensitivity:
+
+| Endpoint | Issue |
+|---|---|
+| `POST /v1/auth/confirm` | Email code brute-force — should be ≤5/hour |
+| `POST /v1/auth/reset-password` | Password reset code brute-force — should match `forgot-password` (3/hour) |
+| `POST /v1/auth/mfa/challenge` | TOTP brute-force — should be ≤5/min |
+| `POST /v1/auth/mfa/setup/*` | Session-based but unthrottled |
+| `POST /v1/platform/auth/sign-in` | Platform sign-in has no explicit throttle override — same exposure as tenant sign-in |
+| `POST /v1/platform/auth/mfa/challenge` | Same gap as tenant MFA challenge |
+| `POST /v1/onboarding/complete` | Invite token guessing — should be throttled tightly |
+
+These are tracked for remediation. The platform admin fallback at the tenant sign-in endpoint also means a brute-force attempt against platform credentials can be executed via the tenant login surface — this endpoint must be treated with the same rate-limit sensitivity as the platform sign-in endpoint itself.
+
+---
+
+## 17. Environment Variables
+
+Auth-relevant env vars. Full list in `apps/api/.env.example`. See [SECURITY_PLAN.md](./SECURITY_PLAN.md) for the complete environment variable security guide.
 
 | Variable | Purpose |
 |---|---|
