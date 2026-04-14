@@ -20,6 +20,8 @@ import {
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 
+import { z } from 'zod';
+
 import { AuthService } from './auth.service';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/user.decorator';
@@ -275,6 +277,44 @@ export class AuthController {
   ) {
     const result = await this.authService.signOut(dto);
     this.clearRefreshCookie(res);
+    return result;
+  }
+
+  // ─── MFA Setup During Sign-In Challenge ─────────────────────────────────────
+
+  @Public()
+  @Post('mfa/setup/associate')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Begin MFA setup during sign-in challenge',
+    description: 'Associates a software token using a session from an MFA_SETUP challenge.',
+  })
+  mfaSetupAssociate(
+    @Body(new ZodValidationPipe(z.object({ session: z.string() }))) dto: { session: string },
+  ) {
+    return this.authService.mfaSetupAssociate(dto.session);
+  }
+
+  @Public()
+  @Post('mfa/setup/complete')
+  @HttpCode(HttpStatus.OK)
+  @ApiHeader({ name: 'x-tenant-id', required: true, description: "Tenant's database ID" })
+  @ApiOperation({
+    summary: 'Complete MFA setup during sign-in challenge',
+    description: 'Verifies TOTP and completes the MFA_SETUP challenge, returning tokens.',
+  })
+  async mfaSetupComplete(
+    @Headers('x-tenant-id') tenantId: string,
+    @Body(new ZodValidationPipe(z.object({ email: z.string(), session: z.string(), mfaCode: z.string() })))
+    dto: { email: string; session: string; mfaCode: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.mfaSetupComplete(dto, tenantId);
+    if (result?.type === 'tokens') {
+      const { refreshToken, ...clientResult } = result;
+      this.setRefreshCookie(res, refreshToken, 'admin');
+      return clientResult;
+    }
     return result;
   }
 

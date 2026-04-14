@@ -182,6 +182,7 @@ export class CognitoService {
           ClientId: clientId,
           Session: dto.session,
           ChallengeResponses: {
+            USERNAME: dto.email,
             SOFTWARE_TOKEN_MFA_CODE: dto.mfaCode,
           },
         }),

@@ -223,11 +223,31 @@ export const apiClient = {
   },
 
   mfaChallenge: (
-    input: { email: string; mfaCode: string; session: string; tenantId: string },
+    input: { email: string; mfaCode: string; session: string; tenantId: string; clientType?: 'customer' | 'admin' },
     csrfToken: string,
   ) => {
     const { tenantId, ...body } = input;
     return request<{ accessToken: string; idToken: string; expiresIn: number }>('/auth/mfa/challenge', {
+      body,
+      csrfToken,
+      method: 'POST',
+      tenantId,
+    });
+  },
+
+  mfaSetupAssociate: (session: string, tenantId: string) =>
+    request<{ secretCode: string; session: string }>('/auth/mfa/setup/associate', {
+      body: { session },
+      method: 'POST',
+      tenantId,
+    }),
+
+  mfaSetupComplete: (
+    input: { email: string; session: string; mfaCode: string; tenantId: string },
+    csrfToken: string,
+  ) => {
+    const { tenantId, ...body } = input;
+    return request<{ accessToken: string; idToken: string; expiresIn: number }>('/auth/mfa/setup/complete', {
       body,
       csrfToken,
       method: 'POST',

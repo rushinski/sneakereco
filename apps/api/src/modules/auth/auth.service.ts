@@ -114,6 +114,22 @@ export class AuthService {
   }
 
   // ---------------------------------------------------------------------------
+  // MFA setup during sign-in challenge (session-based, no access token yet)
+  // ---------------------------------------------------------------------------
+
+  async mfaSetupAssociate(session: string) {
+    return this.cognito.associateSoftwareTokenWithSession(session);
+  }
+
+  async mfaSetupComplete(
+    params: { email: string; session: string; mfaCode: string },
+    tenantId: string,
+  ) {
+    const pool = await this.resolveTenantPool(tenantId, 'admin');
+    return this.cognito.completeMfaSetupChallenge(params, pool);
+  }
+
+  // ---------------------------------------------------------------------------
   // MFA / token operations (access-token based — no pool needed)
   // ---------------------------------------------------------------------------
 
