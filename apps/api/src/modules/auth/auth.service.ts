@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { generateId } from '@sneakereco/shared';
 import { users, tenantCognitoConfig } from '@sneakereco/db';
@@ -83,8 +83,32 @@ export class AuthService {
   }
 
   async signIn(dto: SignInDto, tenantId: string) {
-    const pool = await this.resolveTenantPool(tenantId, dto.clientType ?? 'customer');
-    return this.cognito.signIn(dto, pool);
+    if (dto.clientType !== 'admin') {
+      const pool = await this.resolveTenantPool(tenantId, 'customer');
+      return this.cognito.signIn(dto, pool);
+    }
+
+    // Resolve the tenant admin pool first — if it doesn't exist this throws
+    // NotFoundException and the error propagates directly (no fallback).
+    // Only after a successful pool lookup do we attempt auth against it,
+    // so that "tenant not configured" is never masked by the platform fallback.
+    const pool = await this.resolveTenantPool(tenantId, 'admin');
+
+    try {
+      return await this.cognito.signIn(dto, pool);
+    } catch (error) {
+      // Tenant pool rejected the credentials (user not found / wrong password).
+      // Fall back to the platform pool — super admin accounts live there.
+      // Tag the result so the frontend routes MFA to the correct endpoint.
+      if (error instanceof UnauthorizedException || error instanceof NotFoundException) {
+        const result = await this.cognito.signIn(dto); // no pool → platform
+        if (result && result.type !== 'tokens') {
+          return { ...result, usePlatformPool: true as const };
+        }
+        return result;
+      }
+      throw error;
+    }
   }
 
   async respondToMfaChallenge(dto: MfaChallengeDto, tenantId: string) {

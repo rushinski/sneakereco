@@ -17,6 +17,7 @@ export function AdminLoginForm({ tenantSlug }: { tenantSlug: string }) {
   const [error, setError] = useState<string | null>(null);
   const [mfaCode, setMfaCode] = useState('');
   const [mfaSession, setMfaSession] = useState<string | null>(null);
+  const [usePlatformPool, setUsePlatformPool] = useState(false);
   const [setupSession, setSetupSession] = useState<string | null>(null);
   const [setupSecretCode, setSetupSecretCode] = useState<string | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
@@ -73,12 +74,17 @@ export function AdminLoginForm({ tenantSlug }: { tenantSlug: string }) {
 
       if (result.type === 'mfa_required') {
         setMfaSession(result.session);
+        setUsePlatformPool(result.usePlatformPool === true);
         setStage('mfa');
         return;
       }
 
       if (result.type === 'mfa_setup') {
-        const associated = await apiClient.mfaSetupAssociate(result.session, tenantId);
+        const isPlatform = result.usePlatformPool === true;
+        setUsePlatformPool(isPlatform);
+        const associated = isPlatform
+          ? await apiClient.mfaSetupAssociatePlatform(result.session)
+          : await apiClient.mfaSetupAssociate(result.session, tenantId);
         setSetupSecretCode(associated.secretCode);
         setSetupSession(associated.session);
         setStage('mfa_setup');
@@ -102,10 +108,9 @@ export function AdminLoginForm({ tenantSlug }: { tenantSlug: string }) {
     setError(null);
 
     try {
-      const result = await apiClient.mfaChallenge(
-        { email, mfaCode, session: mfaSession, tenantId, clientType: 'admin' },
-        csrfToken,
-      );
+      const result = usePlatformPool
+        ? await apiClient.mfaChallengePlatform({ email, mfaCode, session: mfaSession }, csrfToken)
+        : await apiClient.mfaChallenge({ email, mfaCode, session: mfaSession, tenantId, clientType: 'admin' }, csrfToken);
 
       setAccessToken(result.accessToken);
       router.push('/admin');
@@ -124,10 +129,9 @@ export function AdminLoginForm({ tenantSlug }: { tenantSlug: string }) {
     setError(null);
 
     try {
-      const result = await apiClient.mfaSetupComplete(
-        { email, session: setupSession, mfaCode, tenantId },
-        csrfToken,
-      );
+      const result = usePlatformPool
+        ? await apiClient.mfaSetupCompletePlatform({ email, session: setupSession, mfaCode }, csrfToken)
+        : await apiClient.mfaSetupComplete({ email, session: setupSession, mfaCode, tenantId }, csrfToken);
 
       setAccessToken(result.accessToken);
       router.push('/admin');
