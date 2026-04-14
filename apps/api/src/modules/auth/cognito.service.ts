@@ -476,6 +476,23 @@ export class CognitoService {
     }
   }
 
+  /**
+   * Returns true if the user has SOFTWARE_TOKEN_MFA registered on their account.
+   * Used by JwtStrategy to enforce MFA on tenant admin tokens before granting access.
+   * A user with no registered TOTP device signed in with password only — which is
+   * only possible on OPTIONAL-MFA pools and should be blocked for admin routes.
+   */
+  async adminCheckMfaEnabled(email: string, userPoolId: string): Promise<boolean> {
+    try {
+      const response = await this.client.send(
+        new AdminGetUserCommand({ UserPoolId: userPoolId, Username: email }),
+      );
+      return response.UserMFASettingList?.includes('SOFTWARE_TOKEN_MFA') ?? false;
+    } catch (error) {
+      this.mapCognitoError(error);
+    }
+  }
+
   async createAdminUser(
     input: { email: string; fullName: string | null; password: string },
     pool: { userPoolId: string },

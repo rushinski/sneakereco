@@ -124,7 +124,9 @@ export class SecurityConfig {
     this.cspDirectives = {
       defaultSrc:    ["'self'"],
       scriptSrc:     ["'self'", 'tokenization.payrillagateway.com', 'services.nofraud.com'],
-      styleSrc:      ["'self'", "'unsafe-inline'"],
+      // 'unsafe-inline' is required by Swagger UI (dev only). Dropped in production
+      // because the API serves no HTML in prod — only JSON responses.
+      styleSrc:      isProduction ? ["'self'"] : ["'self'", "'unsafe-inline'"],
       imgSrc:        ["'self'", 'data:', 'https:', ...(r2PublicUrl ? [r2PublicUrl] : [])],
       fontSrc:       ["'self'", 'fonts.gstatic.com'],
       connectSrc:    [

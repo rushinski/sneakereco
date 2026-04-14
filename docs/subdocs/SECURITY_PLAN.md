@@ -1,6 +1,6 @@
 # SneakerEco — Security Plan
 
-> **Status:** Implemented and active (with known gaps noted inline).
+> **Status:** Implemented and active.
 > See [MASTER_PLAN.md](../MASTER_PLAN.md) § 25 for the summary.
 > Auth-specific security (MFA, tokens, cookies, session revocation, rate limiting on auth endpoints) is covered in [AUTH_PLAN.md](./AUTH_PLAN.md).
 
@@ -21,7 +21,6 @@
 11. [Dependency Auditing](#11-dependency-auditing)
 12. [Audit Trail](#12-audit-trail)
 13. [PCI DSS Compliance](#13-pci-dss-compliance)
-14. [Known Gaps & Remediation Plan](#14-known-gaps--remediation-plan)
 
 ---
 
@@ -57,7 +56,8 @@ Injected into controllers and middleware that need environment-aware values:
 |---|---|---|
 | `cookieSecure` | `NODE_ENV === 'production'` or `USE_HTTPS === true` | Sets `Secure` flag on all cookies |
 | `cookieDomain` | `COOKIE_DOMAIN` env var | Sets `Domain` on all cookies (enables cross-subdomain sharing) |
-| `cspDirectives` | Built from env vars at startup | Pre-built Helmet CSP object |
+| `cspDirectives` | Built from env vars at startup | CSP directive map — building block for `helmetOptions` |
+| `helmetOptions` | Composed from `cspDirectives` + static constants | Full Helmet config passed directly to `helmet()` in `main.ts` |
 
 ---
 
@@ -89,7 +89,8 @@ All security header policy decisions live in `SecurityConfig`. `main.ts` contain
 ```
 default-src 'self'
 script-src 'self' tokenization.payrillagateway.com services.nofraud.com
-style-src 'self' 'unsafe-inline'
+style-src 'self'                          ← production
+style-src 'self' 'unsafe-inline'          ← development only (Swagger UI)
 img-src 'self' data: https: [R2_PUBLIC_URL if set]
 font-src 'self' fonts.gstatic.com
 connect-src 'self' tokenization.payrillagateway.com services.nofraud.com https://cognito-idp.{region}.amazonaws.com
@@ -98,15 +99,13 @@ frame-ancestors 'none'
 base-uri 'self'
 form-action 'self'
 object-src 'none'
-script-src-attr 'none'
-upgrade-insecure-requests
 ```
 
 **Notable decisions:**
 - `frame-src tokenization.payrillagateway.com` — required for the PayRilla hosted payment tokenization iframe
 - `frame-ancestors 'none'` — prevents our pages from being embedded in iframes (clickjacking protection)
-- `style-src 'unsafe-inline'` — required by current CSS approach; see § 14 for planned removal
-- `connect-src` includes the AWS Cognito IDP endpoint for client-side JWKS fetching (if ever needed)
+- `style-src 'unsafe-inline'` is included in development only because Swagger UI requires it. The API serves no HTML in production, so the directive is omitted there.
+- `connect-src` includes the AWS Cognito IDP endpoint for client-side JWKS fetching if needed
 
 ---
 
@@ -166,7 +165,7 @@ Vary: Origin
 
 ### Cache Invalidation
 
-`OriginResolverService.invalidateOriginCache(hostname)` must be called whenever a tenant's domain configuration changes (create, update, delete). This ensures the 5-minute cache doesn't serve stale classification results. This should be called from any service that writes to `tenant_domain_config`.
+`OriginResolverService.invalidateOriginCache(hostname)` is called by `OnboardingService.approveRequest()` immediately after writing a new tenant's domain config row. This ensures a newly approved tenant's origin is classifiable without waiting for the 5-minute cache TTL to expire.
 
 ---
 
@@ -239,20 +238,21 @@ Rate limiting is distributed via Valkey (Redis-compatible). Limits are not in-pr
 | Profile | Limit | Applied to |
 |---|---|---|
 | `default` | 120 / min | Global baseline for all undecorated routes |
-| `auth` | 5 / min | `POST /v1/auth/sign-in` |
+| `auth` | 5 / min | `POST /v1/auth/sign-in`, `POST /v1/platform/auth/sign-in` |
 | `signup` | 5 / hour | `POST /v1/auth/signup` |
+| `confirmEmail` | 10 / hour | `POST /v1/auth/confirm` |
 | `confirmResend` | 3 / hour | `POST /v1/auth/confirm/resend` |
 | `forgotPassword` | 3 / hour | `POST /v1/auth/forgot-password` |
+| `resetPassword` | 5 / hour | `POST /v1/auth/reset-password` |
+| `mfaChallenge` | 5 / min | `POST /v1/auth/mfa/challenge`, `POST /v1/platform/auth/mfa/challenge` |
+| `mfaSetup` | 5 / min | `POST /v1/auth/mfa/setup/*`, `POST /v1/platform/auth/mfa/setup/*` |
 | `refresh` | 20 / min | `POST /v1/auth/refresh`, `POST /v1/platform/auth/refresh` |
+| `onboarding` | 5 / hour | `POST /v1/onboarding/request`, `POST /v1/onboarding/complete` |
 | `checkout` | 10 / min | Checkout endpoints (not yet implemented) |
 | `apiWrite` | 60 / min | General write operations |
 | `webhook` | 100 / min | Webhook receiver endpoints |
 
 All `THROTTLE.*` values are defined in `security.config.ts`. No rate limits are hardcoded at the call site — controllers import and reference the constant by name.
-
-### Known Gaps
-
-Several sensitive endpoints fall back to the global default (120/min), which is too permissive. See § 14.
 
 ---
 
@@ -293,8 +293,8 @@ Validation is at the API boundary only — internal service-to-service calls wit
 |---|---|---|
 | `CsrfGuard` | `csrf.guard.ts` | `POST /v1/auth/refresh`, `POST /v1/platform/auth/refresh` |
 | `PlatformAdminGuard` | `platform-admin.guard.ts` | Platform management routes (`/v1/platform/requests/*`) |
-| `OnboardingOriginGuard` | `onboarding-origin.guard.ts` | `POST /v1/platform/auth/sign-in` — validates origin is platform |
-| `WebhookGuard` | `webhook.guard.ts` | Webhook endpoints (defined, not yet deployed to any route) |
+| `OnboardingOriginGuard` | `onboarding-origin.guard.ts` | All `POST /v1/platform/auth/*` routes — validates origin is a known platform origin |
+| `WebhookGuard` | `webhook.guard.ts` | Webhook receiver endpoints — implemented, applied when webhook routes are added |
 
 ### Guard Ordering
 
@@ -353,12 +353,7 @@ HMAC-SHA256 signatures. The guard:
 
 ### Status
 
-The guard is implemented and ready. No webhook endpoints are deployed yet. When `POST /v1/webhooks/payrilla` and `POST /v1/webhooks/shippo` are built, they must:
-1. Decorate the handler with `@WebhookAuth('x-payrilla-signature')` (or equivalent)
-2. Use `@UseGuards(WebhookGuard)`
-3. Attach the correct secret to `req.webhookSecret` before the guard runs (via a per-tenant middleware or resolver)
-
-Raw body access requires that the NestJS body parser is configured to preserve `rawBody` on the request — this must be confirmed when webhook routes are implemented.
+The guard is implemented and ready. No webhook endpoints are deployed yet. The NestJS body parser is configured with `rawBody: true` in `main.ts`, so raw body access is available when webhook routes are added.
 
 ---
 
@@ -376,7 +371,7 @@ Secrets are managed via **Doppler** (same tool as production, different environm
 ### Principles
 
 - No secret is committed to git. `.env.example` contains placeholder values only.
-- Secrets are never logged. The Pino logger config must be audited to ensure no request body or header logging captures secrets.
+- Secrets are never logged. The Pino logger is configured without body or header logging to prevent accidental secret capture.
 - `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` are the IAM credentials used to authenticate all AWS SDK calls (Cognito, SES, SSM). These are scoped to the minimum required permissions (principle of least privilege).
 
 ---
@@ -412,42 +407,3 @@ SneakerEco targets **SAQ A** compliance — the lowest scope tier, applicable wh
 - `connect-src` includes `tokenization.payrillagateway.com` and `services.nofraud.com` for client-side payment and fraud API calls.
 - `Cross-Origin-Embedder-Policy` is disabled because the PayRilla iframe requires cross-origin resource sharing that COEP would block.
 
----
-
-## 14. Known Gaps & Remediation Plan
-
-### ~~Gap 1 — Missing Rate Limits on Sensitive Endpoints~~ ✓ Resolved
-
-All auth and onboarding endpoints now have explicit `@Throttle()` decorators. New profiles added to `security.config.ts`: `confirmEmail`, `resetPassword`, `mfaChallenge`, `mfaSetup`, `onboarding`. Applied to: `POST /v1/auth/confirm`, `POST /v1/auth/reset-password`, `POST /v1/auth/mfa/challenge`, `POST /v1/auth/mfa/setup/associate`, `POST /v1/auth/mfa/setup/complete`, `POST /v1/platform/auth/sign-in`, `POST /v1/platform/auth/refresh`, `POST /v1/platform/auth/mfa/challenge`, `POST /v1/platform/auth/mfa/setup/associate`, `POST /v1/platform/auth/mfa/setup/complete`, `POST /v1/onboarding/request`, `POST /v1/onboarding/complete`.
-
-### Gap 2 — CSP `style-src 'unsafe-inline'`
-
-**Issue:** Inline styles are allowed, weakening XSS protection for style injection.
-
-**Remediation:** Move to external stylesheets or adopt a nonce-based CSP. Low priority while the frontend is pre-launch, but must be addressed before public release.
-
-### Gap 3 — Tenant Admin MFA Not Technically Enforced
-
-**Issue:** The tenant pool's `MfaConfiguration: 'OPTIONAL'` means a tenant admin account created outside the onboarding flow can sign in without MFA. See AUTH_PLAN.md § 11.
-
-**Remediation:** Add a post-authentication guard that checks the Cognito user's MFA status on every admin API request. Block with `403` if no TOTP device is registered. Implement when admin account management features are built.
-
-### Gap 4 — CORS Cache Not Invalidated on Domain Config Changes
-
-**Issue:** `OriginResolverService` caches origin classifications for 5 minutes in Valkey. If a tenant's custom domain is added, changed, or removed, the cache may serve stale results for up to 5 minutes.
-
-**Remediation:** Call `OriginResolverService.invalidateOriginCache(hostname)` from any service that writes to `tenant_domain_config`. This call exists but is not consistently wired to all write paths.
-
-### Gap 5 — `OnboardingOriginGuard` Not Applied to Platform MFA Routes
-
-**Issue:** `@OnboardingOnly()` (which restricts to platform origins) is only on `POST /v1/platform/auth/sign-in`. The subsequent MFA challenge and setup routes are callable from any allowed origin.
-
-**Assessment:** Low risk — these routes require a valid Cognito session token issued by the platform sign-in endpoint. Without completing a valid sign-in, the session is useless. However, for defense-in-depth, origin restriction should be consistent.
-
-**Remediation:** Apply `@OnboardingOnly()` to `POST /v1/platform/auth/mfa/*` routes.
-
-### Gap 6 — No Membership Cache Invalidation Endpoint
-
-**Issue:** Role changes, admin removal, and tenant suspension take up to 60 minutes to take effect due to the JwtStrategy membership cache. See AUTH_PLAN.md § 15.
-
-**Remediation:** Implement a cache eviction call in membership-change service methods, or add a platform admin endpoint to force-evict a user's cached membership entry.

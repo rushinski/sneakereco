@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { eq } from 'drizzle-orm';
@@ -7,6 +7,7 @@ import JwksClient from 'jwks-rsa';
 import { tenantCognitoConfig, users, tenantMembers } from '@sneakereco/db';
 
 import { DatabaseService } from '../../common/database/database.service';
+import { CognitoService } from './cognito.service';
 import type { CognitoJwtPayload, AuthenticatedUser } from './auth.types';
 import type { TenantMemberRole } from '@sneakereco/db';
 
@@ -25,9 +26,12 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     memberId: string;
     expiresAt: number;
   }>();
+  // sub → MFA configuration status — TTL matches access token lifetime (60 min)
+  private readonly mfaCache = new Map<string, { hasMfa: boolean; expiresAt: number }>();
 
   constructor(
     private readonly db: DatabaseService,
+    private readonly cognito: CognitoService,
     config: ConfigService,
   ) {
     const region = config.getOrThrow<string>('AWS_REGION');
@@ -146,6 +150,19 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       throw new UnauthorizedException('Invalid token audience');
     }
 
+    // Enforce MFA for tenant admin tokens. The tenant pool is OPTIONAL-MFA, so
+    // a user without a registered TOTP device can sign in with password only.
+    // We block those sessions here — admin accounts must have MFA configured.
+    // Platform admin tokens are exempt (their pool enforces MFA_REQUIRED).
+    if (cached && poolId && payload.client_id === cached.admin) {
+      const hasMfa = await this.resolveAdminMfa(payload.sub, payload.email, poolId);
+      if (!hasMfa) {
+        throw new ForbiddenException(
+          'MFA is required for admin accounts. Complete MFA setup before accessing the admin panel.',
+        );
+      }
+    }
+
     // Resolve tenant membership from DB.
     // Cache result for the lifetime of the access token (60 min) to avoid
     // a DB hit on every request while still reflecting role changes promptly
@@ -197,5 +214,25 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     this.membershipCache.set(sub, entry);
 
     return entry;
+  }
+
+  private async resolveAdminMfa(sub: string, email: string, poolId: string): Promise<boolean> {
+    const cached = this.mfaCache.get(sub);
+    if (cached && cached.expiresAt > Date.now()) return cached.hasMfa;
+
+    const hasMfa = await this.cognito.adminCheckMfaEnabled(email, poolId);
+    this.mfaCache.set(sub, { hasMfa, expiresAt: Date.now() + 60 * 60 * 1000 });
+    return hasMfa;
+  }
+
+  /**
+   * Evicts a user's cached membership and MFA status.
+   * Call this whenever a user's role changes, their membership is removed,
+   * or their MFA configuration is modified — otherwise the old state persists
+   * for up to 60 minutes (the access token TTL).
+   */
+  evictMembershipCache(sub: string): void {
+    this.membershipCache.delete(sub);
+    this.mfaCache.delete(sub);
   }
 }
