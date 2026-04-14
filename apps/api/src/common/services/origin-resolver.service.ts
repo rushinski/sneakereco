@@ -14,6 +14,7 @@ const CACHE_KEY_PREFIX = 'cors:origin:';
 @Injectable()
 export class OriginResolverService implements OnModuleDestroy {
   private readonly platformOrigins: Set<string>;
+  private readonly baseDomain: string;
   private readonly cache: Redis;
 
   constructor(
@@ -26,6 +27,9 @@ export class OriginResolverService implements OnModuleDestroy {
     this.platformOrigins = new Set(
       [platformUrl, dashboardUrl].filter((v): v is string => Boolean(v)),
     );
+
+    // Derive base domain from PLATFORM_URL: "http://sneakereco.test:3002" → "sneakereco.test"
+    this.baseDomain = new URL(this.config.getOrThrow<string>('PLATFORM_URL')).hostname.toLowerCase();
 
     this.cache = new Redis(this.config.getOrThrow<string>('VALKEY_URL'), {
       lazyConnect: true,
@@ -106,8 +110,10 @@ export class OriginResolverService implements OnModuleDestroy {
 
     const baseHost = hostname.slice('admin.'.length);
 
-    if (hostname.endsWith('.sneakereco.com')) {
-      const subdomain = baseHost.replace(/\.sneakereco\.com$/i, '');
+    // Matches admin.{slug}.{baseDomain} — covers both prod (.sneakereco.com)
+    // and dev (.sneakereco.test) based on PLATFORM_URL
+    if (hostname.endsWith(`.${this.baseDomain}`)) {
+      const subdomain = baseHost.replace(new RegExp(`\\.${this.baseDomain}$`, 'i'), '');
       const [match] = await this.db.systemDb
         .select({ id: tenantDomainConfig.id })
         .from(tenantDomainConfig)
@@ -122,6 +128,7 @@ export class OriginResolverService implements OnModuleDestroy {
       return Boolean(match);
     }
 
+    // Custom domain: admin.{customDomain}
     const [match] = await this.db.systemDb
       .select({ id: tenantDomainConfig.id })
       .from(tenantDomainConfig)
@@ -137,9 +144,11 @@ export class OriginResolverService implements OnModuleDestroy {
   }
 
   private async isTenantHostname(hostname: string): Promise<boolean> {
-    if (hostname.endsWith('.sneakereco.com')) {
-      const subdomain = hostname.replace(/\.sneakereco\.com$/i, '');
-      if (!subdomain || subdomain === 'sneakereco' || subdomain === 'www') {
+    // Matches {slug}.{baseDomain} — covers both prod (.sneakereco.com)
+    // and dev (.sneakereco.test) based on PLATFORM_URL
+    if (hostname.endsWith(`.${this.baseDomain}`)) {
+      const subdomain = hostname.replace(new RegExp(`\\.${this.baseDomain}$`, 'i'), '');
+      if (!subdomain || subdomain === 'www' || subdomain === 'dashboard') {
         return false;
       }
 
@@ -152,6 +161,7 @@ export class OriginResolverService implements OnModuleDestroy {
       return Boolean(match);
     }
 
+    // Custom domain
     const [match] = await this.db.systemDb
       .select({ id: tenantDomainConfig.id })
       .from(tenantDomainConfig)
