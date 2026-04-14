@@ -4,8 +4,6 @@
 >
 > **Purpose:** This document is the single source of truth for rebuilding the SneakerEco multi-tenant sneaker resale marketplace. It is designed to be fed directly to an AI coding assistant (Claude Code, Cursor, etc.) for implementation. Every decision, file path, environment variable, and security requirement is specified with enough detail to execute without ambiguity.
 >
-> **Current State:** Single-tenant Next.js monolith on Supabase + Vercel (project internally known as "RDK" / realdealkickzsc). Messy codebase, no tests, broken checkout (Stripe closed), partially migrated to PayRilla.
->
 > **Target State:** Multi-tenant SaaS platform with separate NestJS API + Next.js frontend, tenant self-service onboarding, per-tenant custom domains, automated SEO, and comprehensive testing. The platform lives at `sneakereco.com`. Each tenant gets `{slug}.sneakereco.com` or their own custom domain.
 
 ---
