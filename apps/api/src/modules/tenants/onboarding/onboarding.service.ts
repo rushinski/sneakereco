@@ -6,6 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { generateId } from '@sneakereco/shared';
 import { tenantCognitoConfig } from '@sneakereco/db';
 
@@ -37,6 +38,7 @@ export class OnboardingService {
     private readonly onboardingRepository: OnboardingRepository,
     private readonly cognito: CognitoService,
     private readonly email: EmailService,
+    private readonly config: ConfigService,
   ) {}
 
   async requestAccount(dto: RequestOnboardingDto) {
@@ -181,7 +183,9 @@ export class OnboardingService {
     }
 
     // Invite link points to the web app's admin setup page on the tenant's subdomain.
-    const inviteLink = `https://${approval.subdomain}.sneakereco.com/admin/setup/${inviteToken}`;
+    // Derive the base domain from PLATFORM_URL (e.g. http://sneakereco.test:3002 → sneakereco.test).
+    const platformHost = new URL(this.config.getOrThrow<string>('PLATFORM_URL')).hostname;
+    const inviteLink = `https://${approval.subdomain}.${platformHost}/admin/setup/${inviteToken}`;
 
     await this.email.sendOnboardingInvite({
       adminDomain: approval.adminDomain,

@@ -18,6 +18,7 @@ const STATUS_TABS: { label: string; value: StatusFilter }[] = [
 export function ApprovalDashboard() {
   const router = useRouter();
 
+  const [authReady, setAuthReady] = useState(false);
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
   const [requests, setRequests] = useState<RequestSummary[]>([]);
   const [total, setTotal] = useState(0);
@@ -33,6 +34,7 @@ export function ApprovalDashboard() {
     if (stored) {
       setToken(stored);
       apiClient.getCsrfToken().then((data) => setCsrfToken(data.token)).catch(() => {});
+      setAuthReady(true);
       return;
     }
 
@@ -45,6 +47,7 @@ export function ApprovalDashboard() {
       .then((result) => {
         setAccessToken(result.accessToken);
         setToken(result.accessToken);
+        setAuthReady(true);
       })
       .catch(() => {
         router.push('/login');
@@ -95,6 +98,8 @@ export function ApprovalDashboard() {
       setActionError(err instanceof ApiClientError ? err.message : 'Deny failed.');
     }
   }
+
+  if (!authReady) return null;
 
   return (
     <div className="dashboard">
