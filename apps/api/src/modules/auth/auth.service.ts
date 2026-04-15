@@ -127,13 +127,11 @@ export class AuthService {
     } catch (error) {
       // Tenant pool rejected the credentials (user not found / wrong password).
       // Fall back to the platform pool — super admin accounts live there.
-      // Tag the result so the frontend routes MFA to the correct endpoint.
+      // Tag the result so the controller can route cookies/MFA to the
+      // platform-auth endpoints instead of the tenant-auth ones.
       if (error instanceof UnauthorizedException || error instanceof NotFoundException) {
         const result = await this.cognito.signIn(dto); // no pool → platform
-        if (result && result.type !== 'tokens') {
-          return { ...result, usePlatformPool: true as const };
-        }
-        return result;
+        return { ...result, usePlatformPool: true as const };
       }
       throw error;
     }

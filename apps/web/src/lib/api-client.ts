@@ -242,6 +242,20 @@ export const apiClient = {
     });
   },
 
+  refreshTenantAdmin: (tenantId: string, csrfToken: string) =>
+    request<{ accessToken: string; idToken: string; expiresIn: number }>('/auth/refresh', {
+      body: { clientType: 'admin' },
+      csrfToken,
+      method: 'POST',
+      tenantId,
+    }),
+
+  refreshPlatformAdmin: (csrfToken: string) =>
+    request<{ accessToken: string; idToken: string; expiresIn: number }>('/platform/auth/refresh', {
+      csrfToken,
+      method: 'POST',
+    }),
+
   mfaChallenge: (
     input: { email: string; mfaCode: string; session: string; tenantId: string; clientType?: 'customer' | 'admin' },
     csrfToken: string,

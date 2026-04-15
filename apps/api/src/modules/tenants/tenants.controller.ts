@@ -54,6 +54,16 @@ export class TenantsController {
     });
   }
 
+  private clearRefreshCookie(res: Response): void {
+    res.clearCookie(REFRESH_COOKIE_NAME, {
+      httpOnly: true,
+      secure: this.security.cookieSecure,
+      sameSite: 'strict',
+      path: PLATFORM_REFRESH_COOKIE_PATH,
+      domain: this.security.cookieDomain,
+    });
+  }
+
   /**
    * Platform admin sign-in. Only callable from platform/dashboard origins.
    * Uses the platform Cognito pool (not a tenant pool).
@@ -74,6 +84,8 @@ export class TenantsController {
       this.setRefreshCookie(res, refreshToken);
       return clientResult;
     }
+
+    this.clearRefreshCookie(res);
     return result; // mfa_required
   }
 
@@ -99,7 +111,6 @@ export class TenantsController {
    * Uses the platform pool — no tenant context needed.
    */
   @Public()
-  @OnboardingOnly()
   @Throttle({ default: THROTTLE.mfaChallenge })
   @Post('auth/mfa/challenge')
   @HttpCode(HttpStatus.OK)
@@ -121,7 +132,6 @@ export class TenantsController {
    * Called when sign-in returns mfa_setup. Returns the TOTP secret for QR display.
    */
   @Public()
-  @OnboardingOnly()
   @Throttle({ default: THROTTLE.mfaSetup })
   @Post('auth/mfa/setup/associate')
   @HttpCode(HttpStatus.OK)
@@ -136,7 +146,6 @@ export class TenantsController {
    * Verifies the TOTP code and completes sign-in, returning tokens.
    */
   @Public()
-  @OnboardingOnly()
   @Throttle({ default: THROTTLE.mfaSetup })
   @Post('auth/mfa/setup/complete')
   @HttpCode(HttpStatus.OK)

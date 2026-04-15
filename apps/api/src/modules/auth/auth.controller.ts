@@ -25,7 +25,14 @@ import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/user.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { CsrfGuard } from '../../common/guards/csrf.guard';
-import { SecurityConfig, REFRESH_COOKIE_NAME, REFRESH_COOKIE_PATH, REFRESH_MAX_AGE, THROTTLE } from '../../config/security.config';
+import {
+  SecurityConfig,
+  REFRESH_COOKIE_NAME,
+  REFRESH_COOKIE_PATH,
+  PLATFORM_REFRESH_COOKIE_PATH,
+  REFRESH_MAX_AGE,
+  THROTTLE,
+} from '../../config/security.config';
 import type { AuthenticatedUser } from './auth.types';
 import { SignUpDtoSchema, type SignUpDto } from './dto/sign-up.dto';
 import { ConfirmEmailDtoSchema, type ConfirmEmailDto } from './dto/confirm-email.dto';
@@ -53,23 +60,24 @@ export class AuthController {
     res: Response,
     refreshToken: string,
     clientType: 'customer' | 'admin',
+    path = REFRESH_COOKIE_PATH,
   ): void {
     res.cookie(REFRESH_COOKIE_NAME, refreshToken, {
       httpOnly: true,
       secure: this.security.cookieSecure,
       sameSite: 'strict',
-      path: REFRESH_COOKIE_PATH,
+      path,
       maxAge: REFRESH_MAX_AGE[clientType],
       domain: this.security.cookieDomain,
     });
   }
 
-  private clearRefreshCookie(res: Response): void {
+  private clearRefreshCookie(res: Response, path = REFRESH_COOKIE_PATH): void {
     res.clearCookie(REFRESH_COOKIE_NAME, {
       httpOnly: true,
       secure: this.security.cookieSecure,
       sameSite: 'strict',
-      path: REFRESH_COOKIE_PATH,
+      path,
       domain: this.security.cookieDomain,
     });
   }
@@ -163,10 +171,24 @@ export class AuthController {
   ) {
     const result = await this.authService.signIn(dto, tenantId);
     if (result?.type === 'tokens') {
+      const usePlatformPool =
+        'usePlatformPool' in result && result.usePlatformPool === true;
       const { refreshToken, ...clientResult } = result;
-      this.setRefreshCookie(res, refreshToken, dto.clientType ?? 'customer');
+      this.setRefreshCookie(
+        res,
+        refreshToken,
+        dto.clientType ?? 'customer',
+        usePlatformPool === true ? PLATFORM_REFRESH_COOKIE_PATH : REFRESH_COOKIE_PATH,
+      );
       return clientResult;
     }
+
+    // Challenge responses must not leave an earlier refresh cookie active.
+    this.clearRefreshCookie(res, REFRESH_COOKIE_PATH);
+    if ('usePlatformPool' in result && result.usePlatformPool === true) {
+      this.clearRefreshCookie(res, PLATFORM_REFRESH_COOKIE_PATH);
+    }
+
     return result; // mfa_required — no tokens yet
   }
 
@@ -279,7 +301,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.authService.signOut(dto);
-    this.clearRefreshCookie(res);
+    this.clearRefreshCookie(res, REFRESH_COOKIE_PATH);
     return result;
   }
 
