@@ -1,12 +1,55 @@
 'use client';
 
 import QRCode from 'qrcode';
-import { type FormEvent, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { ApiClientError, apiClient, setAccessToken } from '../../lib/api-client';
+import { AuthField } from './AuthField';
 
 type Stage = 'login' | 'mfa' | 'mfa_setup';
+
+type FormShellProps = {
+  title: string;
+  eyebrow: string;
+  onSubmit: (e: FormEvent<HTMLFormElement>) => void;
+  submitLabel: string;
+  error: string | null;
+  ready: boolean;
+  submitting: boolean;
+  children: ReactNode;
+};
+
+function FormShell({
+  title,
+  eyebrow,
+  onSubmit,
+  submitLabel,
+  error,
+  ready,
+  submitting,
+  children,
+}: FormShellProps) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white px-8 py-10 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">{eyebrow}</p>
+        <h1 className="mt-2 text-xl font-bold text-gray-900">{title}</h1>
+        <form className="mt-6 space-y-4" onSubmit={(e) => { void onSubmit(e); }}>
+          {children}
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          <button
+            type="submit"
+            disabled={!ready || submitting}
+            className="w-full rounded-lg bg-gray-900 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-700 disabled:opacity-50"
+          >
+            {submitting ? 'Please wait...' : submitLabel}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 export function AdminLoginForm({ tenantSlug }: { tenantSlug: string }) {
   const router = useRouter();
@@ -127,57 +170,6 @@ export function AdminLoginForm({ tenantSlug }: { tenantSlug: string }) {
     }
   }
 
-  // --- Shared form shell ---
-  function FormShell({ title, eyebrow, onSubmit, submitLabel, children }: {
-    title: string;
-    eyebrow: string;
-    onSubmit: (e: FormEvent<HTMLFormElement>) => void;
-    submitLabel: string;
-    children: React.ReactNode;
-  }) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-        <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white px-8 py-10 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">{eyebrow}</p>
-          <h1 className="mt-2 text-xl font-bold text-gray-900">{title}</h1>
-          <form className="mt-6 space-y-4" onSubmit={(e) => { void onSubmit(e); }}>
-            {children}
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <button
-              type="submit"
-              disabled={!ready || submitting}
-              className="w-full rounded-lg bg-gray-900 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-700 disabled:opacity-50"
-            >
-              {submitting ? 'Please wait...' : submitLabel}
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
-  function Field({ label, type = 'text', value, onChange, autoComplete }: {
-    label: string;
-    type?: string;
-    value: string;
-    onChange: (v: string) => void;
-    autoComplete?: string;
-  }) {
-    return (
-      <div className="space-y-1">
-        <label className="block text-xs font-medium text-gray-600">{label}</label>
-        <input
-          type={type}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          autoComplete={autoComplete}
-          required
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900"
-        />
-      </div>
-    );
-  }
-
   if (stage === 'mfa_setup') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -202,7 +194,7 @@ export function AdminLoginForm({ tenantSlug }: { tenantSlug: string }) {
               className="flex flex-1 flex-col gap-4 min-w-[160px]"
               onSubmit={(e) => { void handleMfaSetupSubmit(e); }}
             >
-              <Field
+              <AuthField
                 label="Authenticator code"
                 type="text"
                 value={mfaCode}
@@ -231,8 +223,11 @@ export function AdminLoginForm({ tenantSlug }: { tenantSlug: string }) {
         title="Enter your authenticator code."
         onSubmit={handleMfaSubmit}
         submitLabel={submitting ? 'Verifying...' : 'Verify'}
+        error={error}
+        ready={ready}
+        submitting={submitting}
       >
-        <Field
+        <AuthField
           label="6-digit code"
           type="text"
           value={mfaCode}
@@ -249,9 +244,12 @@ export function AdminLoginForm({ tenantSlug }: { tenantSlug: string }) {
       title="Sign in to your store."
       onSubmit={handleLoginSubmit}
       submitLabel={submitting ? 'Signing in...' : 'Sign In'}
+      error={error}
+      ready={ready}
+      submitting={submitting}
     >
-      <Field label="Email" type="email" value={email} onChange={setEmail} autoComplete="email" />
-      <Field label="Password" type="password" value={password} onChange={setPassword} autoComplete="current-password" />
+      <AuthField label="Email" type="email" value={email} onChange={setEmail} autoComplete="email" />
+      <AuthField label="Password" type="password" value={password} onChange={setPassword} autoComplete="current-password" />
     </FormShell>
   );
 }

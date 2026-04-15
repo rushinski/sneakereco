@@ -10,6 +10,7 @@ import {
   type CompleteOnboardingResult,
   type InviteSummary,
 } from '../../lib/api-client';
+import { AuthField } from './AuthField';
 
 type Stage = 'loading' | 'password' | 'mfa' | 'complete' | 'invalid';
 
@@ -92,28 +93,6 @@ export function AdminSetup({ token }: { token: string }) {
     } finally { setSubmitting(false); }
   }
 
-  function Field({ label, type = 'text', value, onChange, autoComplete }: {
-    label: string;
-    type?: string;
-    value: string;
-    onChange: (v: string) => void;
-    autoComplete?: string;
-  }) {
-    return (
-      <div className="space-y-1">
-        <label className="block text-xs font-medium text-gray-600">{label}</label>
-        <input
-          type={type}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          autoComplete={autoComplete}
-          required
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900"
-        />
-      </div>
-    );
-  }
-
   if (stage === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -173,7 +152,7 @@ export function AdminSetup({ token }: { token: string }) {
               <p className="mt-2 break-all font-mono text-[10px] text-gray-400">{result.secretCode}</p>
             </div>
             <form className="flex flex-1 flex-col gap-4 min-w-[160px]" onSubmit={(e) => { void handleMfaSubmit(e); }}>
-              <Field label="Authenticator code" value={mfaCode} onChange={setMfaCode} autoComplete="one-time-code" />
+              <AuthField label="Authenticator code" value={mfaCode} onChange={setMfaCode} autoComplete="one-time-code" />
               {error && <p className="text-sm text-red-600">{error}</p>}
               <button
                 type="submit"
@@ -201,8 +180,8 @@ export function AdminSetup({ token }: { token: string }) {
             : 'Finish setting up your admin account.'}
         </p>
         <form className="mt-6 space-y-4" onSubmit={(e) => { void handlePasswordSubmit(e); }}>
-          <Field label="Password" type="password" value={password} onChange={setPassword} autoComplete="new-password" />
-          <Field label="Confirm password" type="password" value={passwordConfirm} onChange={setPasswordConfirm} autoComplete="new-password" />
+          <AuthField label="Password" type="password" value={password} onChange={setPassword} autoComplete="new-password" />
+          <AuthField label="Confirm password" type="password" value={passwordConfirm} onChange={setPasswordConfirm} autoComplete="new-password" />
           {error && <p className="text-sm text-red-600">{error}</p>}
           <button
             type="submit"
