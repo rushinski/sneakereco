@@ -1,4 +1,4 @@
-import { AdminSetup } from '../../../../components/AdminSetup';
+import { AdminSetup } from '../../../../components/auth/AdminSetup';
 
 export default async function AdminSetupPage({
   params,

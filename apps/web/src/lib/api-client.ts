@@ -134,6 +134,26 @@ export interface TenantTheme {
   heroCtaLink: string | null;
   showAboutPage: boolean;
   showContactPage: boolean;
+  authVariant: string;
+  authHeadline: string | null;
+  authDescription: string | null;
+}
+
+export interface UpdateThemePayload {
+  colorPrimary?: string;
+  colorSecondary?: string;
+  colorAccent?: string;
+  colorBackground?: string;
+  colorSurface?: string;
+  colorText?: string;
+  colorTextMuted?: string;
+  colorBorder?: string;
+  fontHeading?: string;
+  fontBody?: string;
+  borderRadius?: string;
+  authVariant?: 'simple' | 'bold';
+  authHeadline?: string | null;
+  authDescription?: string | null;
 }
 
 export interface TenantConfig {
@@ -281,4 +301,18 @@ export const apiClient = {
       tenantId,
     });
   },
+
+  updateTheme: (
+    payload: UpdateThemePayload,
+    tenantId: string,
+    accessToken: string,
+    csrfToken: string,
+  ) =>
+    request<{ success: boolean }>('/tenant/theme', {
+      body: payload,
+      csrfToken,
+      method: 'PATCH',
+      tenantId,
+      accessToken,
+    }),
 };

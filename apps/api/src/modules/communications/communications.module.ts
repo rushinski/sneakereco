@@ -10,7 +10,7 @@ import { SubscribersRepository } from './subscribers/subscribers.repository';
 import { SubscribersService } from './subscribers/subscribers.service';
 
 @Module({
-  imports: [BullModule.forFeature({ name: 'email' })],
+  imports: [BullModule.registerQueue({ name: 'email' })],
   controllers: [ContactController, SubscribersController],
   providers: [
     EmailService,

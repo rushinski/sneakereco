@@ -42,6 +42,11 @@ export const tenantThemeFilterVariantValues = [
   "drawer",
 ] as const;
 
+export const tenantThemeAuthVariantValues = [
+  "simple",
+  "bold",
+] as const;
+
 export const tenantThemeConfig = pgTable(
   "tenant_theme_config",
   {
@@ -99,6 +104,13 @@ export const tenantThemeConfig = pgTable(
     logoUrl: text("logo_url"),
     logoWidth: integer("logo_width").default(120),
     faviconUrl: text("favicon_url"),
+    authVariant: text("auth_variant", {
+      enum: tenantThemeAuthVariantValues,
+    })
+      .notNull()
+      .default("simple"),
+    authHeadline: text("auth_headline"),
+    authDescription: text("auth_description"),
     createdAt: createdAtColumn(),
     updatedAt: updatedAtColumn(),
   },
@@ -123,6 +135,10 @@ export const tenantThemeConfig = pgTable(
     check(
       "tenant_theme_config_filter_variant_check",
       sql`${table.filterVariant} in ('sidebar', 'top_bar', 'drawer')`,
+    ),
+    check(
+      "tenant_theme_config_auth_variant_check",
+      sql`${table.authVariant} in ('simple', 'bold')`,
     ),
   ],
 );

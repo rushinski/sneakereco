@@ -1,5 +1,5 @@
 import { headers } from 'next/headers';
-import { AdminLoginForm } from '../../../components/AdminLoginForm';
+import { AdminLoginForm } from '../../../components/auth/AdminLoginForm';
 
 export default async function AdminLoginPage() {
   const headersList = await headers();

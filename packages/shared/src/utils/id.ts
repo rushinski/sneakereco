@@ -28,6 +28,7 @@ const PREFIXES = {
   tenantOnboarding: 'tob',
   tenantDomainConfig: 'tdc',
   tenantCognitoConfig: 'tcc',
+  tenantThemeConfig: 'ttc',
 } as const;
 
 export type EntityType = keyof typeof PREFIXES;

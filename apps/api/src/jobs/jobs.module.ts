@@ -6,7 +6,7 @@ import { EmailProcessor } from './email.processor';
 
 @Module({
   imports: [
-    BullModule.forFeature({ name: 'email' }),
+    BullModule.registerQueue({ name: 'email' }),
     CommunicationsModule,
   ],
   providers: [EmailProcessor],

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { eq, or } from 'drizzle-orm';
+import { generateId } from '@sneakereco/shared';
 import { tenantThemeConfig, tenants } from '@sneakereco/db';
 
 import { DatabaseService } from '../../../common/database/database.service';
@@ -42,7 +43,27 @@ export interface TenantConfigResult {
     heroCtaLink: string | null;
     showAboutPage: boolean;
     showContactPage: boolean;
+    authVariant: string;
+    authHeadline: string | null;
+    authDescription: string | null;
   };
+}
+
+export interface UpdateThemeInput {
+  colorPrimary?: string;
+  colorSecondary?: string;
+  colorAccent?: string;
+  colorBackground?: string;
+  colorSurface?: string;
+  colorText?: string;
+  colorTextMuted?: string;
+  colorBorder?: string;
+  fontHeading?: string;
+  fontBody?: string;
+  borderRadius?: string;
+  authVariant?: 'simple' | 'bold';
+  authHeadline?: string | null;
+  authDescription?: string | null;
 }
 
 const THEME_DEFAULTS = {
@@ -75,6 +96,9 @@ const THEME_DEFAULTS = {
   heroCtaLink: '/shop',
   showAboutPage: true,
   showContactPage: true,
+  authVariant: 'simple' as const satisfies 'simple' | 'bold',
+  authHeadline: null as null,
+  authDescription: null as null,
 } as const;
 
 @Injectable()
@@ -153,7 +177,37 @@ export class TenantConfigService {
         heroCtaLink: theme?.heroCtaLink ?? THEME_DEFAULTS.heroCtaLink,
         showAboutPage: theme?.showAboutPage ?? THEME_DEFAULTS.showAboutPage,
         showContactPage: theme?.showContactPage ?? THEME_DEFAULTS.showContactPage,
+        authVariant: theme?.authVariant ?? THEME_DEFAULTS.authVariant,
+        authHeadline: theme?.authHeadline ?? THEME_DEFAULTS.authHeadline,
+        authDescription: theme?.authDescription ?? THEME_DEFAULTS.authDescription,
       },
     };
+  }
+
+  /**
+   * Upsert tenant theme config. Creates the row if it doesn't exist yet.
+   * Must be called with system context to bypass RLS (the caller supplies tenantId).
+   */
+  async updateTheme(tenantId: string, input: UpdateThemeInput): Promise<void> {
+    await this.db.withSystemContext(async (tx) => {
+      const [existing] = await tx
+        .select({ id: tenantThemeConfig.id })
+        .from(tenantThemeConfig)
+        .where(eq(tenantThemeConfig.tenantId, tenantId))
+        .limit(1);
+
+      if (existing) {
+        await tx
+          .update(tenantThemeConfig)
+          .set({ ...input, updatedAt: new Date() })
+          .where(eq(tenantThemeConfig.tenantId, tenantId));
+      } else {
+        await tx.insert(tenantThemeConfig).values({
+          id: generateId('tenantThemeConfig'),
+          tenantId,
+          ...input,
+        });
+      }
+    });
   }
 }
