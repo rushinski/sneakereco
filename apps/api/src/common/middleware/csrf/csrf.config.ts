@@ -21,19 +21,20 @@ import { doubleCsrf } from 'csrf-csrf';
  * value because our auth is Bearer-token based — CSRF protection here is
  * defense-in-depth for the httpOnly refresh token cookie.
  */
-export function createCsrfConfig(secret: string, isProduction: boolean) {
+export function createCsrfConfig(secret: string) {
   return doubleCsrf({
     getSecret: () => secret,
     // We don't use sessions — use a fixed identifier since the HMAC is
     // already bound to the secret. The primary auth mechanism is Bearer
     // tokens; CSRF protects the refresh-token cookie.
     getSessionIdentifier: () => 'sneakereco',
-    cookieName: isProduction ? '__Host-sneakereco.csrf' : 'sneakereco.csrf',
+    cookieName: '__Secure-sneakereco.csrf',
     cookieOptions: {
-      sameSite: 'strict',
+      sameSite: 'none',
       path: '/',
-      secure: isProduction,
+      secure: true,
       httpOnly: true,
+      partitioned: true,
     },
     getCsrfTokenFromRequest: (req) => req.headers['x-csrf-token'] as string,
     ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],
@@ -46,8 +47,8 @@ export let doubleCsrfProtection: ReturnType<typeof doubleCsrf>['doubleCsrfProtec
 export let generateCsrfToken: ReturnType<typeof doubleCsrf>['generateCsrfToken'];
 export let invalidCsrfTokenError: ReturnType<typeof doubleCsrf>['invalidCsrfTokenError'];
 
-export function initCsrf(secret: string, isProduction: boolean): void {
-  const csrf = createCsrfConfig(secret, isProduction);
+export function initCsrf(secret: string): void {
+  const csrf = createCsrfConfig(secret);
   doubleCsrfProtection = csrf.doubleCsrfProtection;
   generateCsrfToken = csrf.generateCsrfToken;
   invalidCsrfTokenError = csrf.invalidCsrfTokenError;
