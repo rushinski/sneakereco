@@ -63,7 +63,7 @@ export function DashboardLoginForm() {
 
       if (result.type === 'mfa_setup') {
         // First-time MFA setup — fetch the TOTP secret then show the QR stage
-        const associated = await apiClient.mfaSetupAssociate(result.session, csrfToken);
+        const associated = await apiClient.mfaSetupAssociate(result.session);
         setSetupSecretCode(associated.secretCode);
         setSetupSession(associated.session);
         setStage('mfa_setup');

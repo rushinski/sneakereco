@@ -1,40 +1,34 @@
 import { doubleCsrf } from 'csrf-csrf';
 
+import { AUTH_COOKIE_PATH, CSRF_COOKIE_NAME } from '../../../config/security.config';
+
 /**
  * Configures the csrf-csrf package using the Double Submit Cookie Pattern.
  *
  * How it works:
- * 1. Frontend calls GET /v1/csrf-token — receives a token in the response body
- *    AND a signed httpOnly cookie is set automatically by csrf-csrf.
- * 2. Frontend stores the token in memory and sends it via the X-CSRF-Token
- *    header on every state-changing request (POST, PUT, PATCH, DELETE).
- * 3. The doubleCsrfProtection middleware validates that the header token
- *    matches the HMAC in the cookie.
- *
- * The cookie is httpOnly (frontend can't read it) — that's fine because the
- * frontend gets the token from the response body, not the cookie. The cookie
- * is only for the server to validate the HMAC.
- *
- * NOTE: The CSRF_SECRET env var is read at module init time. The
- * getSecret callback receives the request but we use a static secret since
- * we're stateless (no sessions). The getSessionIdentifier uses a fixed
- * value because our auth is Bearer-token based — CSRF protection here is
- * defense-in-depth for the httpOnly refresh token cookie.
+ * 1. The API generates a token and mirrors it into both the response body and
+ *    a non-HttpOnly cookie.
+ * 2. The frontend sends that same value via the X-CSRF-Token header on
+ *    CSRF-protected requests.
+ * 3. csrf-csrf validates that the header value matches the cookie and that the
+ *    token HMAC is valid.
  */
-export function createCsrfConfig(secret: string) {
+export function createCsrfConfig(params: {
+  secret: string;
+  cookieDomain?: string;
+  cookieSecure: boolean;
+}) {
   return doubleCsrf({
-    getSecret: () => secret,
-    // We don't use sessions — use a fixed identifier since the HMAC is
-    // already bound to the secret. The primary auth mechanism is Bearer
-    // tokens; CSRF protects the refresh-token cookie.
+    getSecret: () => params.secret,
     getSessionIdentifier: () => 'sneakereco',
-    cookieName: '__Secure-sneakereco.csrf',
+    cookieName: CSRF_COOKIE_NAME,
     cookieOptions: {
       sameSite: 'none',
-      path: '/',
-      secure: true,
-      httpOnly: true,
+      path: AUTH_COOKIE_PATH,
+      secure: params.cookieSecure,
+      httpOnly: false,
       partitioned: true,
+      ...(params.cookieDomain ? { domain: params.cookieDomain } : {}),
     },
     getCsrfTokenFromRequest: (req) => req.headers['x-csrf-token'] as string,
     ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],
@@ -47,8 +41,12 @@ export let doubleCsrfProtection: ReturnType<typeof doubleCsrf>['doubleCsrfProtec
 export let generateCsrfToken: ReturnType<typeof doubleCsrf>['generateCsrfToken'];
 export let invalidCsrfTokenError: ReturnType<typeof doubleCsrf>['invalidCsrfTokenError'];
 
-export function initCsrf(secret: string): void {
-  const csrf = createCsrfConfig(secret);
+export function initCsrf(params: {
+  secret: string;
+  cookieDomain?: string;
+  cookieSecure: boolean;
+}): void {
+  const csrf = createCsrfConfig(params);
   doubleCsrfProtection = csrf.doubleCsrfProtection;
   generateCsrfToken = csrf.generateCsrfToken;
   invalidCsrfTokenError = csrf.invalidCsrfTokenError;

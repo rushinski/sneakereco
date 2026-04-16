@@ -6,13 +6,14 @@ import type { HelmetOptions } from 'helmet';
 // Cookie constants
 // ---------------------------------------------------------------------------
 
-export const REFRESH_COOKIE_NAME = '__sneakereco_refresh';
-export const REFRESH_COOKIE_PATH = '/v1/auth';
-export const PLATFORM_REFRESH_COOKIE_PATH = '/v1/platform/auth';
+export const REFRESH_COOKIE_NAME = '__Secure-sneakereco-refresh';
+export const CSRF_COOKIE_NAME = '__Secure-sneakereco-csrf';
+export const AUTH_COOKIE_PATH = '/';
 
 export const REFRESH_MAX_AGE = {
   customer: 30 * 24 * 60 * 60 * 1000, // 30 days
-  admin:     24 * 60 * 60 * 1000,      // 1 day
+  admin: 24 * 60 * 60 * 1000, // 1 day
+  platform: 24 * 60 * 60 * 1000, // 1 day
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -26,6 +27,7 @@ export const CORS_ALLOWED_HEADERS = [
   'Authorization',
   'X-Request-ID',
   'X-CSRF-Token',
+  'X-Client-Context',
   'X-Tenant-ID',
 ];
 

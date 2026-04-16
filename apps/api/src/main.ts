@@ -48,7 +48,11 @@ async function bootstrap() {
   // Initialise csrf-csrf so generateCsrfToken and doubleCsrfProtection are
   // available to CsrfGuard and the CSRF token controller.
   const csrfSecret = config.getOrThrow<string>('CSRF_SECRET');
-  initCsrf(csrfSecret, isProduction);
+  initCsrf({
+    secret: csrfSecret,
+    cookieDomain: security.cookieDomain,
+    cookieSecure: security.cookieSecure,
+  });
   // doubleCsrfProtection is no longer applied globally here.
   // It is applied selectively via CsrfGuard on cookie-authenticated routes only
   // (currently: POST /v1/auth/refresh). Bearer-token routes and webhooks are

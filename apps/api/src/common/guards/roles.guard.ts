@@ -14,7 +14,7 @@ import { ROLES_KEY } from '../decorators/roles.decorator';
 /**
  * Checks the user's role against the roles specified by @Roles().
  *
- * Runs after JwtAuthGuard and TenantGuard in the global guard chain.
+ * Runs after AuthGuard and TenantGuard in the global guard chain.
  *
  * - Public routes are skipped.
  * - Routes without @Roles() allow any authenticated user.
@@ -44,6 +44,10 @@ export class RolesGuard implements CanActivate {
     const request = context
       .switchToHttp()
       .getRequest<Request & { user?: AuthenticatedUser }>();
+
+    if (request.user?.isSuperAdmin && requiredRoles.includes('admin')) {
+      return true;
+    }
 
     const userRole = request.user?.role;
 

@@ -25,6 +25,7 @@ export class ApiClientError extends Error {
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3000';
+const CSRF_COOKIE_NAME = '__Secure-sneakereco-csrf';
 
 // ---------------------------------------------------------------------------
 // In-memory access token store (never persisted to localStorage/sessionStorage)
@@ -37,8 +38,20 @@ export function clearAccessToken(): void { _accessToken = null; }
 interface RequestOptions extends Omit<RequestInit, 'body'> {
   accessToken?: string;
   body?: unknown;
+  clientContext?: 'admin';
   csrfToken?: string | null;
   tenantId?: string;
+}
+
+export function readCsrfTokenCookie(): string | null {
+  if (typeof document === 'undefined') return null;
+
+  const prefix = `${CSRF_COOKIE_NAME}=`;
+  const cookie = document.cookie
+    .split('; ')
+    .find((entry) => entry.startsWith(prefix));
+
+  return cookie ? decodeURIComponent(cookie.slice(prefix.length)) : null;
 }
 
 function isSuccessEnvelope<T>(
@@ -55,7 +68,7 @@ function isErrorEnvelope(
 
 async function request<T>(
   path: string,
-  { accessToken, body, csrfToken, tenantId, headers, ...init }: RequestOptions = {},
+  { accessToken, body, clientContext, csrfToken, tenantId, headers, ...init }: RequestOptions = {},
 ): Promise<T> {
   const requestHeaders = new Headers(headers);
   requestHeaders.set('Accept', 'application/json');
@@ -74,6 +87,10 @@ async function request<T>(
 
   if (tenantId) {
     requestHeaders.set('X-Tenant-ID', tenantId);
+  }
+
+  if (clientContext) {
+    requestHeaders.set('X-Client-Context', clientContext);
   }
 
   const response = await fetch(`${API_BASE_URL}/v1${path}`, {
@@ -187,13 +204,14 @@ export type AdminSignInResult =
   | {
       type: 'tokens';
       accessToken: string;
+      csrfToken: string;
       idToken: string;
       expiresIn: number;
       // refreshToken is no longer returned in the body — it is set as an
       // httpOnly cookie by the API so JavaScript cannot read it.
     }
-  | { type: 'mfa_required'; session: string; usePlatformPool?: true }
-  | { type: 'mfa_setup'; session: string; email: string; usePlatformPool?: true };
+  | { type: 'mfa_required'; session: string }
+  | { type: 'mfa_setup'; session: string; email: string };
 
 // ---------------------------------------------------------------------------
 // Client
@@ -229,87 +247,56 @@ export const apiClient = {
       method: 'POST',
     }),
 
-  signIn: (
-    input: { email: string; password: string; clientType: 'admin'; tenantId: string },
+  loginAdmin: (
+    input: { email: string; password: string; tenantId: string },
     csrfToken: string,
   ) => {
     const { tenantId, ...body } = input;
-    return request<AdminSignInResult>('/auth/sign-in', {
+    return request<AdminSignInResult>('/auth/login', {
       body,
+      clientContext: 'admin',
       csrfToken,
       method: 'POST',
       tenantId,
     });
   },
 
-  refreshTenantAdmin: (tenantId: string, csrfToken: string) =>
+  refreshAdmin: (tenantId: string, csrfToken: string) =>
     request<{ accessToken: string; idToken: string; expiresIn: number }>('/auth/refresh', {
-      body: { clientType: 'admin' },
+      clientContext: 'admin',
       csrfToken,
       method: 'POST',
       tenantId,
     }),
 
-  refreshPlatformAdmin: (csrfToken: string) =>
-    request<{ accessToken: string; idToken: string; expiresIn: number }>('/platform/auth/refresh', {
-      csrfToken,
-      method: 'POST',
-    }),
-
-  mfaChallenge: (
-    input: { email: string; mfaCode: string; session: string; tenantId: string; clientType?: 'customer' | 'admin' },
+  completeAdminMfaChallenge: (
+    input: { email: string; mfaCode: string; session: string; tenantId: string },
     csrfToken: string,
   ) => {
     const { tenantId, ...body } = input;
     return request<{ accessToken: string; idToken: string; expiresIn: number }>('/auth/mfa/challenge', {
       body,
+      clientContext: 'admin',
       csrfToken,
       method: 'POST',
       tenantId,
     });
   },
 
-  // Platform pool MFA — used when super admin authenticates via tenant login (platform pool fallback).
-  mfaChallengePlatform: (
-    input: { email: string; mfaCode: string; session: string },
-    csrfToken: string,
-  ) =>
-    request<{ accessToken: string; idToken: string; expiresIn: number }>('/platform/auth/mfa/challenge', {
-      body: input,
-      csrfToken,
-      method: 'POST',
-    }),
-
-  mfaSetupAssociatePlatform: (session: string) =>
-    request<{ secretCode: string; session: string }>('/platform/auth/mfa/setup/associate', {
-      body: { session },
-      method: 'POST',
-    }),
-
-  mfaSetupCompletePlatform: (
-    input: { email: string; session: string; mfaCode: string },
-    csrfToken: string,
-  ) =>
-    request<{ accessToken: string; idToken: string; expiresIn: number }>('/platform/auth/mfa/setup/complete', {
-      body: input,
-      csrfToken,
-      method: 'POST',
-    }),
-
-  mfaSetupAssociate: (session: string, tenantId: string) =>
+  beginMfaSetup: (session: string) =>
     request<{ secretCode: string; session: string }>('/auth/mfa/setup/associate', {
       body: { session },
       method: 'POST',
-      tenantId,
     }),
 
-  mfaSetupComplete: (
+  completeMfaSetup: (
     input: { email: string; session: string; mfaCode: string; tenantId: string },
     csrfToken: string,
   ) => {
     const { tenantId, ...body } = input;
     return request<{ accessToken: string; idToken: string; expiresIn: number }>('/auth/mfa/setup/complete', {
       body,
+      clientContext: 'admin',
       csrfToken,
       method: 'POST',
       tenantId,

@@ -191,6 +191,21 @@ export class OnboardingRepository {
       });
   }
 
+  async insertTenantCognitoConfig(
+    config: {
+      id: string;
+      tenantId: string;
+      userPoolId: string;
+      userPoolArn: string;
+      customerClientId: string;
+      adminClientId: string;
+      region: string;
+    },
+    tx: DrizzleTransaction,
+  ): Promise<void> {
+    await tx.insert(tenantCognitoConfig).values(config);
+  }
+
   async updateTenantSlug(tenantId: string, slug: string, tx: DrizzleTransaction): Promise<void> {
     await tx
       .update(tenants)

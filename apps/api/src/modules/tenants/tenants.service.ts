@@ -1,12 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 
-import { CognitoService } from '../auth/cognito.service';
 import { OnboardingService } from './onboarding/onboarding.service';
 import { TenantConfigService } from './tenant-config/tenant-config.service';
 import { TenantsRepository } from './tenants.repository';
 import type { ListRequestsDto } from './dto/list-requests.dto';
-import type { MfaChallengeDto } from '../auth/dto/mfa-challenge.dto';
-import type { PlatformAdminSignInDto } from './dto/platform-admin-sign-in.dto';
 
 @Injectable()
 export class TenantsService {
@@ -14,30 +11,7 @@ export class TenantsService {
     private readonly tenantsRepository: TenantsRepository,
     private readonly onboardingService: OnboardingService,
     private readonly tenantConfigService: TenantConfigService,
-    private readonly cognito: CognitoService,
   ) {}
-
-  signInAdmin(dto: PlatformAdminSignInDto) {
-    return this.cognito.signIn({ email: dto.email, password: dto.password, clientType: 'admin' });
-  }
-
-  refreshAdmin(refreshToken: string) {
-    // No pool passed — falls back to platformAdminClientId in CognitoService
-    return this.cognito.refreshTokens(refreshToken);
-  }
-
-  mfaChallengeAdmin(dto: MfaChallengeDto) {
-    // No pool passed — falls back to platformAdminClientId in CognitoService
-    return this.cognito.respondToMfaChallenge(dto);
-  }
-
-  associateSoftwareTokenAdmin(session: string) {
-    return this.cognito.associateSoftwareTokenWithSession(session);
-  }
-
-  completeMfaSetupAdmin(params: { email: string; session: string; mfaCode: string }) {
-    return this.cognito.completeMfaSetupChallenge(params);
-  }
 
   listRequests(dto: ListRequestsDto) {
     return this.tenantsRepository.listRequests(dto);

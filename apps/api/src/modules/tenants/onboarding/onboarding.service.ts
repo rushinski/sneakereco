@@ -8,13 +8,13 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { generateId } from '@sneakereco/shared';
-import { tenantCognitoConfig } from '@sneakereco/db';
 
 import type { DrizzleTransaction } from '../../../common/database/database.service';
 import { DatabaseService } from '../../../common/database/database.service';
 import { OriginResolverService } from '../../../common/services/origin-resolver.service';
-import { CognitoService } from '../../auth/cognito.service';
+import { CognitoService } from '../../auth/cognito/cognito.service';
 import { EmailService } from '../../communications/email/email.service';
+import { CognitoProvisioningService } from '../cognito-provisioning.service';
 
 import type { CompleteOnboardingDto } from './dto/complete-onboarding.dto';
 import type { RequestOnboardingDto } from './dto/request-onboarding.dto';
@@ -38,6 +38,7 @@ export class OnboardingService {
     private readonly db: DatabaseService,
     private readonly onboardingRepository: OnboardingRepository,
     private readonly cognito: CognitoService,
+    private readonly cognitoProvisioning: CognitoProvisioningService,
     private readonly email: EmailService,
     private readonly config: ConfigService,
     private readonly originResolver: OriginResolverService,
@@ -154,13 +155,13 @@ export class OnboardingService {
       );
 
       this.logger.log(`Creating Cognito pool for tenantId=${tenantId}`);
-      const poolResult = await this.cognito.createTenantPool({
+      const poolResult = await this.cognitoProvisioning.createTenantPool({
         businessName: record.businessName ?? record.tenantName,
         subdomain,
       });
       this.logger.log(`Cognito pool created userPoolId=${poolResult.userPoolId} tenantId=${tenantId}`);
 
-      await tx.insert(tenantCognitoConfig).values({
+      await this.onboardingRepository.insertTenantCognitoConfig({
         id: generateId('tenantCognitoConfig'),
         tenantId,
         userPoolId: poolResult.userPoolId,
@@ -168,7 +169,7 @@ export class OnboardingService {
         customerClientId: poolResult.customerClientId,
         adminClientId: poolResult.adminClientId,
         region: poolResult.region,
-      });
+      }, tx);
 
       await this.onboardingRepository.markInviteSent(tenantId, inviteTokenHash, tx);
 
@@ -256,7 +257,7 @@ export class OnboardingService {
       throw new InternalServerErrorException('Tenant Cognito pool not configured');
     }
 
-    const cognitoSub = await this.cognito.createAdminUser(
+    const cognitoSub = await this.cognitoProvisioning.createAdminUser(
       { email, fullName: inviteRecord.requestedByName, password: dto.password },
       { userPoolId: cognitoConfig.userPoolId },
     );
@@ -320,8 +321,8 @@ export class OnboardingService {
       await this.onboardingRepository.markInviteAccepted(inviteRecord.tenantId, tx);
     });
 
-    const authResult = await this.cognito.signIn(
-      { clientType: 'admin', email, password: dto.password },
+    const authResult = await this.cognito.login(
+      { email, password: dto.password },
       { userPoolId: cognitoConfig.userPoolId, clientId: cognitoConfig.adminClientId },
     );
 

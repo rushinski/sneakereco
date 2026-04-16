@@ -3,7 +3,15 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-import { ApiClientError, apiClient, clearAccessToken, getAccessToken, setAccessToken, type RequestSummary } from '../../lib/api-client';
+import {
+  ApiClientError,
+  apiClient,
+  clearAccessToken,
+  getAccessToken,
+  readCsrfTokenCookie,
+  setAccessToken,
+  type RequestSummary,
+} from '../../lib/api-client';
 
 type StatusFilter = 'pending' | 'invited' | 'approved' | 'rejected' | undefined;
 
@@ -33,17 +41,20 @@ export function ApprovalDashboard() {
     const stored = getAccessToken();
     if (stored) {
       setToken(stored);
-      apiClient.getCsrfToken().then((data) => setCsrfToken(data.token)).catch(() => {});
+      setCsrfToken(readCsrfTokenCookie());
       setAuthReady(true);
       return;
     }
 
     // No in-memory token — try to restore session from the httpOnly refresh cookie
-    apiClient.getCsrfToken()
-      .then((data) => {
-        setCsrfToken(data.token);
-        return apiClient.refreshAdmin(data.token);
-      })
+    const tokenFromCookie = readCsrfTokenCookie();
+    if (!tokenFromCookie) {
+      router.push('/login');
+      return;
+    }
+
+    setCsrfToken(tokenFromCookie);
+    apiClient.refreshAdmin(tokenFromCookie)
       .then((result) => {
         setAccessToken(result.accessToken);
         setToken(result.accessToken);

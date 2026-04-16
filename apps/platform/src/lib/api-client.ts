@@ -39,6 +39,7 @@ export class ApiClientError extends Error {
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3000';
+const CSRF_COOKIE_NAME = '__Secure-sneakereco-csrf';
 
 // ---------------------------------------------------------------------------
 // In-memory access token store (never persisted to localStorage/sessionStorage)
@@ -52,6 +53,17 @@ interface RequestOptions extends Omit<RequestInit, 'body'> {
   accessToken?: string;
   body?: unknown;
   csrfToken?: string | null;
+}
+
+export function readCsrfTokenCookie(): string | null {
+  if (typeof document === 'undefined') return null;
+
+  const prefix = `${CSRF_COOKIE_NAME}=`;
+  const cookie = document.cookie
+    .split('; ')
+    .find((entry: string) => entry.startsWith(prefix));
+
+  return cookie ? decodeURIComponent(cookie.slice(prefix.length)) : null;
 }
 
 function isSuccessEnvelope<T>(
@@ -147,6 +159,7 @@ export type AdminSignInResult =
   | {
       type: 'tokens';
       accessToken: string;
+      csrfToken: string;
       idToken: string;
       expiresIn: number;
       // refreshToken is no longer returned in the body — it is set as an
@@ -157,6 +170,7 @@ export type AdminSignInResult =
 
 export interface MfaChallengeResult {
   accessToken: string;
+  csrfToken: string;
   idToken: string;
   expiresIn: number;
   // refreshToken is no longer returned in the body — set as httpOnly cookie.
@@ -230,14 +244,14 @@ export const apiClient = {
   // ---- Platform admin -----------------------------------------------------
 
   signInAdmin: (input: { email: string; password: string }, csrfToken: string) =>
-    request<AdminSignInResult>('/platform/auth/sign-in', {
+    request<AdminSignInResult>('/auth/login', {
       body: input,
       csrfToken,
       method: 'POST',
     }),
 
   refreshAdmin: (csrfToken: string) =>
-    request<{ accessToken: string; idToken: string; expiresIn: number }>('/platform/auth/refresh', {
+    request<{ accessToken: string; idToken: string; expiresIn: number }>('/auth/refresh', {
       csrfToken,
       method: 'POST',
     }),
@@ -246,16 +260,15 @@ export const apiClient = {
     input: { email: string; mfaCode: string; session: string },
     csrfToken: string,
   ) =>
-    request<MfaChallengeResult>('/platform/auth/mfa/challenge', {
+    request<MfaChallengeResult>('/auth/mfa/challenge', {
       body: input,
       csrfToken,
       method: 'POST',
     }),
 
-  mfaSetupAssociate: (session: string, csrfToken: string) =>
-    request<{ secretCode: string; session: string }>('/platform/auth/mfa/setup/associate', {
+  mfaSetupAssociate: (session: string) =>
+    request<{ secretCode: string; session: string }>('/auth/mfa/setup/associate', {
       body: { session },
-      csrfToken,
       method: 'POST',
     }),
 
@@ -263,7 +276,7 @@ export const apiClient = {
     input: { email: string; session: string; mfaCode: string },
     csrfToken: string,
   ) =>
-    request<MfaChallengeResult>('/platform/auth/mfa/setup/complete', {
+    request<MfaChallengeResult>('/auth/mfa/setup/complete', {
       body: input,
       csrfToken,
       method: 'POST',

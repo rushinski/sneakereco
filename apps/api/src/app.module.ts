@@ -13,7 +13,7 @@ import { envSchema } from './config/env.schema';
 import { THROTTLE } from './config/security.config';
 import { CommonModule } from './common/common.module';
 import { DatabaseModule } from './common/database/database.module';
-import { JwtAuthGuard } from './common/guards/auth.guard';
+import { AuthGuard } from './common/guards/auth.guard';
 import { OnboardingOriginGuard } from './common/guards/onboarding-origin.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { TenantGuard } from './common/guards/tenant.guard';
@@ -112,7 +112,7 @@ import { TenantsModule } from './modules/tenants/tenants.module';
   ],
   providers: [
     // Guard order matters: auth → tenant → roles → throttle → onboarding
-    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_GUARD, useClass: TenantGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: CustomThrottlerGuard },

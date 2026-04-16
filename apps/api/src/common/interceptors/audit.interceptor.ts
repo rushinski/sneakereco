@@ -50,7 +50,7 @@ export class AuditInterceptor implements NestInterceptor {
         this.logger.debug({
           action: `${request.method} ${request.url}`,
           tenantId: user.tenantId,
-          userId: user.cognitoId,
+          userId: user.cognitoSub,
           role: user.role,
           duration,
           requestId: request.headers['x-request-id'],

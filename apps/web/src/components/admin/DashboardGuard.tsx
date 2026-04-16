@@ -7,6 +7,7 @@ import {
   apiClient,
   clearAccessToken,
   getAccessToken,
+  readCsrfTokenCookie,
   setAccessToken,
 } from '../../lib/api-client';
 
@@ -46,25 +47,13 @@ export function DashboardGuard({
       }
 
       try {
-        const { token: csrfToken } = await apiClient.getCsrfToken();
-
-        if (tenantId) {
-          try {
-            const result = await apiClient.refreshTenantAdmin(tenantId, csrfToken);
-            setAccessToken(result.accessToken);
-            allowAuthReady();
-            return;
-          } catch (error) {
-            if (
-              !(error instanceof ApiClientError) ||
-              ![401, 403, 404].includes(error.status)
-            ) {
-              throw error;
-            }
-          }
+        const csrfToken = readCsrfTokenCookie();
+        if (!csrfToken || !tenantId) {
+          redirectToLogin();
+          return;
         }
 
-        const result = await apiClient.refreshPlatformAdmin(csrfToken);
+        const result = await apiClient.refreshAdmin(tenantId, csrfToken);
         setAccessToken(result.accessToken);
         allowAuthReady();
       } catch {
