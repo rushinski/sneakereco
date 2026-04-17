@@ -16,6 +16,10 @@ export const REFRESH_MAX_AGE = {
   platform: 24 * 60 * 60 * 1000, // 1 day
 } as const;
 
+export const CSRF_HEADER_NAME = 'x-csrf-token';
+
+export const CSRF_IGNORED_METHODS = ['GET', 'HEAD', 'OPTIONS'] as const;
+
 // ---------------------------------------------------------------------------
 // CORS constants
 // ---------------------------------------------------------------------------

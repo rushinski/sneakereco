@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 
-import { doubleCsrfProtection } from '../middleware/csrf/csrf.config';
+import { CsrfService } from '../../core/security/csrf/csrf.service';
 
 /**
  * Validates the CSRF double-submit cookie for state-changing routes that opt in
@@ -18,16 +18,21 @@ import { doubleCsrfProtection } from '../middleware/csrf/csrf.config';
  */
 @Injectable()
 export class CsrfGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean | Promise<boolean> {
-    const req = context.switchToHttp().getRequest<Request>();
-    const res = context.switchToHttp().getResponse<Response>();
+  constructor(private readonly csrfService: CsrfService) {}
 
-    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return true;
+  canActivate(context: ExecutionContext): Promise<boolean> {
+    const http = context.switchToHttp();
+    const req = http.getRequest<Request>();
+    const res = http.getResponse<Response>();
 
-    return new Promise<boolean>((resolve, reject) => {
-      doubleCsrfProtection(req, res, (err?: unknown) => {
-        if (err) reject(new ForbiddenException('Invalid CSRF token'));
-        else resolve(true);
+    return new Promise((resolve, reject) => {
+      this.csrfService.protect(req, res, (error?: unknown) => {
+        if (!error) {
+          resolve(true);
+          return;
+        }
+
+        reject(new ForbiddenException('Invalid CSRF token'));
       });
     });
   }

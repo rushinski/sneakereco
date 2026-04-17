@@ -3,14 +3,13 @@ import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerModule } from '@nestjs/throttler';
-import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
-import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
-import { LoggerModule } from 'nestjs-pino';
+import { CustomThrottlerGuard } from './common/guards/throttler.guard';
+import { LoggingModule } from './core/logging/logging.module';
 import { JobsModule } from './jobs/jobs.module';
+import { ThrottlingModule } from './core/security/throttling/throttling.module';
 
 import { envSchema } from './config/env.schema';
-import { THROTTLE } from './config/security.config';
+import { CsrfModule } from './core/security/csrf/csrf.module';
 import { CommonModule } from './common/common.module';
 import { DatabaseModule } from './core/database/database.module';
 import { AuthGuard } from './common/guards/auth.guard';
@@ -49,24 +48,6 @@ import { TenantsModule } from './modules/tenants/tenants.module';
       },
     }),
 
-    LoggerModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        pinoHttp: {
-          level: config.getOrThrow<string>('LOG_LEVEL'),
-          transport:
-            config.getOrThrow<string>('NODE_ENV') === 'development'
-              ? { target: 'pino-pretty' }
-              : undefined,
-          // Attach requestId to every log line automatically
-          customProps: (req) => ({
-            requestId: req.headers['x-request-id'],
-          }),
-        },
-      }),
-    }),
-
     // Email queue — backed by the same Valkey instance as throttling.
     // Jobs survive restarts; the EmailProcessor worker processes them async.
     BullModule.forRootAsync({
@@ -77,22 +58,9 @@ import { TenantsModule } from './modules/tenants/tenants.module';
       }),
     }),
 
-    // Rate limiting — tiered profiles; override per-route with @Throttle().
-    // State is persisted in Valkey so limits survive restarts and work across
-    // multiple API instances (PM2 cluster, future horizontal scaling).
-    ThrottlerModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        throttlers: [
-          // Only 'default' is registered globally — it applies to every route.
-          // Auth/commerce routes tighten this via @Throttle({ default: {...} }).
-          { name: 'default', ...THROTTLE.default },
-        ],
-        storage: new ThrottlerStorageRedisService(config.getOrThrow<string>('VALKEY_URL')),
-      }),
-    }),
-
+    ThrottlingModule,
+    LoggingModule,
+    CsrfModule,
     JobsModule,
     CommonModule,
     DatabaseModule,
