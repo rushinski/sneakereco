@@ -3,7 +3,7 @@ import { TerminusModule } from '@nestjs/terminus';
 
 import { HealthController } from './health.controller';
 import { DatabaseHealthIndicator } from './indicators/database.health';
-import { RedisHealthIndicator } from './indicators/redis.health';
+import { RedisHealthIndicator } from './indicators/valkey.health';
 
 @Module({
   imports: [TerminusModule],

@@ -26,7 +26,7 @@ export function createCsrfConfig(params: {
       sameSite: 'none',
       path: AUTH_COOKIE_PATH,
       secure: params.cookieSecure,
-      httpOnly: false,
+      httpOnly: true,
       partitioned: true,
       ...(params.cookieDomain ? { domain: params.cookieDomain } : {}),
     },

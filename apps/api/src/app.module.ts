@@ -12,7 +12,7 @@ import { JobsModule } from './jobs/jobs.module';
 import { envSchema } from './config/env.schema';
 import { THROTTLE } from './config/security.config';
 import { CommonModule } from './common/common.module';
-import { DatabaseModule } from './common/database/database.module';
+import { DatabaseModule } from './core/database/database.module';
 import { AuthGuard } from './common/guards/auth.guard';
 import { OnboardingOriginGuard } from './common/guards/onboarding-origin.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -25,7 +25,7 @@ import { CommunicationsModule } from './modules/communications/communications.mo
 import { CustomersModule } from './modules/customers/customers.module';
 import { FeaturedModule } from './modules/featured/featured.module';
 import { FraudModule } from './modules/fraud/fraud.module';
-import { HealthModule } from './modules/health/health.module';
+import { HealthModule } from '@/core/health/health.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { ProductsModule } from './modules/products/products.module';

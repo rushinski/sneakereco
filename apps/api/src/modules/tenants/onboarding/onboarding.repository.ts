@@ -10,8 +10,8 @@ import type {
   TenantOnboarding,
 } from '@sneakereco/shared';
 
-import type { DrizzleTransaction } from '../../../common/database/database.service';
-import { DatabaseService } from '../../../common/database/database.service';
+import type { DrizzleTransaction } from '../../../core/database/database.service';
+import { DatabaseService } from '../../../core/database/database.service';
 
 export interface InviteRecord {
   tenantId: string;

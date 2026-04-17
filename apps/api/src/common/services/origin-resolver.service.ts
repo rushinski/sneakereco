@@ -4,7 +4,7 @@ import { eq, or, sql } from 'drizzle-orm';
 import { tenantDomainConfig } from '@sneakereco/db';
 import Redis from 'ioredis';
 
-import { DatabaseService } from '../database/database.service';
+import { DatabaseService } from '../../core/database/database.service';
 import { ORIGIN_CACHE_TTL_SECONDS } from '../../config/security.config';
 
 export type OriginGroup = 'platform' | 'tenant' | 'admin' | 'unknown';

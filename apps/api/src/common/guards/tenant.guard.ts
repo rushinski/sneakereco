@@ -2,7 +2,7 @@ import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from
 import { ModuleRef, ContextIdFactory, Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
-import { TenantContextService } from '../database/tenant-context.service';
+import { TenantContextService } from '../../core/database/tenant-context.service';
 import type { AuthenticatedUser } from '../../modules/auth/auth.types';
 
 /**

@@ -3,7 +3,7 @@ import { eq, or } from 'drizzle-orm';
 import { generateId } from '@sneakereco/shared';
 import { tenantThemeConfig, tenants } from '@sneakereco/db';
 
-import { DatabaseService } from '../../../common/database/database.service';
+import { DatabaseService } from '../../../core/database/database.service';
 
 export interface TenantConfigResult {
   tenant: {

@@ -5,7 +5,7 @@ import { SkipThrottle } from '@nestjs/throttler';
 
 import { Public } from '../../common/decorators/public.decorator';
 import { DatabaseHealthIndicator } from './indicators/database.health';
-import { RedisHealthIndicator } from './indicators/redis.health';
+import { RedisHealthIndicator } from './indicators/valkey.health';
 
 @ApiTags('health')
 @SkipThrottle()

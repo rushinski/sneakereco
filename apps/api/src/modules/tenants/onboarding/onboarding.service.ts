@@ -9,8 +9,8 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { generateId } from '@sneakereco/shared';
 
-import type { DrizzleTransaction } from '../../../common/database/database.service';
-import { DatabaseService } from '../../../common/database/database.service';
+import type { DrizzleTransaction } from '../../../core/database/database.service';
+import { DatabaseService } from '../../../core/database/database.service';
 import { OriginResolverService } from '../../../common/services/origin-resolver.service';
 import { CognitoService } from '../../auth/cognito/cognito.service';
 import { EmailService } from '../../communications/email/email.service';

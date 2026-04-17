@@ -3,7 +3,7 @@ import { eq, and } from 'drizzle-orm';
 import { emailSubscribers } from '@sneakereco/db';
 import type { EmailSubscriber, NewEmailSubscriber } from '@sneakereco/shared';
 
-import { DatabaseService } from '../../../common/database/database.service';
+import { DatabaseService } from '../../../core/database/database.service';
 
 @Injectable()
 export class SubscribersRepository {

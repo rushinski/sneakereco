@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { tenantCognitoConfig, tenantMembers, users } from '@sneakereco/db';
 import type { TenantMemberRole } from '@sneakereco/db';
 
-import { DatabaseService } from '../../../common/database/database.service';
+import { DatabaseService } from '../../../core/database/database.service';
 
 @Injectable()
 export class JwtStrategyRepository {

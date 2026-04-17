@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { count, desc, eq } from 'drizzle-orm';
 import { tenantOnboarding } from '@sneakereco/db';
 
-import { DatabaseService } from '../../common/database/database.service';
+import { DatabaseService } from '../../core/database/database.service';
 import type { ListRequestsDto } from './dto/list-requests.dto';
 
 export interface RequestSummary {

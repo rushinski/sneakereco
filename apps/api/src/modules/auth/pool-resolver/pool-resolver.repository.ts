@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { tenantCognitoConfig } from '@sneakereco/db';
 
-import { DatabaseService } from '../../../common/database/database.service';
+import { DatabaseService } from '../../../core/database/database.service';
 
 @Injectable()
 export class PoolResolverRepository {

@@ -1,5 +1,5 @@
 import { Global, Module } from '@nestjs/common';
-import { DatabaseModule } from './database/database.module';
+import { DatabaseModule } from '../core/database/database.module';
 import { CsrfController } from './middleware/csrf/csrf.controller';
 import { OriginResolverService } from './services/origin-resolver.service';
 import { RoleContextService } from './services/role-context.service';
