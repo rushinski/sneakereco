@@ -1,6 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { and, eq, inArray } from 'drizzle-orm';
-import { tenantCognitoConfig, tenantDomainConfig, tenantMembers, tenantOnboarding, tenants, users } from '@sneakereco/db';
+import {
+  tenantCognitoConfig,
+  tenantDomainConfig,
+  tenantMembers,
+  tenantOnboarding,
+  tenants,
+  users,
+} from '@sneakereco/db';
 import type {
   NewTenant,
   NewTenantDomainConfig,
@@ -63,9 +70,7 @@ export class OnboardingRepository {
     return row;
   }
 
-  async findRequestDetails(
-    tenantId: string,
-  ): Promise<
+  async findRequestDetails(tenantId: string): Promise<
     | {
         requestedByEmail: string | null;
         requestedByName: string | null;
@@ -88,9 +93,7 @@ export class OnboardingRepository {
     return row;
   }
 
-  async findDenialDetails(
-    tenantId: string,
-  ): Promise<
+  async findDenialDetails(tenantId: string): Promise<
     | {
         businessName: string | null;
         email: string | null;
@@ -112,12 +115,11 @@ export class OnboardingRepository {
 
   async findTenantCognitoConfig(
     tenantId: string,
-  ): Promise<{ userPoolId: string; customerClientId: string; adminClientId: string } | undefined> {
+  ): Promise<{ userPoolId: string; customerClientId: string } | undefined> {
     const [row] = await this.db.systemDb
       .select({
         userPoolId: tenantCognitoConfig.userPoolId,
         customerClientId: tenantCognitoConfig.customerClientId,
-        adminClientId: tenantCognitoConfig.adminClientId,
       })
       .from(tenantCognitoConfig)
       .where(eq(tenantCognitoConfig.tenantId, tenantId))
@@ -198,7 +200,6 @@ export class OnboardingRepository {
       userPoolId: string;
       userPoolArn: string;
       customerClientId: string;
-      adminClientId: string;
       region: string;
     },
     tx: DrizzleTransaction,
@@ -207,10 +208,7 @@ export class OnboardingRepository {
   }
 
   async updateTenantSlug(tenantId: string, slug: string, tx: DrizzleTransaction): Promise<void> {
-    await tx
-      .update(tenants)
-      .set({ slug, updatedAt: new Date() })
-      .where(eq(tenants.id, tenantId));
+    await tx.update(tenants).set({ slug, updatedAt: new Date() }).where(eq(tenants.id, tenantId));
   }
 
   async markInviteSent(
@@ -264,8 +262,11 @@ export class OnboardingRepository {
   }
 
   async insertTenantMember(member: NewTenantMember, tx: DrizzleTransaction): Promise<void> {
-    await tx.insert(tenantMembers).values(member).onConflictDoNothing({
-      target: [tenantMembers.tenantId, tenantMembers.userId],
-    });
+    await tx
+      .insert(tenantMembers)
+      .values(member)
+      .onConflictDoNothing({
+        target: [tenantMembers.tenantId, tenantMembers.userId],
+      });
   }
 }

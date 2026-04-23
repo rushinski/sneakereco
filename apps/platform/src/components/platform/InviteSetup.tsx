@@ -17,7 +17,6 @@ interface InviteSetupProps {
 }
 
 export function InviteSetup({ token }: InviteSetupProps) {
-  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [invite, setInvite] = useState<InviteSummary | null>(null);
@@ -68,16 +67,16 @@ export function InviteSetup({ token }: InviteSetupProps) {
   }, [token]);
 
   const otpAuthUri = useMemo(() => {
-    if (!invite?.email || !result?.secretCode) {
+    if (!result?.email || !result.secretCode) {
       return null;
     }
 
     const issuer = 'SneakerEco';
-    const label = `${issuer}:${invite.email}`;
+    const label = `${issuer}:${result.email}`;
     return `otpauth://totp/${encodeURIComponent(label)}?secret=${encodeURIComponent(
       result.secretCode,
     )}&issuer=${encodeURIComponent(issuer)}`;
-  }, [invite?.email, result?.secretCode]);
+  }, [result?.email, result?.secretCode]);
 
   useEffect(() => {
     let cancelled = false;
@@ -126,7 +125,6 @@ export function InviteSetup({ token }: InviteSetupProps) {
     try {
       const onboardingResult = await apiClient.completeOnboarding({ password, token }, csrfToken);
 
-      setAccessToken(onboardingResult.accessToken);
       setResult(onboardingResult);
       setStage('mfa');
     } catch (caughtError) {
@@ -142,7 +140,7 @@ export function InviteSetup({ token }: InviteSetupProps) {
 
   async function handleMfaSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!csrfToken || !accessToken) {
+    if (!csrfToken || !invite || !result) {
       setError('Your setup session is incomplete. Refresh and try again.');
       return;
     }
@@ -151,13 +149,14 @@ export function InviteSetup({ token }: InviteSetupProps) {
     setError(null);
 
     try {
-      await apiClient.verifyMfa(
+      await apiClient.completeTenantAdminMfaSetup(
         {
-          deviceName: 'SneakerEco Admin',
+          email: result.email,
           mfaCode,
+          session: result.session,
+          tenantId: invite.tenantId,
         },
         csrfToken,
-        accessToken,
       );
 
       setStage('complete');

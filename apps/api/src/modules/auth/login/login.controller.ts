@@ -48,7 +48,36 @@ export class LoginController {
       const result = await this.loginService.login(dto, { role: 'platform' });
 
       if (result.type === 'tokens') {
-        return buildLoginResponse(request, response, this.security, this.csrfService, result, 'platform');
+        return buildLoginResponse(
+          request,
+          response,
+          this.security,
+          this.csrfService,
+          result,
+          'platform',
+        );
+      }
+
+      clearAuthCookies(response, this.security);
+      return result;
+    }
+
+    if (origin === 'tenant-admin') {
+      if (!ctx.tenantId) {
+        throw new BadRequestException('Tenant context is not configured');
+      }
+
+      const result = await this.loginService.login(dto, { role: 'admin', tenantId: ctx.tenantId });
+
+      if (result.type === 'tokens') {
+        return buildLoginResponse(
+          request,
+          response,
+          this.security,
+          this.csrfService,
+          result,
+          origin,
+        );
       }
 
       clearAuthCookies(response, this.security);
@@ -59,8 +88,7 @@ export class LoginController {
       throw new BadRequestException('Tenant authentication is not configured');
     }
 
-    const role = origin === 'tenant-admin' ? 'admin' : 'customer';
-    const result = await this.loginService.login(dto, { role, pool: ctx.pool });
+    const result = await this.loginService.login(dto, { role: 'customer', pool: ctx.pool });
 
     if (result.type === 'tokens') {
       return buildLoginResponse(request, response, this.security, this.csrfService, result, origin);

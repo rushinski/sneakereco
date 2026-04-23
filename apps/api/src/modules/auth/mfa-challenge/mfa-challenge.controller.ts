@@ -46,15 +46,36 @@ export class MfaChallengeController {
 
     if (origin === 'platform') {
       const result = await this.mfaChallengeService.respond(dto, { role: 'platform' });
-      return buildLoginResponse(request, response, this.security, this.csrfService, result, 'platform');
+      return buildLoginResponse(
+        request,
+        response,
+        this.security,
+        this.csrfService,
+        result,
+        'platform',
+      );
+    }
+
+    if (origin === 'tenant-admin') {
+      if (!ctx.tenantId) {
+        throw new BadRequestException('Tenant authentication is not configured');
+      }
+
+      const result = await this.mfaChallengeService.respond(dto, {
+        role: 'admin',
+        tenantId: ctx.tenantId,
+      });
+      return buildLoginResponse(request, response, this.security, this.csrfService, result, origin);
     }
 
     if (!ctx.pool) {
       throw new BadRequestException('Tenant authentication is not configured');
     }
 
-    const role = origin === 'tenant-admin' ? 'admin' : 'customer';
-    const result = await this.mfaChallengeService.respond(dto, { role, pool: ctx.pool });
+    const result = await this.mfaChallengeService.respond(dto, {
+      role: 'customer',
+      pool: ctx.pool,
+    });
     return buildLoginResponse(request, response, this.security, this.csrfService, result, origin);
   }
 }

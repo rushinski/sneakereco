@@ -14,7 +14,6 @@ export class JwtStrategyRepository {
       .select({
         userPoolId: tenantCognitoConfig.userPoolId,
         customerClientId: tenantCognitoConfig.customerClientId,
-        adminClientId: tenantCognitoConfig.adminClientId,
       })
       .from(tenantCognitoConfig)
       .where(eq(tenantCognitoConfig.userPoolId, poolId))

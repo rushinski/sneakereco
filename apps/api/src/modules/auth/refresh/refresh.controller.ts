@@ -27,7 +27,9 @@ export class RefreshController {
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   async refresh(@Req() request: Request) {
-    const refreshToken = (request.cookies as Record<string, string | undefined>)[REFRESH_COOKIE_NAME];
+    const refreshToken = (request.cookies as Record<string, string | undefined>)[
+      REFRESH_COOKIE_NAME
+    ];
     if (!refreshToken) {
       throw new UnauthorizedException('No refresh token provided');
     }
@@ -43,11 +45,21 @@ export class RefreshController {
       return this.refreshService.refresh(refreshToken, { role: 'platform' });
     }
 
+    if (origin === 'tenant-admin') {
+      if (!ctx.tenantId) {
+        throw new BadRequestException('Tenant authentication is not configured');
+      }
+
+      return this.refreshService.refresh(refreshToken, {
+        role: 'admin',
+        tenantId: ctx.tenantId,
+      });
+    }
+
     if (!ctx.pool) {
       throw new BadRequestException('Tenant authentication is not configured');
     }
 
-    const role = origin === 'tenant-admin' ? 'admin' : 'customer';
-    return this.refreshService.refresh(refreshToken, { role, pool: ctx.pool });
+    return this.refreshService.refresh(refreshToken, { role: 'customer', pool: ctx.pool });
   }
 }

@@ -13,7 +13,6 @@ export const tenantCognitoConfig = pgTable(
     userPoolId: text("user_pool_id").notNull(),
     userPoolArn: text("user_pool_arn").notNull(),
     customerClientId: text("customer_client_id").notNull(),
-    adminClientId: text("admin_client_id").notNull(),
     region: text("region").notNull(),
     createdAt: createdAtColumn(),
     updatedAt: updatedAtColumn(),

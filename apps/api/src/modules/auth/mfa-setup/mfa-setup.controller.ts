@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Headers,
   HttpCode,
   HttpStatus,
   Post,
@@ -17,14 +18,8 @@ import { RequestCtx } from '../../../common/context/request-context';
 import { SecurityConfig, THROTTLE } from '../../../config/security.config';
 import { CsrfService } from '../../../core/security/csrf/csrf.service';
 import { buildLoginResponse } from '../shared/tokens/auth-cookie';
-import {
-  MfaSetupAssociateDtoSchema,
-  type MfaSetupAssociateDto,
-} from './mfa-setup-associate.dto';
-import {
-  MfaSetupCompleteDtoSchema,
-  type MfaSetupCompleteDto,
-} from './mfa-setup-complete.dto';
+import { MfaSetupAssociateDtoSchema, type MfaSetupAssociateDto } from './mfa-setup-associate.dto';
+import { MfaSetupCompleteDtoSchema, type MfaSetupCompleteDto } from './mfa-setup-complete.dto';
 import { MfaSetupService } from './mfa-setup.service';
 
 @Controller('auth')
@@ -39,9 +34,7 @@ export class MfaSetupController {
   @Throttle({ default: THROTTLE.mfaSetup })
   @Post('mfa/setup/associate')
   @HttpCode(HttpStatus.OK)
-  associate(
-    @Body(new ZodValidationPipe(MfaSetupAssociateDtoSchema)) dto: MfaSetupAssociateDto,
-  ) {
+  associate(@Body(new ZodValidationPipe(MfaSetupAssociateDtoSchema)) dto: MfaSetupAssociateDto) {
     return this.mfaSetupService.associate(dto.session);
   }
 
@@ -52,6 +45,8 @@ export class MfaSetupController {
   async complete(
     @Req() request: Request,
     @Body(new ZodValidationPipe(MfaSetupCompleteDtoSchema)) dto: MfaSetupCompleteDto,
+    @Headers('x-client-context') clientContext: string | undefined,
+    @Headers('x-tenant-id') tenantIdHeader: string | undefined,
     @Res({ passthrough: true }) response: Response,
   ) {
     const ctx = RequestCtx.get();
@@ -61,9 +56,34 @@ export class MfaSetupController {
       throw new BadRequestException('Origin not allowed');
     }
 
+    const tenantAdminTenantId =
+      origin === 'tenant-admin' ? ctx?.tenantId : clientContext === 'admin' ? tenantIdHeader : null;
+
+    if (tenantAdminTenantId) {
+      const result = await this.mfaSetupService.complete(dto, {
+        role: 'admin',
+        tenantId: tenantAdminTenantId,
+      });
+      return buildLoginResponse(
+        request,
+        response,
+        this.security,
+        this.csrfService,
+        result,
+        'tenant-admin',
+      );
+    }
+
     if (origin === 'platform') {
       const result = await this.mfaSetupService.complete(dto, { role: 'platform' });
-      return buildLoginResponse(request, response, this.security, this.csrfService, result, 'platform');
+      return buildLoginResponse(
+        request,
+        response,
+        this.security,
+        this.csrfService,
+        result,
+        'platform',
+      );
     }
 
     if (!ctx.pool) {

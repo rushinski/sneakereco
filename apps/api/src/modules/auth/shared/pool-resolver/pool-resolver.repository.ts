@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
-import { tenantCognitoConfig } from '@sneakereco/db';
+import { and, eq } from 'drizzle-orm';
+import { tenantCognitoConfig, tenantMembers, users } from '@sneakereco/db';
 
 import { DatabaseService } from '../../../../core/database/database.service';
 
@@ -13,7 +13,6 @@ export class PoolResolverRepository {
       .select({
         userPoolId: tenantCognitoConfig.userPoolId,
         customerClientId: tenantCognitoConfig.customerClientId,
-        adminClientId: tenantCognitoConfig.adminClientId,
       })
       .from(tenantCognitoConfig)
       .where(eq(tenantCognitoConfig.tenantId, tenantId))
@@ -22,17 +21,20 @@ export class PoolResolverRepository {
     return config;
   }
 
-  async findByPoolId(poolId: string) {
-    const [config] = await this.db.systemDb
-      .select({
-        userPoolId: tenantCognitoConfig.userPoolId,
-        customerClientId: tenantCognitoConfig.customerClientId,
-        adminClientId: tenantCognitoConfig.adminClientId,
-      })
-      .from(tenantCognitoConfig)
-      .where(eq(tenantCognitoConfig.userPoolId, poolId))
+  async hasAdminMembership(tenantId: string, email: string): Promise<boolean> {
+    const [member] = await this.db.systemDb
+      .select({ id: tenantMembers.id })
+      .from(users)
+      .innerJoin(tenantMembers, eq(tenantMembers.userId, users.id))
+      .where(
+        and(
+          eq(users.email, email),
+          eq(tenantMembers.tenantId, tenantId),
+          eq(tenantMembers.role, 'admin'),
+        ),
+      )
       .limit(1);
 
-    return config;
+    return Boolean(member);
   }
 }

@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   AdminGetUserCommand,
@@ -39,13 +35,13 @@ import { throwCognitoError } from '../../../../core/cognito/cognito-error.mapper
 
 @Injectable()
 export class CognitoService {
-  private readonly platformAdminClientId: string;
+  private readonly platformClientId: string;
 
   constructor(
     private readonly cognitoClientProvider: CognitoClientProvider,
     config: ConfigService,
   ) {
-    this.platformAdminClientId = config.getOrThrow<string>('PLATFORM_COGNITO_ADMIN_CLIENT_ID');
+    this.platformClientId = config.getOrThrow<string>('PLATFORM_COGNITO_PLATFORM_CLIENT_ID');
   }
 
   private get client() {
@@ -56,7 +52,7 @@ export class CognitoService {
     credentials: { email: string; password: string },
     pool?: PoolCredentials,
   ): Promise<LoginResult> {
-    const clientId = pool?.clientId ?? this.platformAdminClientId;
+    const clientId = pool?.clientId ?? this.platformClientId;
 
     try {
       const response = await this.client.send(
@@ -107,7 +103,7 @@ export class CognitoService {
     input: { email: string; session: string; mfaCode: string },
     pool?: PoolCredentials,
   ): Promise<TokenResult> {
-    const clientId = pool?.clientId ?? this.platformAdminClientId;
+    const clientId = pool?.clientId ?? this.platformClientId;
 
     try {
       const response = await this.client.send(
@@ -133,7 +129,7 @@ export class CognitoService {
   }
 
   async refreshTokens(refreshToken: string, pool?: PoolCredentials): Promise<RefreshResult> {
-    const clientId = pool?.clientId ?? this.platformAdminClientId;
+    const clientId = pool?.clientId ?? this.platformClientId;
 
     try {
       const response = await this.client.send(
@@ -190,7 +186,7 @@ export class CognitoService {
     input: { email: string; session: string; mfaCode: string },
     pool?: PoolCredentials,
   ): Promise<TokenResult> {
-    const clientId = pool?.clientId ?? this.platformAdminClientId;
+    const clientId = pool?.clientId ?? this.platformClientId;
 
     try {
       const verifyResponse = await this.client.send(

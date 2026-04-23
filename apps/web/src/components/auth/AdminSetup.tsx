@@ -2,7 +2,6 @@
 
 import QRCode from 'qrcode';
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
 
 import {
   ApiClientError,
@@ -15,19 +14,16 @@ import { AuthField } from './AuthField';
 type Stage = 'loading' | 'password' | 'mfa' | 'complete' | 'invalid';
 
 export function AdminSetup({ token }: { token: string }) {
-  const router = useRouter();
-
-  const [accessToken, setLocalAccessToken] = useState<string | null>(null);
-  const [csrfToken, setCsrfToken]   = useState<string | null>(null);
-  const [invite, setInvite]         = useState<InviteSummary | null>(null);
-  const [result, setResult]         = useState<CompleteOnboardingResult | null>(null);
-  const [qrCodeUrl, setQrCodeUrl]   = useState<string | null>(null);
-  const [password, setPassword]     = useState('');
+  const [csrfToken, setCsrfToken] = useState<string | null>(null);
+  const [invite, setInvite] = useState<InviteSummary | null>(null);
+  const [result, setResult] = useState<CompleteOnboardingResult | null>(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+  const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
-  const [mfaCode, setMfaCode]       = useState('');
-  const [stage, setStage]           = useState<Stage>('loading');
+  const [mfaCode, setMfaCode] = useState('');
+  const [stage, setStage] = useState<Stage>('loading');
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError]           = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,50 +43,77 @@ export function AdminSetup({ token }: { token: string }) {
         setStage('invalid');
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   const otpAuthUri = useMemo(() => {
-    if (!invite?.email || !result?.secretCode) return null;
+    if (!result?.email || !result.secretCode) return null;
     const issuer = 'SneakerEco';
-    const label  = `${issuer}:${invite.email}`;
+    const label = `${issuer}:${result.email}`;
     return `otpauth://totp/${encodeURIComponent(label)}?secret=${encodeURIComponent(result.secretCode)}&issuer=${encodeURIComponent(issuer)}`;
-  }, [invite?.email, result?.secretCode]);
+  }, [result?.email, result?.secretCode]);
 
   useEffect(() => {
     let cancelled = false;
-    if (!otpAuthUri) { setQrCodeUrl(null); return; }
+    if (!otpAuthUri) {
+      setQrCodeUrl(null);
+      return;
+    }
     void QRCode.toDataURL(otpAuthUri, { errorCorrectionLevel: 'M', margin: 1, width: 220 })
-      .then((url: string) => { if (!cancelled) setQrCodeUrl(url); })
-      .catch(() => { if (!cancelled) setQrCodeUrl(null); });
-    return () => { cancelled = true; };
+      .then((url: string) => {
+        if (!cancelled) setQrCodeUrl(url);
+      })
+      .catch(() => {
+        if (!cancelled) setQrCodeUrl(null);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [otpAuthUri]);
 
   async function handlePasswordSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!csrfToken) return;
-    if (password !== passwordConfirm) { setError('Passwords do not match.'); return; }
-    setSubmitting(true); setError(null);
+    if (password !== passwordConfirm) {
+      setError('Passwords do not match.');
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
     try {
       const r = await apiClient.completeOnboarding({ password, token }, csrfToken);
-      setLocalAccessToken(r.accessToken);
       setResult(r);
       setStage('mfa');
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : 'Setup failed.');
-    } finally { setSubmitting(false); }
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   async function handleMfaSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!csrfToken || !accessToken) return;
-    setSubmitting(true); setError(null);
+    if (!csrfToken || !invite || !result) return;
+    setSubmitting(true);
+    setError(null);
     try {
-      await apiClient.verifyMfa({ deviceName: 'SneakerEco Admin', mfaCode }, csrfToken, accessToken);
+      await apiClient.completeMfaSetup(
+        {
+          email: result.email,
+          mfaCode,
+          session: result.session,
+          tenantId: invite.tenantId,
+        },
+        csrfToken,
+      );
       setStage('complete');
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : 'MFA code invalid.');
-    } finally { setSubmitting(false); }
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   if (stage === 'loading') {
@@ -105,7 +128,9 @@ export function AdminSetup({ token }: { token: string }) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="max-w-sm rounded-2xl border border-red-200 bg-white px-8 py-10 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-widest text-red-400">Invite Unavailable</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-red-400">
+            Invite Unavailable
+          </p>
           <h1 className="mt-2 text-xl font-bold text-gray-900">This invite can&apos;t be used.</h1>
           <p className="mt-2 text-sm text-gray-500">
             {error ?? 'The token is invalid, expired, or already used.'}
@@ -115,18 +140,22 @@ export function AdminSetup({ token }: { token: string }) {
     );
   }
 
-  if (stage === 'complete') {
+  if (stage === 'complete' && result) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="max-w-sm rounded-2xl border border-green-200 bg-white px-8 py-10 shadow-sm text-center">
-          <p className="text-xs font-semibold uppercase tracking-widest text-green-500">Account Ready</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-green-500">
+            Account Ready
+          </p>
           <h1 className="mt-2 text-xl font-bold text-gray-900">Your admin account is set up.</h1>
-          <p className="mt-2 text-sm text-gray-500">MFA is active. You can now sign in to your dashboard.</p>
+          <p className="mt-2 text-sm text-gray-500">
+            MFA is active. You can now enter your dashboard.
+          </p>
           <button
-            onClick={() => router.push('/admin/login')}
+            onClick={() => window.location.assign(result.adminRedirectUrl)}
             className="mt-6 w-full rounded-lg bg-gray-900 py-2.5 text-sm font-semibold text-white hover:bg-gray-700"
           >
-            Go to sign in
+            Open dashboard
           </button>
         </div>
       </div>
@@ -138,21 +167,43 @@ export function AdminSetup({ token }: { token: string }) {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white px-8 py-10 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Step 2</p>
-          <h1 className="mt-2 text-xl font-bold text-gray-900">Set up MFA for {invite?.businessName ?? 'your store'}.</h1>
-          <p className="mt-2 text-sm text-gray-500">Scan the QR code then enter the 6-digit code.</p>
+          <h1 className="mt-2 text-xl font-bold text-gray-900">
+            Set up MFA for {invite?.businessName ?? 'your store'}.
+          </h1>
+          <p className="mt-2 text-sm text-gray-500">
+            Scan the QR code then enter the 6-digit code.
+          </p>
           <div className="mt-6 flex gap-6 flex-wrap">
             <div>
               {qrCodeUrl ? (
-                <img alt="QR code" src={qrCodeUrl} width={200} height={200} className="rounded-lg border border-gray-200" />
+                <img
+                  alt="QR code"
+                  src={qrCodeUrl}
+                  width={200}
+                  height={200}
+                  className="rounded-lg border border-gray-200"
+                />
               ) : (
                 <div className="flex h-[200px] w-[200px] items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-xs text-gray-400">
                   QR unavailable
                 </div>
               )}
-              <p className="mt-2 break-all font-mono text-[10px] text-gray-400">{result.secretCode}</p>
+              <p className="mt-2 break-all font-mono text-[10px] text-gray-400">
+                {result.secretCode}
+              </p>
             </div>
-            <form className="flex flex-1 flex-col gap-4 min-w-[160px]" onSubmit={(e) => { void handleMfaSubmit(e); }}>
-              <AuthField label="Authenticator code" value={mfaCode} onChange={setMfaCode} autoComplete="one-time-code" />
+            <form
+              className="flex flex-1 flex-col gap-4 min-w-[160px]"
+              onSubmit={(e) => {
+                void handleMfaSubmit(e);
+              }}
+            >
+              <AuthField
+                label="Authenticator code"
+                value={mfaCode}
+                onChange={setMfaCode}
+                autoComplete="one-time-code"
+              />
               {error && <p className="text-sm text-red-600">{error}</p>}
               <button
                 type="submit"
@@ -179,9 +230,26 @@ export function AdminSetup({ token }: { token: string }) {
             ? `Finish setting up the first admin account for ${invite.businessName}.`
             : 'Finish setting up your admin account.'}
         </p>
-        <form className="mt-6 space-y-4" onSubmit={(e) => { void handlePasswordSubmit(e); }}>
-          <AuthField label="Password" type="password" value={password} onChange={setPassword} autoComplete="new-password" />
-          <AuthField label="Confirm password" type="password" value={passwordConfirm} onChange={setPasswordConfirm} autoComplete="new-password" />
+        <form
+          className="mt-6 space-y-4"
+          onSubmit={(e) => {
+            void handlePasswordSubmit(e);
+          }}
+        >
+          <AuthField
+            label="Password"
+            type="password"
+            value={password}
+            onChange={setPassword}
+            autoComplete="new-password"
+          />
+          <AuthField
+            label="Confirm password"
+            type="password"
+            value={passwordConfirm}
+            onChange={setPasswordConfirm}
+            autoComplete="new-password"
+          />
           {error && <p className="text-sm text-red-600">{error}</p>}
           <button
             type="submit"

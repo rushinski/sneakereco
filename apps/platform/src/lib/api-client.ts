@@ -37,31 +37,36 @@ export class ApiClientError extends Error {
   }
 }
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3000';
 const CSRF_COOKIE_NAME = '__Secure-sneakereco-csrf';
 
 // ---------------------------------------------------------------------------
 // In-memory access token store (never persisted to localStorage/sessionStorage)
 // ---------------------------------------------------------------------------
 let _accessToken: string | null = null;
-export function setAccessToken(token: string): void { _accessToken = token; }
-export function getAccessToken(): string | null { return _accessToken; }
-export function clearAccessToken(): void { _accessToken = null; }
+export function setAccessToken(token: string): void {
+  _accessToken = token;
+}
+export function getAccessToken(): string | null {
+  return _accessToken;
+}
+export function clearAccessToken(): void {
+  _accessToken = null;
+}
 
 interface RequestOptions extends Omit<RequestInit, 'body'> {
   accessToken?: string;
   body?: unknown;
+  clientContext?: 'admin';
   csrfToken?: string | null;
+  tenantId?: string;
 }
 
 export function readCsrfTokenCookie(): string | null {
   if (typeof document === 'undefined') return null;
 
   const prefix = `${CSRF_COOKIE_NAME}=`;
-  const cookie = document.cookie
-    .split('; ')
-    .find((entry: string) => entry.startsWith(prefix));
+  const cookie = document.cookie.split('; ').find((entry: string) => entry.startsWith(prefix));
 
   return cookie ? decodeURIComponent(cookie.slice(prefix.length)) : null;
 }
@@ -80,7 +85,7 @@ function isErrorEnvelope(
 
 async function request<T>(
   path: string,
-  { accessToken, body, csrfToken, headers, ...init }: RequestOptions = {},
+  { accessToken, body, clientContext, csrfToken, tenantId, headers, ...init }: RequestOptions = {},
 ): Promise<T> {
   const requestHeaders = new Headers(headers);
   requestHeaders.set('Accept', 'application/json');
@@ -95,6 +100,14 @@ async function request<T>(
 
   if (accessToken) {
     requestHeaders.set('Authorization', `Bearer ${accessToken}`);
+  }
+
+  if (tenantId) {
+    requestHeaders.set('X-Tenant-ID', tenantId);
+  }
+
+  if (clientContext) {
+    requestHeaders.set('X-Client-Context', clientContext);
   }
 
   const response = await fetch(`${API_BASE_URL}/v1${path}`, {
@@ -147,12 +160,10 @@ export interface InviteSummary {
 }
 
 export interface CompleteOnboardingResult {
-  accessToken: string;
   adminRedirectUrl: string;
-  expiresIn: number;
-  idToken: string;
-  refreshToken: string;
+  email: string;
   secretCode: string;
+  session: string;
 }
 
 export type AdminSignInResult =
@@ -256,10 +267,7 @@ export const apiClient = {
       method: 'POST',
     }),
 
-  mfaChallenge: (
-    input: { email: string; mfaCode: string; session: string },
-    csrfToken: string,
-  ) =>
+  mfaChallenge: (input: { email: string; mfaCode: string; session: string }, csrfToken: string) =>
     request<MfaChallengeResult>('/auth/mfa/challenge', {
       body: input,
       csrfToken,
@@ -281,6 +289,20 @@ export const apiClient = {
       csrfToken,
       method: 'POST',
     }),
+
+  completeTenantAdminMfaSetup: (
+    input: { email: string; session: string; mfaCode: string; tenantId: string },
+    csrfToken: string,
+  ) => {
+    const { tenantId, ...body } = input;
+    return request<MfaChallengeResult>('/auth/mfa/setup/complete', {
+      body,
+      clientContext: 'admin',
+      csrfToken,
+      method: 'POST',
+      tenantId,
+    });
+  },
 
   listRequests: (params: ListRequestsParams, accessToken: string) => {
     const query = new URLSearchParams();

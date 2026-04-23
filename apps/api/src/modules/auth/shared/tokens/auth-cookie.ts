@@ -36,7 +36,6 @@ export function clearAuthCookies(response: Response, security: SecurityConfig): 
     sameSite: 'none',
     path: AUTH_COOKIE_PATH,
     partitioned: true,
-    ...(security.cookieDomain ? { domain: security.cookieDomain } : {}),
   });
 
   response.clearCookie(CSRF_COOKIE_NAME, {
@@ -45,7 +44,6 @@ export function clearAuthCookies(response: Response, security: SecurityConfig): 
     sameSite: 'none',
     path: AUTH_COOKIE_PATH,
     partitioned: true,
-    ...(security.cookieDomain ? { domain: security.cookieDomain } : {}),
   });
 }
 
@@ -62,6 +60,5 @@ function setRefreshCookie(
     path: AUTH_COOKIE_PATH,
     maxAge: REFRESH_MAX_AGE[userType],
     partitioned: true,
-    ...(security.cookieDomain ? { domain: security.cookieDomain } : {}),
   });
 }

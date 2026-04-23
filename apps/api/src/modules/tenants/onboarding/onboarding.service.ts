@@ -155,7 +155,7 @@ export class OnboardingService {
       );
 
       this.logger.log(`Creating Cognito pool for tenantId=${tenantId}`);
-      const poolResult = await this.cognitoProvisioning.createTenantPool({
+      const poolResult = await this.cognitoProvisioning.createTenantCustomerPool({
         businessName: record.businessName ?? record.tenantName,
         subdomain,
       });
@@ -170,7 +170,6 @@ export class OnboardingService {
           userPoolId: poolResult.userPoolId,
           userPoolArn: poolResult.userPoolArn,
           customerClientId: poolResult.customerClientId,
-          adminClientId: poolResult.adminClientId,
           region: poolResult.region,
         },
         tx,
@@ -257,17 +256,15 @@ export class OnboardingService {
       throw new InternalServerErrorException('Onboarding request is missing the applicant email');
     }
 
-    const cognitoConfig = await this.onboardingRepository.findTenantCognitoConfig(
-      inviteRecord.tenantId,
-    );
-    if (!cognitoConfig) {
+    if (!(await this.onboardingRepository.findTenantCognitoConfig(inviteRecord.tenantId))) {
       throw new InternalServerErrorException('Tenant Cognito pool not configured');
     }
 
-    const cognitoSub = await this.cognitoProvisioning.createAdminUser(
-      { email, fullName: inviteRecord.requestedByName, password: dto.password },
-      { userPoolId: cognitoConfig.userPoolId },
-    );
+    const cognitoSub = await this.cognitoProvisioning.createTenantAdminUser({
+      email,
+      fullName: inviteRecord.requestedByName,
+      password: dto.password,
+    });
 
     await this.db.withSystemContext(async (tx) => {
       const existingUserBySub = await this.onboardingRepository.findUserByCognitoSub(
@@ -331,22 +328,20 @@ export class OnboardingService {
       await this.onboardingRepository.markInviteAccepted(inviteRecord.tenantId, tx);
     });
 
-    const authResult = await this.cognitoProvisioning.loginNewAdmin(
-      { email, password: dto.password },
-      { clientId: cognitoConfig.adminClientId },
-    );
+    const authResult = await this.cognitoProvisioning.beginTenantAdminSetup({
+      email,
+      password: dto.password,
+    });
 
     if (!inviteRecord.adminDomain) {
       throw new InternalServerErrorException('Tenant admin domain is not configured');
     }
 
     return {
-      accessToken: authResult.accessToken,
       adminRedirectUrl: `https://${inviteRecord.adminDomain}/admin`,
-      expiresIn: authResult.expiresIn,
-      idToken: authResult.idToken,
-      refreshToken: authResult.refreshToken,
+      email,
       secretCode: authResult.secretCode,
+      session: authResult.session,
     };
   }
 

@@ -31,9 +31,15 @@ const CSRF_COOKIE_NAME = '__Secure-sneakereco-csrf';
 // In-memory access token store (never persisted to localStorage/sessionStorage)
 // ---------------------------------------------------------------------------
 let _accessToken: string | null = null;
-export function setAccessToken(token: string): void { _accessToken = token; }
-export function getAccessToken(): string | null { return _accessToken; }
-export function clearAccessToken(): void { _accessToken = null; }
+export function setAccessToken(token: string): void {
+  _accessToken = token;
+}
+export function getAccessToken(): string | null {
+  return _accessToken;
+}
+export function clearAccessToken(): void {
+  _accessToken = null;
+}
 
 interface RequestOptions extends Omit<RequestInit, 'body'> {
   accessToken?: string;
@@ -47,9 +53,7 @@ export function readCsrfTokenCookie(): string | null {
   if (typeof document === 'undefined') return null;
 
   const prefix = `${CSRF_COOKIE_NAME}=`;
-  const cookie = document.cookie
-    .split('; ')
-    .find((entry) => entry.startsWith(prefix));
+  const cookie = document.cookie.split('; ').find((entry) => entry.startsWith(prefix));
 
   return cookie ? decodeURIComponent(cookie.slice(prefix.length)) : null;
 }
@@ -107,8 +111,7 @@ async function request<T>(
     | null;
 
   if (!response.ok || !isSuccessEnvelope(payload)) {
-    const message =
-      (isErrorEnvelope(payload) ? payload.error.message : null) ?? 'Request failed';
+    const message = (isErrorEnvelope(payload) ? payload.error.message : null) ?? 'Request failed';
     const code = isErrorEnvelope(payload) ? payload.error.code : undefined;
     const details = isErrorEnvelope(payload) ? payload.error.details : undefined;
     throw new ApiClientError(message, response.status, code, details);
@@ -192,12 +195,10 @@ export interface InviteSummary {
 }
 
 export interface CompleteOnboardingResult {
-  accessToken: string;
   adminRedirectUrl: string;
-  expiresIn: number;
-  idToken: string;
-  refreshToken: string;
+  email: string;
   secretCode: string;
+  session: string;
 }
 
 export type AdminSignInResult =
@@ -256,10 +257,7 @@ export const apiClient = {
       method: 'POST',
     }),
 
-  loginAdmin: (
-    input: { email: string; password: string; tenantId: string },
-    csrfToken: string,
-  ) => {
+  loginAdmin: (input: { email: string; password: string; tenantId: string }, csrfToken: string) => {
     const { tenantId, ...body } = input;
     return request<AdminSignInResult>('/auth/login', {
       body,
@@ -283,13 +281,16 @@ export const apiClient = {
     csrfToken: string,
   ) => {
     const { tenantId, ...body } = input;
-    return request<{ accessToken: string; idToken: string; expiresIn: number }>('/auth/mfa/challenge', {
-      body,
-      clientContext: 'admin',
-      csrfToken,
-      method: 'POST',
-      tenantId,
-    });
+    return request<{ accessToken: string; idToken: string; expiresIn: number }>(
+      '/auth/mfa/challenge',
+      {
+        body,
+        clientContext: 'admin',
+        csrfToken,
+        method: 'POST',
+        tenantId,
+      },
+    );
   },
 
   beginMfaSetup: (session: string) =>
@@ -303,13 +304,16 @@ export const apiClient = {
     csrfToken: string,
   ) => {
     const { tenantId, ...body } = input;
-    return request<{ accessToken: string; idToken: string; expiresIn: number }>('/auth/mfa/setup/complete', {
-      body,
-      clientContext: 'admin',
-      csrfToken,
-      method: 'POST',
-      tenantId,
-    });
+    return request<{ accessToken: string; idToken: string; expiresIn: number }>(
+      '/auth/mfa/setup/complete',
+      {
+        body,
+        clientContext: 'admin',
+        csrfToken,
+        method: 'POST',
+        tenantId,
+      },
+    );
   },
 
   // ---------------------------------------------------------------------------
@@ -343,7 +347,10 @@ export const apiClient = {
   resetCustomerPassword: (input: { email: string; code: string; newPassword: string }) =>
     request<void>('/auth/reset-password', { body: input, method: 'POST' }),
 
-  completeMfaChallenge: (input: { email: string; session: string; mfaCode: string }, csrfToken: string) =>
+  completeMfaChallenge: (
+    input: { email: string; session: string; mfaCode: string },
+    csrfToken: string,
+  ) =>
     request<CustomerSignInResult>('/auth/mfa/challenge', {
       body: input,
       csrfToken,

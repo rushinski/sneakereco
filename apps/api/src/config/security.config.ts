@@ -99,10 +99,6 @@ export class SecurityConfig {
    *  USE_HTTPS=true (local dev with mkcert + Caddy). */
   readonly cookieSecure: boolean;
 
-  /** Domain attribute for cross-subdomain cookies (e.g. '.sneakereco.com').
-   *  Undefined in environments where a shared domain is not needed. */
-  readonly cookieDomain: string | undefined;
-
   /**
    * Content-Security-Policy directive map. Building block for helmetOptions —
    * exposed separately so it can be referenced in tests or docs without
@@ -122,7 +118,6 @@ export class SecurityConfig {
     const useHttps    = config.get<boolean>('USE_HTTPS') ?? false;
 
     this.cookieSecure = isProduction || useHttps;
-    this.cookieDomain = config.get<string>('COOKIE_DOMAIN');
 
     const r2PublicUrl = config.get<string>('R2_PUBLIC_URL');
     const awsRegion   = config.getOrThrow<string>('AWS_REGION');

@@ -16,7 +16,9 @@ const MEMBERSHIP_CACHE_TTL = 3600;
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   private readonly platformIssuer: string;
-  private readonly platformAdminClientId: string;
+  private readonly platformPoolId: string;
+  private readonly platformClientId: string;
+  private readonly tenantAdminClientId: string;
   private readonly platformJwksClient: JwksClient.JwksClient;
   private readonly tenantJwksClients = new Map<string, JwksClient.JwksClient>();
 
@@ -62,7 +64,9 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     });
 
     this.platformIssuer = platformIssuer;
-    this.platformAdminClientId = config.getOrThrow<string>('PLATFORM_COGNITO_ADMIN_CLIENT_ID');
+    this.platformPoolId = platformPoolId;
+    this.platformClientId = config.getOrThrow<string>('PLATFORM_COGNITO_PLATFORM_CLIENT_ID');
+    this.tenantAdminClientId = config.getOrThrow<string>('PLATFORM_COGNITO_TENANT_ADMIN_CLIENT_ID');
     this.platformJwksClient = JwksClient({
       jwksUri: `${platformIssuer}/.well-known/jwks.json`,
       cache: true,
@@ -79,18 +83,47 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     const ctx = RequestCtx.get();
 
     if (payload.iss === this.platformIssuer) {
-      if (payload.client_id !== this.platformAdminClientId) {
+      if (payload.client_id === this.platformClientId) {
+        return {
+          cognitoSub: payload.sub,
+          email: payload.email,
+          isSuperAdmin: true,
+          tenantId: null,
+          memberId: null,
+          userType: 'platform',
+          teamRole: null,
+          jti: payload.jti ?? null,
+        };
+      }
+
+      if (payload.client_id !== this.tenantAdminClientId) {
         throw new UnauthorizedException('Invalid token audience');
+      }
+
+      if (ctx?.origin !== 'tenant-admin') {
+        throw new UnauthorizedException('Tenant admin token used from an invalid origin');
+      }
+
+      const hasMfa = await this.resolveAdminMfa(payload.sub, payload.email, this.platformPoolId);
+      if (!hasMfa) {
+        throw new ForbiddenException(
+          'MFA is required for admin accounts. Complete MFA setup before accessing the admin panel.',
+        );
+      }
+
+      const membership = await this.resolveMembership(payload.sub);
+      if (!membership) {
+        throw new UnauthorizedException('User has no tenant membership');
       }
 
       return {
         cognitoSub: payload.sub,
         email: payload.email,
-        isSuperAdmin: true,
-        tenantId: null,
-        memberId: null,
-        userType: 'platform',
-        teamRole: null,
+        isSuperAdmin: false,
+        tenantId: membership.tenantId,
+        memberId: membership.memberId,
+        userType: 'tenant-admin',
+        teamRole: membership.teamRole,
         jti: payload.jti ?? null,
       };
     }
@@ -197,7 +230,11 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     const membership = await this.repository.findMembershipByCognitoSub(sub);
     if (!membership) return null;
 
-    const result = { tenantId: membership.tenantId, teamRole: membership.role as TeamRole, memberId: membership.memberId };
+    const result = {
+      tenantId: membership.tenantId,
+      teamRole: membership.role as TeamRole,
+      memberId: membership.memberId,
+    };
     await this.valkey.setJson(cacheKey, result, MEMBERSHIP_CACHE_TTL);
 
     return result;
