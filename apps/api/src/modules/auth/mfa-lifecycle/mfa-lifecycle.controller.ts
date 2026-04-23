@@ -61,7 +61,7 @@ export class MfaLifecycleController {
   }
 
   private assertCustomer(user: AuthenticatedUser, message: string): void {
-    if (user.role !== 'customer') {
+    if (user.userType !== 'customer') {
       throw new ForbiddenException(message);
     }
   }

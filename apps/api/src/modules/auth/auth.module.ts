@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
-import { CommunicationsModule } from '../communications/communications.module';
+import { CsrfModule } from '../../core/security/csrf/csrf.module';
 
-import { CognitoService } from './cognito/cognito.service';
-import { JwtStrategyRepository } from './jwt/jwt-strategy.repository';
-import { JwtStrategy } from './jwt/jwt.strategy';
+import { CognitoService } from './shared/cognito/cognito.service';
+import { JwtStrategyRepository } from './shared/jwt/jwt-strategy.repository';
+import { JwtStrategy } from './shared/jwt/jwt.strategy';
 import { LoginController } from './login/login.controller';
 import { LoginService } from './login/login.service';
 import { LogoutController } from './logout/logout.controller';
@@ -17,22 +17,24 @@ import { MfaSetupController } from './mfa-setup/mfa-setup.controller';
 import { MfaSetupService } from './mfa-setup/mfa-setup.service';
 import { PasswordResetController } from './password-reset/password-reset.controller';
 import { PasswordResetService } from './password-reset/password-reset.service';
-import { PoolResolverRepository } from './pool-resolver/pool-resolver.repository';
-import { PoolResolverService } from './pool-resolver/pool-resolver.service';
+import { PoolResolverRepository } from './shared/pool-resolver/pool-resolver.repository';
+import { PoolResolverService } from './shared/pool-resolver/pool-resolver.service';
 import { RefreshController } from './refresh/refresh.controller';
 import { RefreshService } from './refresh/refresh.service';
+import { OtpController } from './otp/otp.controller';
+import { OtpService } from './otp/otp.service';
 import { RegisterController } from './register/register.controller';
-import { RegisterRepository } from './register/register.repository';
 import { RegisterService } from './register/register.service';
 
 @Module({
-  imports: [PassportModule, CommunicationsModule],
+  imports: [PassportModule, CsrfModule],
   controllers: [
     LoginController,
     LogoutController,
     MfaChallengeController,
     MfaLifecycleController,
     MfaSetupController,
+    OtpController,
     PasswordResetController,
     RefreshController,
     RegisterController,
@@ -46,13 +48,13 @@ import { RegisterService } from './register/register.service';
     MfaChallengeService,
     MfaLifecycleService,
     MfaSetupService,
+    OtpService,
     PasswordResetService,
     PoolResolverRepository,
     PoolResolverService,
     RefreshService,
-    RegisterRepository,
     RegisterService,
   ],
-  exports: [CognitoService],
+  exports: [CognitoService, PoolResolverService],
 })
 export class AuthModule {}

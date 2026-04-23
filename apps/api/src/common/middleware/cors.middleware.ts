@@ -24,10 +24,10 @@ export class CorsMiddleware implements NestMiddleware {
       const allowAnyOrigin =
         CORS_PUBLIC_PATHS.has(request.path) &&
         (request.method === 'GET' || request.method === 'OPTIONS');
-      const originGroup = allowAnyOrigin
-        ? 'platform'
+      const originContext = allowAnyOrigin
+        ? { origin: 'platform' as const, tenantId: null, tenantSlug: null }
         : await this.originResolver.classifyOrigin(origin);
-      const isAllowed = allowAnyOrigin || originGroup !== 'unknown';
+      const isAllowed = allowAnyOrigin || originContext.origin !== 'unknown';
 
       if (isAllowed) {
         response.header('Access-Control-Allow-Origin', origin);

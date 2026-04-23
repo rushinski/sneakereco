@@ -13,10 +13,10 @@ import type { Request, Response } from 'express';
 
 import { Public } from '../../../common/decorators/public.decorator';
 import { ZodValidationPipe } from '../../../common/pipes/zod-validation.pipe';
-import { RoleContextService } from '../../../common/services/role-context.service';
+import { RequestCtx } from '../../../common/context/request-context';
 import { SecurityConfig, THROTTLE } from '../../../config/security.config';
-import { buildLoginResponse } from '../auth-cookie';
-import { PoolResolverService } from '../pool-resolver/pool-resolver.service';
+import { CsrfService } from '../../../core/security/csrf/csrf.service';
+import { buildLoginResponse } from '../shared/tokens/auth-cookie';
 import { MfaChallengeDtoSchema, type MfaChallengeDto } from './mfa-challenge.dto';
 import { MfaChallengeService } from './mfa-challenge.service';
 
@@ -24,8 +24,7 @@ import { MfaChallengeService } from './mfa-challenge.service';
 export class MfaChallengeController {
   constructor(
     private readonly mfaChallengeService: MfaChallengeService,
-    private readonly roleContextService: RoleContextService,
-    private readonly poolResolver: PoolResolverService,
+    private readonly csrfService: CsrfService,
     private readonly security: SecurityConfig,
   ) {}
 
@@ -38,19 +37,24 @@ export class MfaChallengeController {
     @Body(new ZodValidationPipe(MfaChallengeDtoSchema)) dto: MfaChallengeDto,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const roleContext = await this.roleContextService.resolve(request);
+    const ctx = RequestCtx.get();
+    const origin = ctx?.origin;
 
-    if (roleContext.role === 'platform') {
+    if (!origin || origin === 'unknown') {
+      throw new BadRequestException('Origin not allowed');
+    }
+
+    if (origin === 'platform') {
       const result = await this.mfaChallengeService.respond(dto, { role: 'platform' });
-      return buildLoginResponse(request, response, this.security, result);
+      return buildLoginResponse(request, response, this.security, this.csrfService, result, 'platform');
     }
 
-    if (!roleContext.tenantId) {
-      throw new BadRequestException('X-Tenant-ID header is required');
+    if (!ctx.pool) {
+      throw new BadRequestException('Tenant authentication is not configured');
     }
 
-    const pool = await this.poolResolver.resolveTenantPool(roleContext.tenantId, roleContext.role);
-    const result = await this.mfaChallengeService.respond(dto, { role: roleContext.role, pool });
-    return buildLoginResponse(request, response, this.security, result);
+    const role = origin === 'tenant-admin' ? 'admin' : 'customer';
+    const result = await this.mfaChallengeService.respond(dto, { role, pool: ctx.pool });
+    return buildLoginResponse(request, response, this.security, this.csrfService, result, origin);
   }
 }

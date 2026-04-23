@@ -4,13 +4,13 @@ import {
   AdminCreateUserCommand,
   AdminGetUserCommand,
   AdminSetUserPasswordCommand,
-  CognitoIdentityProviderClient,
   CreateUserPoolClientCommand,
   CreateUserPoolCommand,
   SetUserPoolMfaConfigCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 
-import { throwCognitoError } from '../auth/cognito/cognito-error.mapper';
+import { CognitoClientProvider } from '../../core/cognito/cognito.client';
+import { throwCognitoError } from '../../core/cognito/cognito-error.mapper';
 
 export interface TenantPoolProvisioningResult {
   userPoolId: string;
@@ -22,14 +22,19 @@ export interface TenantPoolProvisioningResult {
 
 @Injectable()
 export class CognitoProvisioningService {
-  private readonly client: CognitoIdentityProviderClient;
   private readonly region: string;
   private readonly sesIdentityArn: string | undefined;
 
-  constructor(config: ConfigService) {
+  constructor(
+    private readonly cognitoClientProvider: CognitoClientProvider,
+    config: ConfigService,
+  ) {
     this.region = config.getOrThrow<string>('AWS_REGION');
-    this.client = new CognitoIdentityProviderClient({ region: this.region });
     this.sesIdentityArn = config.get<string>('SES_IDENTITY_ARN');
+  }
+
+  private get client() {
+    return this.cognitoClientProvider.client;
   }
 
   async createTenantPool(params: {

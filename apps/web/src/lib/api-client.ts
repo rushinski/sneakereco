@@ -207,11 +207,20 @@ export type AdminSignInResult =
       csrfToken: string;
       idToken: string;
       expiresIn: number;
-      // refreshToken is no longer returned in the body — it is set as an
-      // httpOnly cookie by the API so JavaScript cannot read it.
     }
   | { type: 'mfa_required'; session: string }
   | { type: 'mfa_setup'; session: string; email: string };
+
+export type CustomerSignInResult =
+  | { type: 'tokens'; accessToken: string; csrfToken: string; idToken: string; expiresIn: number }
+  | { type: 'mfa_required'; session: string }
+  | { type: 'mfa_setup'; session: string; email: string };
+
+export type OtpRequestResult = { type: 'otp_sent'; session: string };
+
+export type OtpVerifyResult =
+  | { type: 'tokens'; accessToken: string; csrfToken: string; idToken: string; expiresIn: number }
+  | { type: 'mfa_required'; session: string };
 
 // ---------------------------------------------------------------------------
 // Client
@@ -302,6 +311,55 @@ export const apiClient = {
       tenantId,
     });
   },
+
+  // ---------------------------------------------------------------------------
+  // Customer auth
+  // ---------------------------------------------------------------------------
+
+  loginCustomer: (input: { email: string; password: string }) =>
+    request<CustomerSignInResult>('/auth/login', { body: input, method: 'POST' }),
+
+  registerCustomer: (input: { email: string; password: string }) =>
+    request<{ userSub: string; userConfirmed: boolean }>('/auth/register', {
+      body: input,
+      method: 'POST',
+    }),
+
+  confirmCustomerEmail: (input: { email: string; code: string }) =>
+    request<{ success: true }>('/auth/confirm', { body: input, method: 'POST' }),
+
+  resendCustomerConfirmation: (input: { email: string }) =>
+    request<{ success: true }>('/auth/confirm/resend', { body: input, method: 'POST' }),
+
+  requestOtp: (input: { email: string }) =>
+    request<OtpRequestResult>('/auth/otp/request', { body: input, method: 'POST' }),
+
+  verifyOtp: (input: { email: string; session: string; code: string }) =>
+    request<OtpVerifyResult>('/auth/otp/verify', { body: input, method: 'POST' }),
+
+  forgotCustomerPassword: (input: { email: string }) =>
+    request<void>('/auth/forgot-password', { body: input, method: 'POST' }),
+
+  resetCustomerPassword: (input: { email: string; code: string; newPassword: string }) =>
+    request<void>('/auth/reset-password', { body: input, method: 'POST' }),
+
+  completeMfaChallenge: (input: { email: string; session: string; mfaCode: string }, csrfToken: string) =>
+    request<CustomerSignInResult>('/auth/mfa/challenge', {
+      body: input,
+      csrfToken,
+      method: 'POST',
+    }),
+
+  refreshCustomer: (csrfToken: string) =>
+    request<{ accessToken: string; idToken: string; expiresIn: number }>('/auth/refresh', {
+      csrfToken,
+      method: 'POST',
+    }),
+
+  logoutCustomer: (csrfToken: string, accessToken: string) =>
+    request<void>('/auth/logout', { accessToken, csrfToken, method: 'POST' }),
+
+  // ---------------------------------------------------------------------------
 
   updateTheme: (
     payload: UpdateThemePayload,

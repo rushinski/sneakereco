@@ -13,7 +13,7 @@ import type { Response } from 'express';
 import { CurrentUser } from '../../../common/decorators/user.decorator';
 import { CsrfGuard } from '../../../common/guards/csrf.guard';
 import { SecurityConfig } from '../../../config/security.config';
-import { clearAuthCookies } from '../auth-cookie';
+import { clearAuthCookies } from '../shared/tokens/auth-cookie';
 import type { AuthenticatedUser } from '../auth.types';
 import { LogoutService } from './logout.service';
 

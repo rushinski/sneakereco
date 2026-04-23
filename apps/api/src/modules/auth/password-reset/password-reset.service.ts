@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
-import { CognitoService } from '../cognito/cognito.service';
-import type { PoolCredentials } from '../cognito/cognito.types';
+import { CognitoService } from '../shared/cognito/cognito.service';
+import type { PoolCredentials } from '../shared/cognito/cognito.types';
 import type { ForgotPasswordDto } from './forgot-password.dto';
 import type { ResetPasswordDto } from './reset-password.dto';
 

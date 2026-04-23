@@ -1,75 +1,23 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+
+import { clearAccessToken, getAccessToken, readCsrfTokenCookie, apiClient } from '../../lib/api-client';
 
 interface NavItemProps {
-  href?: string;
+  href: string;
   label: string;
   icon: React.ReactNode;
-  children?: { href: string; label: string }[];
 }
 
-function NavItem({ href, label, icon, children }: NavItemProps) {
+function NavItem({ href, label, icon }: NavItemProps) {
   const pathname = usePathname();
-  const [open, setOpen] = useState(() => {
-    if (!children) return false;
-    return children.some((c) => pathname === c.href || pathname.startsWith(c.href));
-  });
-
-  const isActive = href ? pathname === href : false;
-
-  if (children) {
-    return (
-      <div>
-        <button
-          onClick={() => setOpen((prev) => !prev)}
-          className={[
-            'flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-            'text-gray-300 hover:bg-gray-800 hover:text-white',
-          ].join(' ')}
-        >
-          <span className="text-gray-400 shrink-0">{icon}</span>
-          <span className="flex-1 text-left">{label}</span>
-          <svg
-            className={['h-4 w-4 text-gray-500 transition-transform', open ? 'rotate-90' : ''].join(' ')}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
-        {open && (
-          <div className="ml-4 mt-1 space-y-0.5 border-l border-gray-700 pl-3">
-            {children.map((child) => {
-              const childActive = pathname === child.href || pathname.startsWith(child.href);
-              return (
-                <Link
-                  key={child.href}
-                  href={child.href}
-                  className={[
-                    'block rounded-md px-3 py-1.5 text-sm transition-colors',
-                    childActive
-                      ? 'bg-gray-700 text-white font-medium'
-                      : 'text-gray-400 hover:bg-gray-800 hover:text-white',
-                  ].join(' ')}
-                >
-                  {child.label}
-                </Link>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    );
-  }
+  const isActive = pathname === href || pathname.startsWith(`${href}/`);
 
   return (
     <Link
-      href={href!}
+      href={href}
       className={[
         'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
         isActive
@@ -77,13 +25,11 @@ function NavItem({ href, label, icon, children }: NavItemProps) {
           : 'text-gray-300 hover:bg-gray-800 hover:text-white',
       ].join(' ')}
     >
-      <span className="text-gray-400 shrink-0">{icon}</span>
+      <span className="shrink-0 text-gray-400">{icon}</span>
       <span>{label}</span>
     </Link>
   );
 }
-
-// ---- Icons ----
 
 function IconDashboard() {
   return (
@@ -93,7 +39,7 @@ function IconDashboard() {
   );
 }
 
-function IconTheme() {
+function IconWebDesign() {
   return (
     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42" />
@@ -101,36 +47,54 @@ function IconTheme() {
   );
 }
 
-interface SidebarProps {
-  tenantName: string;
-}
+export function Sidebar({ tenantName }: { tenantName: string }) {
+  const router = useRouter();
 
-export function Sidebar({ tenantName }: SidebarProps) {
+  async function handleLogout() {
+    try {
+      const token = getAccessToken();
+      const csrf = readCsrfTokenCookie();
+      if (token && csrf) {
+        await apiClient.logoutCustomer(csrf, token).catch(() => {});
+      }
+    } finally {
+      clearAccessToken();
+      router.replace('/admin/login');
+    }
+  }
+
   return (
-    <aside className="flex h-screen w-60 shrink-0 flex-col bg-gray-900">
+    <aside className="relative z-10 flex h-screen w-60 shrink-0 flex-col bg-gray-900">
       {/* Branding */}
-      <div className="flex items-center gap-3 px-4 py-5 border-b border-gray-800">
-        {/* Logo placeholder — R2 upload not yet wired */}
-        <div className="h-8 w-8 shrink-0 rounded-md bg-gray-700 flex items-center justify-center">
-          <span className="text-xs font-bold text-gray-400 uppercase">
+      <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-5">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-gray-700">
+          <span className="text-xs font-bold uppercase text-gray-400">
             {tenantName.charAt(0)}
           </span>
         </div>
-        <span className="text-sm font-semibold text-white truncate">{tenantName}</span>
+        <span className="truncate text-sm font-semibold text-white">{tenantName}</span>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
         <NavItem href="/admin" label="Dashboard" icon={<IconDashboard />} />
-        <NavItem
-          label="Site Theme"
-          icon={<IconTheme />}
-          children={[
-            { href: '/admin/theme/palette', label: 'Palette & Fonts' },
-            { href: '/admin/theme/auth-pages', label: 'Auth Pages' },
-          ]}
-        />
+        <NavItem href="/admin/web-design" label="Web Design" icon={<IconWebDesign />} />
       </nav>
+
+      {/* Footer: avatar + logout */}
+      <div className="border-t border-gray-800 px-3 py-4">
+        <button
+          onClick={() => { void handleLogout(); }}
+          className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-gray-400 transition-colors hover:bg-gray-800 hover:text-white"
+        >
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-700">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+            </svg>
+          </span>
+          <span className="flex-1 text-left text-xs">Sign out</span>
+        </button>
+      </div>
     </aside>
   );
 }

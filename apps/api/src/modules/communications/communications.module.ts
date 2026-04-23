@@ -1,6 +1,7 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 
+import { AuthListener } from './listeners/auth.listener';
 import { EmailService } from './email/email.service';
 import { ContactController } from './contact/contact.controller';
 import { ContactRepository } from './contact/contact.repository';
@@ -13,6 +14,7 @@ import { SubscribersService } from './subscribers/subscribers.service';
   imports: [BullModule.registerQueue({ name: 'email' })],
   controllers: [ContactController, SubscribersController],
   providers: [
+    AuthListener,
     EmailService,
     ContactRepository,
     ContactService,

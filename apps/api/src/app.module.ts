@@ -9,13 +9,17 @@ import { JobsModule } from './jobs/jobs.module';
 import { ThrottlingModule } from './core/security/throttling/throttling.module';
 
 import { envSchema } from './config/env.schema';
+import { EventEmitterModule } from '@nestjs/event-emitter';
+import { CognitoModule } from './core/cognito/cognito.module';
 import { CsrfModule } from './core/security/csrf/csrf.module';
+import { ValkeyModule } from './core/valkey/valkey.module';
 import { CommonModule } from './common/common.module';
+import { RequestContextModule } from './common/context/request-context.module';
+import { RequestContextMiddleware } from './common/context/request-context.middleware';
 import { DatabaseModule } from './core/database/database.module';
 import { AuthGuard } from './common/guards/auth.guard';
 import { OnboardingOriginGuard } from './common/guards/onboarding-origin.guard';
 import { RolesGuard } from './common/guards/roles.guard';
-import { TenantGuard } from './common/guards/tenant.guard';
 import { CorsMiddleware } from './common/middleware/cors.middleware';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { AddressesModule } from './modules/addresses/addresses.module';
@@ -48,8 +52,6 @@ import { TenantsModule } from './modules/tenants/tenants.module';
       },
     }),
 
-    // Email queue — backed by the same Valkey instance as throttling.
-    // Jobs survive restarts; the EmailProcessor worker processes them async.
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -58,11 +60,15 @@ import { TenantsModule } from './modules/tenants/tenants.module';
       }),
     }),
 
+    EventEmitterModule.forRoot({ wildcard: false }),
     ThrottlingModule,
     LoggingModule,
+    ValkeyModule,
+    CognitoModule,
     CsrfModule,
     JobsModule,
     CommonModule,
+    RequestContextModule,
     DatabaseModule,
     HealthModule,
     AuthModule,
@@ -81,7 +87,6 @@ import { TenantsModule } from './modules/tenants/tenants.module';
   providers: [
     // Guard order matters: auth → tenant → roles → throttle → onboarding
     { provide: APP_GUARD, useClass: AuthGuard },
-    { provide: APP_GUARD, useClass: TenantGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: CustomThrottlerGuard },
     { provide: APP_GUARD, useClass: OnboardingOriginGuard },
@@ -89,10 +94,9 @@ import { TenantsModule } from './modules/tenants/tenants.module';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
+    // RequestContext must run before CorsMiddleware so origin is classified once.
     consumer
-      .apply(RequestIdMiddleware, CorsMiddleware)
+      .apply(RequestIdMiddleware, RequestContextMiddleware, CorsMiddleware)
       .forRoutes('*');
-    // CSRF protection is applied as Express middleware in main.ts via
-    // csrf-csrf's doubleCsrfProtection, which must run after cookie-parser.
   }
 }

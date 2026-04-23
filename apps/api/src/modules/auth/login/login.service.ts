@@ -1,17 +1,14 @@
 import {
   Injectable,
   InternalServerErrorException,
-  NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
 
-import type {
-  ResolvedLoginResult,
-  ResolvedRole,
-} from '../auth.types';
-import { CognitoService } from '../cognito/cognito.service';
-import type { PoolCredentials } from '../cognito/cognito.types';
+import type { LoginResult } from '../auth.types';
+import { CognitoService } from '../shared/cognito/cognito.service';
+import type { PoolCredentials } from '../shared/cognito/cognito.types';
 import type { LoginDto } from './login.dto';
+
+type LoginRole = 'platform' | 'admin' | 'customer';
 
 @Injectable()
 export class LoginService {
@@ -19,42 +16,16 @@ export class LoginService {
 
   async login(
     dto: LoginDto,
-    params: { role: ResolvedRole; pool?: PoolCredentials },
-  ): Promise<ResolvedLoginResult> {
+    params: { role: LoginRole; pool?: PoolCredentials },
+  ): Promise<LoginResult> {
     if (params.role === 'platform') {
-      return this.withAuthContext(await this.cognito.login(dto), 'platform');
+      return this.cognito.login(dto);
     }
 
     if (!params.pool) {
       throw new InternalServerErrorException('Tenant pool was not resolved');
     }
 
-    if (params.role === 'customer') {
-      return this.withAuthContext(await this.cognito.login(dto, params.pool), 'customer');
-    }
-
-    try {
-      return this.withAuthContext(await this.cognito.login(dto, params.pool), 'admin');
-    } catch (error) {
-      if (error instanceof UnauthorizedException || error instanceof NotFoundException) {
-        return this.withAuthContext(await this.cognito.login(dto), 'platform');
-      }
-
-      throw error;
-    }
-  }
-
-  private withAuthContext(
-    result: Awaited<ReturnType<CognitoService['login']>>,
-    authContext: ResolvedRole,
-  ): ResolvedLoginResult {
-    if (result.type !== 'tokens') {
-      return result;
-    }
-
-    return {
-      ...result,
-      authContext,
-    };
+    return this.cognito.login(dto, params.pool);
   }
 }

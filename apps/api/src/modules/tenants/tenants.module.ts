@@ -6,12 +6,11 @@ import { TenantsService } from './tenants.service';
 import { TenantsRepository } from './tenants.repository';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { TenantConfigService } from './tenant-config/tenant-config.service';
-import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 
 @Module({
   imports: [OnboardingModule],
   controllers: [TenantsController, TenantSettingsController],
-  providers: [TenantsService, TenantsRepository, TenantConfigService, PlatformAdminGuard],
+  providers: [TenantsService, TenantsRepository, TenantConfigService],
   exports: [TenantsService, OnboardingModule],
 })
 export class TenantsModule {}

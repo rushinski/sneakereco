@@ -189,8 +189,85 @@ export class EmailService {
   }
 
   // ---------------------------------------------------------------------------
+  // Auth emails (sent via Cognito Custom Email Sender Lambda in production;
+  // called directly from email jobs in dev/staging)
+  // ---------------------------------------------------------------------------
+
+  async sendAuthConfirmEmail(input: {
+    email: string;
+    tenantName: string;
+    tenantSlug: string;
+    code: string;
+    expiryMinutes?: string;
+  }): Promise<void> {
+    const html = renderTemplate('auth-confirm-email', {
+      tenantName: input.tenantName,
+      code: input.code,
+      expiryMinutes: input.expiryMinutes ?? '15',
+    });
+    const text = `Your verification code for ${input.tenantName}: ${input.code}\nExpires in ${input.expiryMinutes ?? '15'} minutes.`;
+    await this.enqueue({
+      to: input.email,
+      subject: `Verify your email for ${input.tenantName}`,
+      html,
+      text,
+      from: this.resolveFromAddress(input.tenantSlug, 'auth'),
+    });
+  }
+
+  async sendAuthOtp(input: {
+    email: string;
+    tenantName: string;
+    tenantSlug: string;
+    code: string;
+    variant?: 'bold' | 'simple';
+    expiryMinutes?: string;
+  }): Promise<void> {
+    const template = input.variant === 'simple' ? 'auth-otp-minimal' : 'auth-otp';
+    const html = renderTemplate(template, {
+      tenantName: input.tenantName,
+      code: input.code,
+      expiryMinutes: input.expiryMinutes ?? '15',
+    });
+    const text = `Your sign-in code for ${input.tenantName}: ${input.code}\nExpires in ${input.expiryMinutes ?? '15'} minutes.`;
+    await this.enqueue({
+      to: input.email,
+      subject: `Your sign-in code for ${input.tenantName}`,
+      html,
+      text,
+      from: this.resolveFromAddress(input.tenantSlug, 'auth'),
+    });
+  }
+
+  async sendAuthPasswordReset(input: {
+    email: string;
+    tenantName: string;
+    tenantSlug: string;
+    code: string;
+    expiryMinutes?: string;
+  }): Promise<void> {
+    const html = renderTemplate('auth-password-reset', {
+      tenantName: input.tenantName,
+      code: input.code,
+      expiryMinutes: input.expiryMinutes ?? '15',
+    });
+    const text = `Your password reset code for ${input.tenantName}: ${input.code}\nExpires in ${input.expiryMinutes ?? '15'} minutes.`;
+    await this.enqueue({
+      to: input.email,
+      subject: `Reset your password for ${input.tenantName}`,
+      html,
+      text,
+      from: this.resolveFromAddress(input.tenantSlug, 'auth'),
+    });
+  }
+
+  // ---------------------------------------------------------------------------
   // Low-level transport
   // ---------------------------------------------------------------------------
+
+  resolveFromAddress(tenantSlug: string, emailType: 'auth' | 'orders' | 'support'): string {
+    return `${emailType}@${tenantSlug}.sneakereco.com`;
+  }
 
   /**
    * Build a formatted From address for tenant-scoped emails.

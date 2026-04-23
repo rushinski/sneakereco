@@ -7,19 +7,14 @@ import {
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 
-import type { AuthenticatedUser } from '../../modules/auth/auth.types';
+import type { AuthenticatedUser, UserType } from '../../modules/auth/auth.types';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 
 /**
- * Checks the user's role against the roles specified by @Roles().
- *
- * Runs after AuthGuard and TenantGuard in the global guard chain.
- *
- * - Public routes are skipped.
- * - Routes without @Roles() allow any authenticated user.
- * - Routes with @Roles('admin') require the user's role to match at least one
- *   of the listed roles.
+ * Checks user.userType against @Roles() after AuthGuard validates the JWT.
+ * Platform admins are implicitly allowed on all tenant-admin routes.
+ * Public routes are skipped.
  */
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -33,25 +28,25 @@ export class RolesGuard implements CanActivate {
 
     if (isPublic) return true;
 
-    const requiredRoles = this.reflector.getAllAndOverride<string[] | undefined>(
+    const requiredRoles = this.reflector.getAllAndOverride<UserType[] | undefined>(
       ROLES_KEY,
       [context.getHandler(), context.getClass()],
     );
 
-    // No @Roles() decorator → any authenticated user is allowed
     if (!requiredRoles || requiredRoles.length === 0) return true;
 
     const request = context
       .switchToHttp()
       .getRequest<Request & { user?: AuthenticatedUser }>();
 
-    if (request.user?.isSuperAdmin && requiredRoles.includes('admin')) {
+    const user = request.user;
+
+    // Platform admins can access tenant-admin routes (to manage tenant dashboards)
+    if (user?.isSuperAdmin && requiredRoles.includes('tenant-admin')) {
       return true;
     }
 
-    const userRole = request.user?.role;
-
-    if (!userRole || !requiredRoles.includes(userRole)) {
+    if (!user?.userType || !requiredRoles.includes(user.userType)) {
       throw new ForbiddenException('Insufficient permissions');
     }
 

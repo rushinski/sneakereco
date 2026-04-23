@@ -18,7 +18,7 @@ export class TenantSettingsController {
   constructor(private readonly tenantConfig: TenantConfigService) {}
 
   /** Update the tenant's theme / branding configuration. */
-  @Roles('admin')
+  @Roles('tenant-admin')
   @Patch('theme')
   @HttpCode(HttpStatus.OK)
   async updateTheme(

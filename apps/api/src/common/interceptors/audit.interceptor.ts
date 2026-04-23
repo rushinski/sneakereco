@@ -51,7 +51,7 @@ export class AuditInterceptor implements NestInterceptor {
           action: `${request.method} ${request.url}`,
           tenantId: user.tenantId,
           userId: user.cognitoSub,
-          role: user.role,
+          role: user.userType,
           duration,
           requestId: request.headers['x-request-id'],
         });

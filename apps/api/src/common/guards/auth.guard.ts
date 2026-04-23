@@ -7,6 +7,7 @@ import { Reflector } from '@nestjs/core';
 import { AuthGuard as PassportAuthGuard } from '@nestjs/passport';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import type { AuthenticatedUser } from '../../modules/auth/auth.types';
+import { RequestCtx } from '../context/request-context';
 
 @Injectable()
 export class AuthGuard extends PassportAuthGuard('jwt') {
@@ -35,6 +36,7 @@ export class AuthGuard extends PassportAuthGuard('jwt') {
     if (err || !user) {
       throw new UnauthorizedException('Authentication required');
     }
+    RequestCtx.setUser(user as unknown as AuthenticatedUser);
     return user;
   }
 }

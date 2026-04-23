@@ -1,25 +1,31 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { eq, or, sql } from 'drizzle-orm';
 import { tenantDomainConfig } from '@sneakereco/db';
-import Redis from 'ioredis';
 
 import { DatabaseService } from '../../core/database/database.service';
+import { ValkeyService } from '../../core/valkey/valkey.service';
 import { ORIGIN_CACHE_TTL_SECONDS } from '../../config/security.config';
 
-export type OriginGroup = 'platform' | 'tenant' | 'admin' | 'unknown';
+export type OriginType = 'platform' | 'tenant-admin' | 'customer' | 'unknown';
+
+export interface OriginContext {
+  origin: OriginType;
+  tenantId: string | null;
+  tenantSlug: string | null;
+}
 
 const CACHE_KEY_PREFIX = 'cors:origin:';
 
 @Injectable()
-export class OriginResolverService implements OnModuleDestroy {
+export class OriginResolverService {
   private readonly platformOrigins: Set<string>;
   private readonly baseDomain: string;
-  private readonly cache: Redis;
 
   constructor(
     private readonly config: ConfigService,
     private readonly db: DatabaseService,
+    private readonly valkey: ValkeyService,
   ) {
     const platformUrl = this.normalizeOrigin(this.config.getOrThrow<string>('PLATFORM_URL'));
     const dashboardUrl = this.normalizeOrigin(this.config.get<string>('PLATFORM_DASHBOARD_URL') ?? '');
@@ -28,18 +34,7 @@ export class OriginResolverService implements OnModuleDestroy {
       [platformUrl, dashboardUrl].filter((v): v is string => Boolean(v)),
     );
 
-    // Derive base domain from PLATFORM_URL: "http://sneakereco.test:3002" → "sneakereco.test"
     this.baseDomain = new URL(this.config.getOrThrow<string>('PLATFORM_URL')).hostname.toLowerCase();
-
-    this.cache = new Redis(this.config.getOrThrow<string>('VALKEY_URL'), {
-      lazyConnect: true,
-      maxRetriesPerRequest: 1,
-      enableOfflineQueue: false,
-    });
-  }
-
-  async onModuleDestroy(): Promise<void> {
-    await this.cache.quit();
   }
 
   normalizeOrigin(origin: string | undefined | null): string | null {
@@ -61,61 +56,52 @@ export class OriginResolverService implements OnModuleDestroy {
     return normalized ? this.platformOrigins.has(normalized) : false;
   }
 
-  async classifyOrigin(origin: string | undefined | null): Promise<OriginGroup> {
+  async classifyOrigin(origin: string | undefined | null): Promise<OriginContext> {
     const normalized = this.normalizeOrigin(origin);
-    if (!normalized) return 'unknown';
+    if (!normalized) return { origin: 'unknown', tenantId: null, tenantSlug: null };
 
-    if (this.platformOrigins.has(normalized)) return 'platform';
+    if (this.platformOrigins.has(normalized)) {
+      return { origin: 'platform', tenantId: null, tenantSlug: null };
+    }
 
     const hostname = new URL(normalized).hostname.toLowerCase();
-
-    // Check Valkey cache before hitting the DB
     const cacheKey = `${CACHE_KEY_PREFIX}${hostname}`;
-    try {
-      const cached = await this.cache.get(cacheKey);
-      if (cached) return cached as OriginGroup;
-    } catch {
-      // Cache miss due to Valkey being unavailable — fall through to DB
-    }
 
-    const group = await this.resolveFromDb(hostname);
+    const cached = await this.valkey.getJson<OriginContext>(cacheKey);
+    if (cached) return cached;
 
-    try {
-      await this.cache.setex(cacheKey, ORIGIN_CACHE_TTL_SECONDS, group);
-    } catch {
-      // Non-fatal: continue without caching
-    }
+    const context = await this.resolveFromDb(hostname);
 
-    return group;
+    await this.valkey.setJson(cacheKey, context, ORIGIN_CACHE_TTL_SECONDS);
+
+    return context;
   }
 
-  /** Invalidate the cached classification for a hostname. Call this whenever
-   *  a tenant's domain config is created, updated, or deleted. */
   async invalidateOriginCache(hostname: string): Promise<void> {
-    try {
-      await this.cache.del(`${CACHE_KEY_PREFIX}${hostname.toLowerCase()}`);
-    } catch {
-      // Non-fatal
-    }
+    await this.valkey.del(`${CACHE_KEY_PREFIX}${hostname.toLowerCase()}`);
   }
 
-  private async resolveFromDb(hostname: string): Promise<OriginGroup> {
-    if (await this.isAdminHostname(hostname)) return 'admin';
-    if (await this.isTenantHostname(hostname)) return 'tenant';
-    return 'unknown';
+  private async resolveFromDb(hostname: string): Promise<OriginContext> {
+    const adminResult = await this.resolveAdminHostname(hostname);
+    if (adminResult) return { origin: 'tenant-admin', ...adminResult };
+
+    const tenantResult = await this.resolveTenantHostname(hostname);
+    if (tenantResult) return { origin: 'customer', ...tenantResult };
+
+    return { origin: 'unknown', tenantId: null, tenantSlug: null };
   }
 
-  private async isAdminHostname(hostname: string): Promise<boolean> {
-    if (!hostname.startsWith('admin.')) return false;
+  private async resolveAdminHostname(
+    hostname: string,
+  ): Promise<{ tenantId: string; tenantSlug: string } | null> {
+    if (!hostname.startsWith('admin.')) return null;
 
     const baseHost = hostname.slice('admin.'.length);
 
-    // Matches admin.{slug}.{baseDomain} — covers both prod (.sneakereco.com)
-    // and dev (.sneakereco.test) based on PLATFORM_URL
     if (hostname.endsWith(`.${this.baseDomain}`)) {
       const subdomain = baseHost.replace(new RegExp(`\\.${this.baseDomain}$`, 'i'), '');
       const [match] = await this.db.systemDb
-        .select({ id: tenantDomainConfig.id })
+        .select({ tenantId: tenantDomainConfig.tenantId, subdomain: tenantDomainConfig.subdomain })
         .from(tenantDomainConfig)
         .where(
           or(
@@ -125,12 +111,11 @@ export class OriginResolverService implements OnModuleDestroy {
         )
         .limit(1);
 
-      return Boolean(match);
+      return match ? { tenantId: match.tenantId, tenantSlug: match.subdomain } : null;
     }
 
-    // Custom domain: admin.{customDomain}
     const [match] = await this.db.systemDb
-      .select({ id: tenantDomainConfig.id })
+      .select({ tenantId: tenantDomainConfig.tenantId, subdomain: tenantDomainConfig.subdomain })
       .from(tenantDomainConfig)
       .where(
         or(
@@ -140,34 +125,33 @@ export class OriginResolverService implements OnModuleDestroy {
       )
       .limit(1);
 
-    return Boolean(match);
+    return match ? { tenantId: match.tenantId, tenantSlug: match.subdomain } : null;
   }
 
-  private async isTenantHostname(hostname: string): Promise<boolean> {
-    // Matches {slug}.{baseDomain} — covers both prod (.sneakereco.com)
-    // and dev (.sneakereco.test) based on PLATFORM_URL
+  private async resolveTenantHostname(
+    hostname: string,
+  ): Promise<{ tenantId: string; tenantSlug: string } | null> {
     if (hostname.endsWith(`.${this.baseDomain}`)) {
       const subdomain = hostname.replace(new RegExp(`\\.${this.baseDomain}$`, 'i'), '');
       if (!subdomain || subdomain === 'www' || subdomain === 'dashboard') {
-        return false;
+        return null;
       }
 
       const [match] = await this.db.systemDb
-        .select({ id: tenantDomainConfig.id })
+        .select({ tenantId: tenantDomainConfig.tenantId, subdomain: tenantDomainConfig.subdomain })
         .from(tenantDomainConfig)
         .where(eq(tenantDomainConfig.subdomain, subdomain))
         .limit(1);
 
-      return Boolean(match);
+      return match ? { tenantId: match.tenantId, tenantSlug: match.subdomain } : null;
     }
 
-    // Custom domain
     const [match] = await this.db.systemDb
-      .select({ id: tenantDomainConfig.id })
+      .select({ tenantId: tenantDomainConfig.tenantId, subdomain: tenantDomainConfig.subdomain })
       .from(tenantDomainConfig)
       .where(sql`lower(${tenantDomainConfig.customDomain}) = ${hostname}`)
       .limit(1);
 
-    return Boolean(match);
+    return match ? { tenantId: match.tenantId, tenantSlug: match.subdomain } : null;
   }
 }

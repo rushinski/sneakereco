@@ -14,7 +14,6 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { TimeoutInterceptor } from './common/interceptors/timeout.interceptor';
 import { ZodValidationPipe } from './common/pipes/zod-validation.pipe';
-import { initCsrf } from './common/middleware/csrf/csrf.config';
 import { SecurityConfig, BODY_SIZE_LIMIT } from './config/security.config';
 
 async function bootstrap() {
@@ -44,19 +43,6 @@ async function bootstrap() {
 
   // Cookie parser — required by csrf-csrf
   app.use(cookieParser());
-
-  // Initialise csrf-csrf so generateCsrfToken and doubleCsrfProtection are
-  // available to CsrfGuard and the CSRF token controller.
-  const csrfSecret = config.getOrThrow<string>('CSRF_SECRET');
-  initCsrf({
-    secret: csrfSecret,
-    cookieDomain: security.cookieDomain,
-    cookieSecure: security.cookieSecure,
-  });
-  // doubleCsrfProtection is no longer applied globally here.
-  // It is applied selectively via CsrfGuard on cookie-authenticated routes only
-  // (currently: POST /v1/auth/refresh). Bearer-token routes and webhooks are
-  // excluded from CSRF checks — they are not cookie-based.
 
   // API versioning
   app.enableVersioning({ type: VersioningType.URI });

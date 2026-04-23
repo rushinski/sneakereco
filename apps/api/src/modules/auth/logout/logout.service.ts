@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import { CognitoService } from '../cognito/cognito.service';
+import { CognitoService } from '../shared/cognito/cognito.service';
 
 @Injectable()
 export class LogoutService {

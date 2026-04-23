@@ -13,10 +13,10 @@ import type { Request, Response } from 'express';
 
 import { Public } from '../../../common/decorators/public.decorator';
 import { ZodValidationPipe } from '../../../common/pipes/zod-validation.pipe';
-import { RoleContextService } from '../../../common/services/role-context.service';
+import { RequestCtx } from '../../../common/context/request-context';
 import { SecurityConfig, THROTTLE } from '../../../config/security.config';
-import { buildLoginResponse, clearAuthCookies } from '../auth-cookie';
-import { PoolResolverService } from '../pool-resolver/pool-resolver.service';
+import { CsrfService } from '../../../core/security/csrf/csrf.service';
+import { buildLoginResponse, clearAuthCookies } from '../shared/tokens/auth-cookie';
 import { LoginDtoSchema, type LoginDto } from './login.dto';
 import { LoginService } from './login.service';
 
@@ -24,8 +24,7 @@ import { LoginService } from './login.service';
 export class LoginController {
   constructor(
     private readonly loginService: LoginService,
-    private readonly roleContextService: RoleContextService,
-    private readonly poolResolver: PoolResolverService,
+    private readonly csrfService: CsrfService,
     private readonly security: SecurityConfig,
   ) {}
 
@@ -38,28 +37,33 @@ export class LoginController {
     @Body(new ZodValidationPipe(LoginDtoSchema)) dto: LoginDto,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const roleContext = await this.roleContextService.resolve(request);
+    const ctx = RequestCtx.get();
+    const origin = ctx?.origin;
 
-    if (roleContext.role === 'platform') {
+    if (!origin || origin === 'unknown') {
+      throw new BadRequestException('Origin not allowed');
+    }
+
+    if (origin === 'platform') {
       const result = await this.loginService.login(dto, { role: 'platform' });
 
       if (result.type === 'tokens') {
-        return buildLoginResponse(request, response, this.security, result);
+        return buildLoginResponse(request, response, this.security, this.csrfService, result, 'platform');
       }
 
       clearAuthCookies(response, this.security);
       return result;
     }
 
-    if (!roleContext.tenantId) {
-      throw new BadRequestException('X-Tenant-ID header is required');
+    if (!ctx.pool) {
+      throw new BadRequestException('Tenant authentication is not configured');
     }
 
-    const pool = await this.poolResolver.resolveTenantPool(roleContext.tenantId, roleContext.role);
-    const result = await this.loginService.login(dto, { role: roleContext.role, pool });
+    const role = origin === 'tenant-admin' ? 'admin' : 'customer';
+    const result = await this.loginService.login(dto, { role, pool: ctx.pool });
 
     if (result.type === 'tokens') {
-      return buildLoginResponse(request, response, this.security, result);
+      return buildLoginResponse(request, response, this.security, this.csrfService, result, origin);
     }
 
     clearAuthCookies(response, this.security);

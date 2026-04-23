@@ -1,13 +1,13 @@
 import {
   Injectable,
   InternalServerErrorException,
-  NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
 
-import type { RefreshResult, ResolvedRole } from '../auth.types';
-import { CognitoService } from '../cognito/cognito.service';
-import type { PoolCredentials } from '../cognito/cognito.types';
+import type { RefreshResult } from '../auth.types';
+import { CognitoService } from '../shared/cognito/cognito.service';
+import type { PoolCredentials } from '../shared/cognito/cognito.types';
+
+type LoginRole = 'platform' | 'admin' | 'customer';
 
 @Injectable()
 export class RefreshService {
@@ -15,7 +15,7 @@ export class RefreshService {
 
   async refresh(
     refreshToken: string,
-    params: { role: ResolvedRole; pool?: PoolCredentials },
+    params: { role: LoginRole; pool?: PoolCredentials },
   ): Promise<RefreshResult> {
     if (params.role === 'platform') {
       return this.cognito.refreshTokens(refreshToken);
@@ -25,18 +25,6 @@ export class RefreshService {
       throw new InternalServerErrorException('Tenant pool was not resolved');
     }
 
-    if (params.role === 'customer') {
-      return this.cognito.refreshTokens(refreshToken, params.pool);
-    }
-
-    try {
-      return await this.cognito.refreshTokens(refreshToken, params.pool);
-    } catch (error) {
-      if (error instanceof UnauthorizedException || error instanceof NotFoundException) {
-        return this.cognito.refreshTokens(refreshToken);
-      }
-
-      throw error;
-    }
+    return this.cognito.refreshTokens(refreshToken, params.pool);
   }
 }

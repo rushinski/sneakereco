@@ -9,7 +9,20 @@ export interface CognitoJwtPayload {
   iss: string;
   token_use: 'access' | 'id';
   client_id: string;
+  jti?: string;
 }
+
+/**
+ * Which auth pathway this request is using.
+ * Derived from the request origin in RequestContextMiddleware.
+ */
+export type UserType = 'platform' | 'tenant-admin' | 'customer';
+
+/**
+ * Permission level within a tenant's admin team.
+ * Only present on tenant-admin users; null for customers and platform admins.
+ */
+export type TeamRole = TenantMemberRole;
 
 /**
  * The user object attached to request.user after JWT validation.
@@ -18,21 +31,11 @@ export interface AuthenticatedUser {
   cognitoSub: string;
   email: string;
   isSuperAdmin: boolean;
-  tenantId: string | undefined;
-  role: TenantMemberRole | undefined;
-  memberId: string | undefined;
-}
-
-/**
- * Role resolved from request origin plus the optional X-Client-Context header.
- */
-export type ResolvedRole = 'customer' | 'admin' | 'platform';
-
-export type TenantScopedRole = Exclude<ResolvedRole, 'platform'>;
-
-export interface RoleContext {
-  role: ResolvedRole;
-  tenantId: string | undefined;
+  tenantId: string | null;
+  memberId: string | null;
+  userType: UserType;
+  teamRole: TeamRole | null;
+  jti: string | null;
 }
 
 export interface TokenResult {
@@ -41,10 +44,6 @@ export interface TokenResult {
   refreshToken: string;
   idToken: string;
   expiresIn: number;
-}
-
-export interface ResolvedTokenResult extends TokenResult {
-  authContext: ResolvedRole;
 }
 
 export interface MfaChallengeResult {
@@ -58,9 +57,14 @@ export interface MfaSetupResult {
   email: string;
 }
 
+export interface OtpSentResult {
+  type: 'otp_sent';
+  session: string;
+}
+
 export type LoginResult = TokenResult | MfaChallengeResult | MfaSetupResult;
 
-export type ResolvedLoginResult = ResolvedTokenResult | MfaChallengeResult | MfaSetupResult;
+export type OtpVerifyResult = TokenResult | MfaChallengeResult;
 
 export interface RefreshResult {
   accessToken: string;
