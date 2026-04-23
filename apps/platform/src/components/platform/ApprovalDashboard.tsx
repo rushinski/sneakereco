@@ -8,7 +8,6 @@ import {
   apiClient,
   clearAccessToken,
   getAccessToken,
-  readCsrfTokenCookie,
   setAccessToken,
   type RequestSummary,
 } from '../../lib/api-client';
@@ -38,31 +37,38 @@ export function ApprovalDashboard() {
   const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
-    const stored = getAccessToken();
-    if (stored) {
-      setToken(stored);
-      setCsrfToken(readCsrfTokenCookie());
-      setAuthReady(true);
-      return;
-    }
+    let cancelled = false;
 
-    // No in-memory token — try to restore session from the httpOnly refresh cookie
-    const tokenFromCookie = readCsrfTokenCookie();
-    if (!tokenFromCookie) {
-      router.push('/login');
-      return;
-    }
+    void (async () => {
+      try {
+        const csrf = await apiClient.getCsrfToken();
+        if (cancelled) return;
 
-    setCsrfToken(tokenFromCookie);
-    apiClient.refreshAdmin(tokenFromCookie)
-      .then((result) => {
+        setCsrfToken(csrf.token);
+
+        const stored = getAccessToken();
+        if (stored) {
+          setToken(stored);
+          setAuthReady(true);
+          return;
+        }
+
+        const result = await apiClient.refreshAdmin(csrf.token);
+        if (cancelled) return;
+
         setAccessToken(result.accessToken);
         setToken(result.accessToken);
         setAuthReady(true);
-      })
-      .catch(() => {
-        router.push('/login');
-      });
+      } catch {
+        if (!cancelled) {
+          router.push('/login');
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   useEffect(() => {
@@ -89,7 +95,10 @@ export function ApprovalDashboard() {
   }, [token, filter, page, router]);
 
   async function handleApprove(tenantId: string) {
-    if (!token || !csrfToken) return;
+    if (!token || !csrfToken) {
+      setActionError('Security token unavailable. Refresh and try again.');
+      return;
+    }
     setActionError(null);
     try {
       await apiClient.approveRequest(tenantId, csrfToken, token);
@@ -100,7 +109,10 @@ export function ApprovalDashboard() {
   }
 
   async function handleDeny(tenantId: string) {
-    if (!token || !csrfToken) return;
+    if (!token || !csrfToken) {
+      setActionError('Security token unavailable. Refresh and try again.');
+      return;
+    }
     setActionError(null);
     try {
       await apiClient.denyRequest(tenantId, csrfToken, token);
