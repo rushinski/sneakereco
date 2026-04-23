@@ -1,15 +1,8 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import type { Job } from 'bullmq';
 
-import { EmailService } from '../modules/communications/email/email.service';
-
-export interface EmailJob {
-  to: string;
-  subject: string;
-  html: string;
-  text: string;
-  from?: string;
-}
+import { EmailService } from './email.service';
+import type { EmailJob } from './email.types';
 
 @Processor('email')
 export class EmailProcessor extends WorkerHost {

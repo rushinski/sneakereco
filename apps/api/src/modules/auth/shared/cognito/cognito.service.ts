@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   Injectable,
-  InternalServerErrorException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -27,7 +26,14 @@ import {
 } from '@aws-sdk/client-cognito-identity-provider';
 
 import { CognitoClientProvider } from '../../../../core/cognito/cognito.client';
-import type { LoginResult, OtpSentResult, OtpVerifyResult, RefreshResult, TokenResult } from '../../auth.types';
+import { getCognitoUserSub } from '../../../../core/cognito/cognito-user-sub';
+import type {
+  LoginResult,
+  OtpSentResult,
+  OtpVerifyResult,
+  RefreshResult,
+  TokenResult,
+} from '../../auth.types';
 import type { PoolCredentials } from './cognito.types';
 import { throwCognitoError } from '../../../../core/cognito/cognito-error.mapper';
 
@@ -321,7 +327,9 @@ export class CognitoService {
       );
     } catch (error) {
       if (error instanceof LimitExceededException) {
-        throw new BadRequestException('Resend limit exceeded. Wait before requesting another code.');
+        throw new BadRequestException(
+          'Resend limit exceeded. Wait before requesting another code.',
+        );
       }
       if (error instanceof UserNotFoundException) {
         return;
@@ -379,24 +387,7 @@ export class CognitoService {
   }
 
   async adminGetUser(email: string, userPoolId: string): Promise<string> {
-    try {
-      const response = await this.client.send(
-        new AdminGetUserCommand({ UserPoolId: userPoolId, Username: email }),
-      );
-      const subAttribute = response.UserAttributes?.find((attribute) => attribute.Name === 'sub');
-
-      if (!subAttribute?.Value) {
-        throw new InternalServerErrorException('Cognito user sub not found');
-      }
-
-      return subAttribute.Value;
-    } catch (error) {
-      if (error instanceof InternalServerErrorException) {
-        throw error;
-      }
-
-      throwCognitoError(error);
-    }
+    return getCognitoUserSub(this.client, { email, userPoolId });
   }
 
   async adminCheckMfaEnabled(email: string, userPoolId: string): Promise<boolean> {

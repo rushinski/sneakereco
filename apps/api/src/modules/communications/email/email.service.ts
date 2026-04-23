@@ -6,7 +6,7 @@ import * as nodemailer from 'nodemailer';
 import type Mail from 'nodemailer/lib/mailer';
 import type { Queue } from 'bullmq';
 
-import type { EmailJob } from '../../../jobs/email.processor';
+import type { EmailJob } from './email.types';
 import { renderTemplate } from './template.renderer';
 
 interface SendMailOptions {
@@ -286,9 +286,7 @@ export class EmailService {
   async send(options: SendMailOptions): Promise<void> {
     const from = options.from ?? this.platformFrom;
 
-    this.logger.log(
-      `Sending email to="${options.to}" from="${from}" subject="${options.subject}"`,
-    );
+    this.logger.log(`Sending email to="${options.to}" from="${from}" subject="${options.subject}"`);
 
     try {
       const info = await this.transporter.sendMail({

@@ -12,7 +12,6 @@ import { generateId } from '@sneakereco/shared';
 import type { DrizzleTransaction } from '../../../core/database/database.service';
 import { DatabaseService } from '../../../core/database/database.service';
 import { OriginResolverService } from '../../../common/services/origin-resolver.service';
-import { CognitoService } from '../../auth/shared/cognito/cognito.service';
 import { EmailService } from '../../communications/email/email.service';
 import { CognitoProvisioningService } from '../cognito-provisioning.service';
 
@@ -37,7 +36,6 @@ export class OnboardingService {
   constructor(
     private readonly db: DatabaseService,
     private readonly onboardingRepository: OnboardingRepository,
-    private readonly cognito: CognitoService,
     private readonly cognitoProvisioning: CognitoProvisioningService,
     private readonly email: EmailService,
     private readonly config: ConfigService,
@@ -52,7 +50,9 @@ export class OnboardingService {
       const existing = await this.onboardingRepository.findPendingOrInvitedByEmail(email);
 
       if (existing) {
-        this.logger.log(`Skipping admin notification for duplicate onboarding request email=${email}`);
+        this.logger.log(
+          `Skipping admin notification for duplicate onboarding request email=${email}`,
+        );
         return { duplicate: true as const };
       }
 
@@ -159,17 +159,22 @@ export class OnboardingService {
         businessName: record.businessName ?? record.tenantName,
         subdomain,
       });
-      this.logger.log(`Cognito pool created userPoolId=${poolResult.userPoolId} tenantId=${tenantId}`);
+      this.logger.log(
+        `Cognito pool created userPoolId=${poolResult.userPoolId} tenantId=${tenantId}`,
+      );
 
-      await this.onboardingRepository.insertTenantCognitoConfig({
-        id: generateId('tenantCognitoConfig'),
-        tenantId,
-        userPoolId: poolResult.userPoolId,
-        userPoolArn: poolResult.userPoolArn,
-        customerClientId: poolResult.customerClientId,
-        adminClientId: poolResult.adminClientId,
-        region: poolResult.region,
-      }, tx);
+      await this.onboardingRepository.insertTenantCognitoConfig(
+        {
+          id: generateId('tenantCognitoConfig'),
+          tenantId,
+          userPoolId: poolResult.userPoolId,
+          userPoolArn: poolResult.userPoolArn,
+          customerClientId: poolResult.customerClientId,
+          adminClientId: poolResult.adminClientId,
+          region: poolResult.region,
+        },
+        tx,
+      );
 
       await this.onboardingRepository.markInviteSent(tenantId, inviteTokenHash, tx);
 
@@ -252,7 +257,9 @@ export class OnboardingService {
       throw new InternalServerErrorException('Onboarding request is missing the applicant email');
     }
 
-    const cognitoConfig = await this.onboardingRepository.findTenantCognitoConfig(inviteRecord.tenantId);
+    const cognitoConfig = await this.onboardingRepository.findTenantCognitoConfig(
+      inviteRecord.tenantId,
+    );
     if (!cognitoConfig) {
       throw new InternalServerErrorException('Tenant Cognito pool not configured');
     }
@@ -263,7 +270,10 @@ export class OnboardingService {
     );
 
     await this.db.withSystemContext(async (tx) => {
-      const existingUserBySub = await this.onboardingRepository.findUserByCognitoSub(cognitoSub, tx);
+      const existingUserBySub = await this.onboardingRepository.findUserByCognitoSub(
+        cognitoSub,
+        tx,
+      );
 
       if (existingUserBySub) {
         await this.onboardingRepository.insertTenantMember(
@@ -321,16 +331,10 @@ export class OnboardingService {
       await this.onboardingRepository.markInviteAccepted(inviteRecord.tenantId, tx);
     });
 
-    const authResult = await this.cognito.login(
+    const authResult = await this.cognitoProvisioning.loginNewAdmin(
       { email, password: dto.password },
-      { userPoolId: cognitoConfig.userPoolId, clientId: cognitoConfig.adminClientId },
+      { clientId: cognitoConfig.adminClientId },
     );
-
-    if (authResult.type !== 'tokens') {
-      throw new InternalServerErrorException('Unexpected MFA challenge during onboarding sign-in');
-    }
-
-    const { secretCode } = await this.cognito.associateSoftwareToken(authResult.accessToken);
 
     if (!inviteRecord.adminDomain) {
       throw new InternalServerErrorException('Tenant admin domain is not configured');
@@ -342,7 +346,7 @@ export class OnboardingService {
       expiresIn: authResult.expiresIn,
       idToken: authResult.idToken,
       refreshToken: authResult.refreshToken,
-      secretCode,
+      secretCode: authResult.secretCode,
     };
   }
 
@@ -379,5 +383,4 @@ export class OnboardingService {
 
     throw new InternalServerErrorException('Unable to allocate a unique tenant subdomain');
   }
-
 }

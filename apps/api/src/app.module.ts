@@ -5,7 +5,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { CustomThrottlerGuard } from './common/guards/throttler.guard';
 import { LoggingModule } from './core/logging/logging.module';
-import { JobsModule } from './jobs/jobs.module';
 import { ThrottlingModule } from './core/security/throttling/throttling.module';
 
 import { envSchema } from './config/env.schema';
@@ -24,7 +23,10 @@ import { CorsMiddleware } from './common/middleware/cors.middleware';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { AddressesModule } from './modules/addresses/addresses.module';
 import { AuthModule } from './modules/auth/auth.module';
-import { CommunicationsModule } from './modules/communications/communications.module';
+import { ContactModule } from './modules/communications/contact/contact.module';
+import { EmailModule } from './modules/communications/email/email.module';
+import { ListenersModule } from './modules/communications/listeners/listeners.module';
+import { SubscribersModule } from './modules/communications/subscribers/subscribers.module';
 import { CustomersModule } from './modules/customers/customers.module';
 import { FeaturedModule } from './modules/featured/featured.module';
 import { FraudModule } from './modules/fraud/fraud.module';
@@ -66,7 +68,6 @@ import { TenantsModule } from './modules/tenants/tenants.module';
     ValkeyModule,
     CognitoModule,
     CsrfModule,
-    JobsModule,
     CommonModule,
     RequestContextModule,
     DatabaseModule,
@@ -80,7 +81,10 @@ import { TenantsModule } from './modules/tenants/tenants.module';
     TaxModule,
     ShippingModule,
     CustomersModule,
-    CommunicationsModule,
+    EmailModule,
+    ContactModule,
+    SubscribersModule,
+    ListenersModule,
     AddressesModule,
     FeaturedModule,
   ],
@@ -95,8 +99,6 @@ import { TenantsModule } from './modules/tenants/tenants.module';
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     // RequestContext must run before CorsMiddleware so origin is classified once.
-    consumer
-      .apply(RequestIdMiddleware, RequestContextMiddleware, CorsMiddleware)
-      .forRoutes('*');
+    consumer.apply(RequestIdMiddleware, RequestContextMiddleware, CorsMiddleware).forRoutes('*');
   }
 }

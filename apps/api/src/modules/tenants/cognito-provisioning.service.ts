@@ -2,15 +2,17 @@ import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   AdminCreateUserCommand,
-  AdminGetUserCommand,
   AdminSetUserPasswordCommand,
+  AssociateSoftwareTokenCommand,
   CreateUserPoolClientCommand,
   CreateUserPoolCommand,
+  InitiateAuthCommand,
   SetUserPoolMfaConfigCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 
 import { CognitoClientProvider } from '../../core/cognito/cognito.client';
 import { throwCognitoError } from '../../core/cognito/cognito-error.mapper';
+import { getCognitoUserSub } from '../../core/cognito/cognito-user-sub';
 
 export interface TenantPoolProvisioningResult {
   userPoolId: string;
@@ -18,6 +20,14 @@ export interface TenantPoolProvisioningResult {
   customerClientId: string;
   adminClientId: string;
   region: string;
+}
+
+export interface ProvisionedAdminSession {
+  accessToken: string;
+  refreshToken: string;
+  idToken: string;
+  expiresIn: number;
+  secretCode: string;
 }
 
 @Injectable()
@@ -67,9 +77,7 @@ export class CognitoProvisioningService {
             AllowedFirstAuthFactors: ['PASSWORD', 'EMAIL_OTP'],
           },
         },
-        Schema: [
-          { Name: 'email', AttributeDataType: 'String', Required: true, Mutable: true },
-        ],
+        Schema: [{ Name: 'email', AttributeDataType: 'String', Required: true, Mutable: true }],
         ...(this.sesIdentityArn
           ? {
               EmailConfiguration: {
@@ -105,7 +113,11 @@ export class CognitoProvisioningService {
       new CreateUserPoolClientCommand({
         UserPoolId: userPoolId,
         ClientName: 'customer',
-        ExplicitAuthFlows: ['ALLOW_USER_PASSWORD_AUTH', 'ALLOW_USER_AUTH', 'ALLOW_REFRESH_TOKEN_AUTH'],
+        ExplicitAuthFlows: [
+          'ALLOW_USER_PASSWORD_AUTH',
+          'ALLOW_USER_AUTH',
+          'ALLOW_REFRESH_TOKEN_AUTH',
+        ],
         AuthSessionValidity: 10,
         RefreshTokenValidity: 30,
         AccessTokenValidity: 60,
@@ -129,7 +141,11 @@ export class CognitoProvisioningService {
       new CreateUserPoolClientCommand({
         UserPoolId: userPoolId,
         ClientName: 'admin',
-        ExplicitAuthFlows: ['ALLOW_USER_PASSWORD_AUTH', 'ALLOW_USER_AUTH', 'ALLOW_REFRESH_TOKEN_AUTH'],
+        ExplicitAuthFlows: [
+          'ALLOW_USER_PASSWORD_AUTH',
+          'ALLOW_USER_AUTH',
+          'ALLOW_REFRESH_TOKEN_AUTH',
+        ],
         AuthSessionValidity: 10,
         RefreshTokenValidity: 1,
         AccessTokenValidity: 60,
@@ -185,24 +201,51 @@ export class CognitoProvisioningService {
         }),
       );
 
-      return this.adminGetUser(input.email, pool.userPoolId);
+      return getCognitoUserSub(this.client, {
+        email: input.email,
+        userPoolId: pool.userPoolId,
+        missingSubMessage: 'Cognito user sub not found after creation',
+      });
     } catch (error) {
       throwCognitoError(error);
     }
   }
 
-  async adminGetUser(email: string, userPoolId: string): Promise<string> {
+  async loginNewAdmin(
+    credentials: { email: string; password: string },
+    pool: { clientId: string },
+  ): Promise<ProvisionedAdminSession> {
     try {
       const response = await this.client.send(
-        new AdminGetUserCommand({ UserPoolId: userPoolId, Username: email }),
+        new InitiateAuthCommand({
+          AuthFlow: 'USER_PASSWORD_AUTH',
+          ClientId: pool.clientId,
+          AuthParameters: {
+            USERNAME: credentials.email,
+            PASSWORD: credentials.password,
+          },
+        }),
       );
-      const subAttribute = response.UserAttributes?.find((attribute) => attribute.Name === 'sub');
 
-      if (!subAttribute?.Value) {
-        throw new InternalServerErrorException('Cognito user sub not found after creation');
+      if (response.ChallengeName) {
+        throw new InternalServerErrorException(
+          `Unexpected auth challenge during onboarding sign-in: ${response.ChallengeName}`,
+        );
       }
 
-      return subAttribute.Value;
+      const tokens = this.toTokenResult(response.AuthenticationResult);
+      const associateResponse = await this.client.send(
+        new AssociateSoftwareTokenCommand({ AccessToken: tokens.accessToken }),
+      );
+
+      if (!associateResponse.SecretCode) {
+        throw new InternalServerErrorException('Failed to start MFA setup for onboarding admin');
+      }
+
+      return {
+        ...tokens,
+        secretCode: associateResponse.SecretCode,
+      };
     } catch (error) {
       if (error instanceof InternalServerErrorException) {
         throw error;
@@ -210,5 +253,27 @@ export class CognitoProvisioningService {
 
       throwCognitoError(error);
     }
+  }
+
+  private toTokenResult(
+    result:
+      | {
+          AccessToken?: string;
+          RefreshToken?: string;
+          IdToken?: string;
+          ExpiresIn?: number;
+        }
+      | undefined,
+  ): Omit<ProvisionedAdminSession, 'secretCode'> {
+    if (!result?.AccessToken || !result.RefreshToken || !result.IdToken || !result.ExpiresIn) {
+      throw new InternalServerErrorException('Cognito authentication result is incomplete');
+    }
+
+    return {
+      accessToken: result.AccessToken,
+      refreshToken: result.RefreshToken,
+      idToken: result.IdToken,
+      expiresIn: result.ExpiresIn,
+    };
   }
 }

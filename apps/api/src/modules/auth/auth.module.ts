@@ -55,6 +55,6 @@ import { RegisterService } from './register/register.service';
     RefreshService,
     RegisterService,
   ],
-  exports: [CognitoService, PoolResolverService],
+  exports: [PoolResolverService],
 })
 export class AuthModule {}
