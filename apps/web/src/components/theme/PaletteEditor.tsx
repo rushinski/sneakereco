@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+
 import { ApiClientError, apiClient, getAccessToken } from '../../lib/api-client';
 
 const FONT_OPTIONS = [
@@ -15,11 +16,11 @@ const FONT_OPTIONS = [
 ];
 
 const RADIUS_OPTIONS = [
-  { label: 'None',   value: '0px' },
-  { label: 'Small',  value: '4px' },
+  { label: 'None', value: '0px' },
+  { label: 'Small', value: '4px' },
   { label: 'Medium', value: '8px' },
-  { label: 'Large',  value: '16px' },
-  { label: 'Full',   value: '9999px' },
+  { label: 'Large', value: '16px' },
+  { label: 'Full', value: '9999px' },
 ];
 
 interface PaletteEditorProps {
@@ -74,14 +75,14 @@ export function PaletteEditor({ tenantId, initial }: PaletteEditorProps) {
         <div className="grid grid-cols-2 gap-4">
           {(
             [
-              ['colorPrimary',    'Primary'],
-              ['colorSecondary',  'Secondary'],
-              ['colorAccent',     'Accent'],
+              ['colorPrimary', 'Primary'],
+              ['colorSecondary', 'Secondary'],
+              ['colorAccent', 'Accent'],
               ['colorBackground', 'Background'],
-              ['colorSurface',    'Surface'],
-              ['colorText',       'Text'],
-              ['colorTextMuted',  'Text muted'],
-              ['colorBorder',     'Border'],
+              ['colorSurface', 'Surface'],
+              ['colorText', 'Text'],
+              ['colorTextMuted', 'Text muted'],
+              ['colorBorder', 'Border'],
             ] as const
           ).map(([key, label]) => (
             <label key={key} className="flex items-center justify-between gap-3">

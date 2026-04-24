@@ -1,4 +1,5 @@
 import { headers } from 'next/headers';
+
 import { AuthPagePicker } from '../../../../../components/theme/AuthPagePicker';
 
 interface TenantConfigResponse {
@@ -15,11 +16,12 @@ interface TenantConfigResponse {
 async function fetchConfig(slug: string) {
   try {
     const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
-    const res = await fetch(
-      `${apiBase}/v1/platform/config?slug=${encodeURIComponent(slug)}`,
-      { cache: 'no-store' },
-    );
-    if (!res.ok) return null;
+    const res = await fetch(`${apiBase}/v1/platform/config?slug=${encodeURIComponent(slug)}`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) {
+      return null;
+    }
     const body = (await res.json()) as TenantConfigResponse;
     return body?.data ?? null;
   } catch {

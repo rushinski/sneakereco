@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { ApiClientError, apiClient, getAccessToken } from '../../lib/api-client';
 import { AuthPreviewSimple } from '../theme/AuthPreviewSimple';
 import { AuthPreviewBold } from '../theme/AuthPreviewBold';
+
 import { ViewportToggle, type Viewport } from './ViewportToggle';
 import { PreviewFrame } from './PreviewFrame';
 
@@ -95,7 +96,10 @@ export function AuthPagePickerWithPreview({
                     {t.id === 'simple' ? (
                       <AuthPreviewSimple />
                     ) : (
-                      <AuthPreviewBold headline={headline || null} description={description || null} />
+                      <AuthPreviewBold
+                        headline={headline || null}
+                        description={description || null}
+                      />
                     )}
                   </div>
                   <div className="flex items-center justify-between bg-white px-3 py-2.5">
@@ -105,8 +109,18 @@ export function AuthPagePickerWithPreview({
                     </div>
                     {active && (
                       <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gray-900">
-                        <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                        <svg
+                          className="h-3 w-3 text-white"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={3}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M4.5 12.75l6 6 9-13.5"
+                          />
                         </svg>
                       </span>
                     )}

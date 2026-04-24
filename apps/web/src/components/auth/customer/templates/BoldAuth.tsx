@@ -32,17 +32,13 @@ export function BoldAuth({
           ) : (
             <div className="h-8 w-8 rounded-lg bg-white/20" />
           )}
-          {tenantName && (
-            <span className="text-sm font-semibold text-white/80">{tenantName}</span>
-          )}
+          {tenantName && <span className="text-sm font-semibold text-white/80">{tenantName}</span>}
         </div>
         <div className="space-y-3">
           <h1 className="text-3xl font-bold leading-tight text-white">
             {headline ?? 'Welcome back.'}
           </h1>
-          {description && (
-            <p className="text-base leading-relaxed text-white/60">{description}</p>
-          )}
+          {description && <p className="text-base leading-relaxed text-white/60">{description}</p>}
         </div>
         <div />
       </div>

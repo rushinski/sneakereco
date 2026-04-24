@@ -10,9 +10,7 @@ export function AuthPreviewSimple() {
       style={{ background: 'var(--color-background)' }}
     >
       {/* Centered card */}
-      <div
-        className="absolute inset-0 flex items-center justify-center p-6"
-      >
+      <div className="absolute inset-0 flex items-center justify-center p-6">
         <div
           className="w-full max-w-[220px] rounded-lg p-5 shadow-sm"
           style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
@@ -31,18 +29,21 @@ export function AuthPreviewSimple() {
           <div className="space-y-2">
             <div
               className="h-7 w-full rounded"
-              style={{ border: '1px solid var(--color-border)', background: 'var(--color-background)' }}
+              style={{
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-background)',
+              }}
             />
             <div
               className="h-7 w-full rounded"
-              style={{ border: '1px solid var(--color-border)', background: 'var(--color-background)' }}
+              style={{
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-background)',
+              }}
             />
           </div>
           {/* Button */}
-          <div
-            className="mt-3 h-7 w-full rounded"
-            style={{ background: 'var(--color-primary)' }}
-          />
+          <div className="mt-3 h-7 w-full rounded" style={{ background: 'var(--color-primary)' }} />
           {/* Forgot */}
           <div
             className="mx-auto mt-3 h-2 w-16 rounded"

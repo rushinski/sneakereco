@@ -38,10 +38,7 @@ export function AuthPreviewBold({
         style={{ background: 'var(--color-background)' }}
       >
         {/* Sign in label */}
-        <div
-          className="h-2.5 w-10 rounded"
-          style={{ background: 'var(--color-text)' }}
-        />
+        <div className="h-2.5 w-10 rounded" style={{ background: 'var(--color-text)' }} />
         {/* Fields */}
         <div
           className="h-6 w-full rounded"
@@ -52,15 +49,9 @@ export function AuthPreviewBold({
           style={{ border: '1px solid var(--color-border)', background: 'var(--color-surface)' }}
         />
         {/* Button */}
-        <div
-          className="h-6 w-full rounded"
-          style={{ background: 'var(--color-primary)' }}
-        />
+        <div className="h-6 w-full rounded" style={{ background: 'var(--color-primary)' }} />
         {/* Forgot */}
-        <div
-          className="h-2 w-14 rounded mx-auto"
-          style={{ background: 'var(--color-border)' }}
-        />
+        <div className="h-2 w-14 rounded mx-auto" style={{ background: 'var(--color-border)' }} />
       </div>
     </div>
   );

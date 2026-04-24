@@ -2,14 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+
 import {
-  ApiClientError,
   apiClient,
   clearAccessToken,
   getAccessToken,
   readCsrfTokenCookie,
   setAccessToken,
 } from '../../lib/api-client';
+import { getStoreAdminExternalPath } from '../../lib/routing/store-admin-paths';
 
 /**
  * Client-side auth gate for dashboard pages.
@@ -17,13 +18,7 @@ import {
  * restore the session from the httpOnly refresh cookie before redirecting.
  * The access token is kept in a module-level variable — never in localStorage.
  */
-export function DashboardGuard({
-  children,
-  tenantId,
-}: {
-  children: React.ReactNode;
-  tenantId: string | null;
-}) {
+export function DashboardGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [checked, setChecked] = useState(false);
 
@@ -31,12 +26,16 @@ export function DashboardGuard({
     let cancelled = false;
 
     const allowAuthReady = () => {
-      if (!cancelled) setChecked(true);
+      if (!cancelled) {
+        setChecked(true);
+      }
     };
 
     const redirectToLogin = () => {
       clearAccessToken();
-      if (!cancelled) router.replace('/admin/login');
+      if (!cancelled) {
+        router.replace(getStoreAdminExternalPath('/auth/login', window.location.host));
+      }
     };
 
     const restoreSession = async () => {
@@ -47,13 +46,13 @@ export function DashboardGuard({
       }
 
       try {
-        const csrfToken = readCsrfTokenCookie();
-        if (!csrfToken || !tenantId) {
+        const csrfToken = readCsrfTokenCookie('store-admin');
+        if (!csrfToken) {
           redirectToLogin();
           return;
         }
 
-        const result = await apiClient.refreshAdmin(tenantId, csrfToken);
+        const result = await apiClient.refreshStoreAdmin(csrfToken);
         setAccessToken(result.accessToken);
         allowAuthReady();
       } catch {
@@ -66,9 +65,11 @@ export function DashboardGuard({
     return () => {
       cancelled = true;
     };
-  }, [router, tenantId]);
+  }, [router]);
 
-  if (!checked) return null;
+  if (!checked) {
+    return null;
+  }
 
   return <>{children}</>;
 }

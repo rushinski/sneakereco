@@ -4,11 +4,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const SEGMENT_LABELS: Record<string, string> = {
-  admin:       'Home',
+  admin: 'Home',
   'web-design': 'Web Design',
-  auth:        'Auth Pages',
-  palette:     'Palette & Fonts',
-  theme:       'Theme',
+  auth: 'Auth Pages',
+  palette: 'Palette & Fonts',
+  theme: 'Theme',
 };
 
 export function Breadcrumb() {
@@ -20,7 +20,9 @@ export function Breadcrumb() {
     return { label: SEGMENT_LABELS[seg] ?? seg, href };
   });
 
-  if (crumbs.length <= 1) return null;
+  if (crumbs.length <= 1) {
+    return null;
+  }
 
   return (
     <nav className="flex items-center gap-1.5 px-6 py-2 text-xs text-gray-400 border-b border-gray-100">

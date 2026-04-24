@@ -1,8 +1,5 @@
-import { headers } from 'next/headers';
-import { AdminLoginForm } from '../../../components/auth/AdminLoginForm';
+import { redirect } from 'next/navigation';
 
-export default async function AdminLoginPage() {
-  const headersList = await headers();
-  const tenantSlug = headersList.get('x-tenant-slug') ?? '';
-  return <AdminLoginForm tenantSlug={tenantSlug} />;
+export default function LegacyStoreAdminLoginRedirect() {
+  redirect('/admin/auth/login');
 }

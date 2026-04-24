@@ -22,7 +22,11 @@ export function SimpleAuth({
       >
         <div className="mb-6 text-center">
           {logoUrl ? (
-            <img src={logoUrl} alt={tenantName ?? ''} className="mx-auto h-8 w-auto object-contain" />
+            <img
+              src={logoUrl}
+              alt={tenantName ?? ''}
+              className="mx-auto h-8 w-auto object-contain"
+            />
           ) : (
             <div
               className="mx-auto h-8 w-24 rounded"

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 
 import { ApiClientError, apiClient } from '../../../lib/api-client';
 import { Button } from '../../ui/Button';
+
 import { ThemedField } from './ThemedField';
 
 export function ResetPasswordForm({ email, code: initialCode }: { email: string; code?: string }) {
@@ -26,7 +27,7 @@ export function ResetPasswordForm({ email, code: initialCode }: { email: string;
     setError(null);
     try {
       await apiClient.resetCustomerPassword({ email, code, newPassword });
-      router.push('/login');
+      router.push('/auth/login');
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : 'Reset failed. Try again.');
     } finally {
@@ -35,9 +36,16 @@ export function ResetPasswordForm({ email, code: initialCode }: { email: string;
   }
 
   return (
-    <form className="space-y-4" onSubmit={(e) => { void handleSubmit(e); }}>
+    <form
+      className="space-y-4"
+      onSubmit={(e) => {
+        void handleSubmit(e);
+      }}
+    >
       <div>
-        <h2 className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>Set a new password.</h2>
+        <h2 className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>
+          Set a new password.
+        </h2>
       </div>
       {!initialCode && (
         <ThemedField
@@ -63,7 +71,9 @@ export function ResetPasswordForm({ email, code: initialCode }: { email: string;
         onChange={setConfirm}
       />
       {error && <p className="text-sm text-red-500">{error}</p>}
-      <Button type="submit" loading={submitting}>Set Password</Button>
+      <Button type="submit" loading={submitting}>
+        Set Password
+      </Button>
     </form>
   );
 }

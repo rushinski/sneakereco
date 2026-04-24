@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ApiClientError, apiClient } from '../../../lib/api-client';
 import { useAuth } from '../../../hooks/useAuth';
 import { Button } from '../../ui/Button';
+
 import { ThemedField } from './ThemedField';
 
 export function OtpVerifyForm({ email, session }: { email: string; session: string }) {
@@ -23,7 +24,9 @@ export function OtpVerifyForm({ email, session }: { email: string; session: stri
     try {
       const result = await apiClient.verifyOtp({ email, session, code });
       if (result.type === 'mfa_required') {
-        router.push(`/mfa?session=${encodeURIComponent(result.session)}&email=${encodeURIComponent(email)}`);
+        router.push(
+          `/mfa?session=${encodeURIComponent(result.session)}&email=${encodeURIComponent(email)}`,
+        );
         return;
       }
       storeTokens(result.accessToken, result.expiresIn);
@@ -36,9 +39,16 @@ export function OtpVerifyForm({ email, session }: { email: string; session: stri
   }
 
   return (
-    <form className="space-y-4" onSubmit={(e) => { void handleSubmit(e); }}>
+    <form
+      className="space-y-4"
+      onSubmit={(e) => {
+        void handleSubmit(e);
+      }}
+    >
       <div>
-        <h2 className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>Enter your code.</h2>
+        <h2 className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>
+          Enter your code.
+        </h2>
         <p className="mt-1 text-sm" style={{ color: 'var(--color-text-muted)' }}>
           We sent a 6-digit code to <strong>{email}</strong>.
         </p>
@@ -53,9 +63,15 @@ export function OtpVerifyForm({ email, session }: { email: string; session: stri
         onChange={setCode}
       />
       {error && <p className="text-sm text-red-500">{error}</p>}
-      <Button type="submit" loading={submitting}>Verify</Button>
+      <Button type="submit" loading={submitting}>
+        Verify
+      </Button>
       <p className="text-center text-xs">
-        <a href="/otp" className="underline underline-offset-2" style={{ color: 'var(--color-text-muted)' }}>
+        <a
+          href="/auth/otp"
+          className="underline underline-offset-2"
+          style={{ color: 'var(--color-text-muted)' }}
+        >
           Resend code
         </a>
       </p>

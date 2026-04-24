@@ -6,13 +6,7 @@ type AuthFieldProps = {
   autoComplete?: string;
 };
 
-export function AuthField({
-  label,
-  type = 'text',
-  value,
-  onChange,
-  autoComplete,
-}: AuthFieldProps) {
+export function AuthField({ label, type = 'text', value, onChange, autoComplete }: AuthFieldProps) {
   return (
     <div className="space-y-1">
       <label className="block text-xs font-medium text-gray-600">{label}</label>

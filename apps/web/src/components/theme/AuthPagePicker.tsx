@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+
 import { ApiClientError, apiClient, getAccessToken } from '../../lib/api-client';
+
 import { AuthPreviewSimple } from './AuthPreviewSimple';
 import { AuthPreviewBold } from './AuthPreviewBold';
 
@@ -70,8 +72,8 @@ export function AuthPagePicker({
       <div>
         <h2 className="text-sm font-semibold text-gray-700 mb-1">Auth page template</h2>
         <p className="text-sm text-gray-500">
-          Choose the layout used for sign in, sign up, forgot password, and MFA pages.
-          Previewed in your current palette.
+          Choose the layout used for sign in, sign up, forgot password, and MFA pages. Previewed in
+          your current palette.
         </p>
       </div>
 
@@ -85,9 +87,7 @@ export function AuthPagePicker({
               onClick={() => setVariant(t.id)}
               className={[
                 'group relative flex flex-col overflow-hidden rounded-xl border-2 text-left transition-all',
-                active
-                  ? 'border-gray-900 shadow-md'
-                  : 'border-gray-200 hover:border-gray-400',
+                active ? 'border-gray-900 shadow-md' : 'border-gray-200 hover:border-gray-400',
               ].join(' ')}
             >
               {/* Preview area */}
@@ -95,10 +95,7 @@ export function AuthPagePicker({
                 {t.id === 'simple' ? (
                   <AuthPreviewSimple />
                 ) : (
-                  <AuthPreviewBold
-                    headline={headline || null}
-                    description={description || null}
-                  />
+                  <AuthPreviewBold headline={headline || null} description={description || null} />
                 )}
               </div>
 
@@ -110,8 +107,18 @@ export function AuthPagePicker({
                 </div>
                 {active && (
                   <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gray-900">
-                    <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    <svg
+                      className="h-3 w-3 text-white"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={3}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M4.5 12.75l6 6 9-13.5"
+                      />
                     </svg>
                   </span>
                 )}

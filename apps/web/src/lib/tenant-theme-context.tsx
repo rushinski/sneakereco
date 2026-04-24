@@ -13,11 +13,7 @@ export function TenantThemeProvider({
   config: TenantConfig | null;
   children: ReactNode;
 }) {
-  return (
-    <TenantThemeContext.Provider value={config}>
-      {children}
-    </TenantThemeContext.Provider>
-  );
+  return <TenantThemeContext.Provider value={config}>{children}</TenantThemeContext.Provider>;
 }
 
 export function useTenantConfig(): TenantConfig | null {

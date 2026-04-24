@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ApiClientError, apiClient } from '../../../lib/api-client';
 import { useAuth } from '../../../hooks/useAuth';
 import { Button } from '../../ui/Button';
+
 import { ThemedField } from './ThemedField';
 
 type Stage = 'password' | 'mfa';
@@ -34,7 +35,9 @@ export function CustomerLoginForm() {
         return;
       }
       if (result.type === 'mfa_setup') {
-        router.push(`/mfa-setup?session=${encodeURIComponent(result.session)}&email=${encodeURIComponent(result.email)}`);
+        router.push(
+          `/mfa-setup?session=${encodeURIComponent(result.session)}&email=${encodeURIComponent(result.email)}`,
+        );
         return;
       }
       storeTokens(result.accessToken, result.expiresIn);
@@ -68,7 +71,12 @@ export function CustomerLoginForm() {
 
   if (stage === 'mfa') {
     return (
-      <form className="space-y-4" onSubmit={(e) => { void handleMfaSubmit(e); }}>
+      <form
+        className="space-y-4"
+        onSubmit={(e) => {
+          void handleMfaSubmit(e);
+        }}
+      >
         <div>
           <h2 className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>
             Enter your code.
@@ -87,15 +95,24 @@ export function CustomerLoginForm() {
           onChange={setMfaCode}
         />
         {error && <p className="text-sm text-red-500">{error}</p>}
-        <Button type="submit" loading={submitting}>Verify</Button>
+        <Button type="submit" loading={submitting}>
+          Verify
+        </Button>
       </form>
     );
   }
 
   return (
-    <form className="space-y-4" onSubmit={(e) => { void handlePasswordSubmit(e); }}>
+    <form
+      className="space-y-4"
+      onSubmit={(e) => {
+        void handlePasswordSubmit(e);
+      }}
+    >
       <div>
-        <h2 className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>Sign in.</h2>
+        <h2 className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>
+          Sign in.
+        </h2>
       </div>
       <ThemedField
         label="Email"
@@ -112,14 +129,24 @@ export function CustomerLoginForm() {
         onChange={setPassword}
       />
       {error && <p className="text-sm text-red-500">{error}</p>}
-      <Button type="submit" loading={submitting}>Sign In</Button>
+      <Button type="submit" loading={submitting}>
+        Sign In
+      </Button>
       <div className="flex justify-between text-xs" style={{ color: 'var(--color-text-muted)' }}>
-        <a href="/otp" className="underline underline-offset-2">Sign in with email code</a>
-        <a href="/forgot-password" className="underline underline-offset-2">Forgot password?</a>
+        <a href="/auth/otp" className="underline underline-offset-2">
+          Sign in with email code
+        </a>
+        <a href="/auth/forgot-password" className="underline underline-offset-2">
+          Forgot password?
+        </a>
       </div>
       <p className="text-center text-xs" style={{ color: 'var(--color-text-muted)' }}>
         No account?{' '}
-        <a href="/register" className="underline underline-offset-2" style={{ color: 'var(--color-primary)' }}>
+        <a
+          href="/auth/register"
+          className="underline underline-offset-2"
+          style={{ color: 'var(--color-primary)' }}
+        >
           Create one
         </a>
       </p>

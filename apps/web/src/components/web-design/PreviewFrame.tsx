@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+
 import type { Viewport } from './ViewportToggle';
 
 const MAX_WIDTH: Record<Viewport, number> = {
@@ -9,13 +10,7 @@ const MAX_WIDTH: Record<Viewport, number> = {
   mobile: 375,
 };
 
-export function PreviewFrame({
-  viewport,
-  children,
-}: {
-  viewport: Viewport;
-  children: ReactNode;
-}) {
+export function PreviewFrame({ viewport, children }: { viewport: Viewport; children: ReactNode }) {
   return (
     <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-gray-200 bg-gray-100">
       <div className="flex-1 overflow-auto p-4">

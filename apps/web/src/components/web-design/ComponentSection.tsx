@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import Link from 'next/link';
 
 interface ComponentSectionProps {
@@ -32,9 +31,7 @@ export function ComponentSection({
       href={href}
       className={[
         'flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-        isSelected
-          ? 'bg-gray-900 text-white'
-          : 'text-gray-700 hover:bg-gray-100',
+        isSelected ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100',
       ].join(' ')}
     >
       {label}

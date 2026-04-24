@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import { apiClient, readCsrfTokenCookie } from '../lib/api-client';
+import { apiClient, type AppSurface, readCsrfTokenCookie } from '../lib/api-client';
 import {
   clearTokens,
   getStoredToken,
@@ -11,7 +11,7 @@ import {
 } from '../lib/auth/token-store';
 import { withRefreshLock } from '../lib/auth/refresh-lock';
 
-export function useAuth() {
+export function useAuth(appSurface: AppSurface = 'customer') {
   const [accessToken, setAccessToken] = useState<string | null>(getStoredToken);
 
   useEffect(() => subscribeToAuthChanges(setAccessToken), []);
@@ -23,21 +23,28 @@ export function useAuth() {
 
   const signOut = useCallback(async () => {
     const token = getStoredToken();
-    const csrf = readCsrfTokenCookie();
+    const csrf = readCsrfTokenCookie(appSurface);
     if (token && csrf) {
-      await apiClient.logoutCustomer(csrf, token).catch(() => {});
+      const logout =
+        appSurface === 'store-admin' ? apiClient.logoutStoreAdmin : apiClient.logoutCustomer;
+      await logout(csrf, token).catch(() => {});
     }
     clearTokens();
     setAccessToken(null);
-  }, []);
+  }, [appSurface]);
 
   const refresh = useCallback(async (): Promise<string | null> => {
-    const csrf = readCsrfTokenCookie();
-    if (!csrf) return null;
+    const csrf = readCsrfTokenCookie(appSurface);
+    if (!csrf) {
+      return null;
+    }
 
     try {
       const result = await withRefreshLock(async () => {
-        const res = await apiClient.refreshCustomer(csrf);
+        const res =
+          appSurface === 'store-admin'
+            ? await apiClient.refreshStoreAdmin(csrf)
+            : await apiClient.refreshCustomer(csrf);
         setTokens(res.accessToken, res.expiresIn);
         return res.accessToken;
       });
@@ -48,7 +55,7 @@ export function useAuth() {
       setAccessToken(null);
       return null;
     }
-  }, []);
+  }, [appSurface]);
 
   return {
     accessToken,

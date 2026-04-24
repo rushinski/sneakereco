@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 
 import { ApiClientError, apiClient } from '../../../lib/api-client';
 import { Button } from '../../ui/Button';
+
 import { ThemedField } from './ThemedField';
 
 export function CustomerRegisterForm() {
@@ -21,7 +22,7 @@ export function CustomerRegisterForm() {
     setError(null);
     try {
       await apiClient.registerCustomer({ email, password });
-      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+      router.push(`/auth/confirm-email?email=${encodeURIComponent(email)}`);
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : 'Registration failed. Try again.');
     } finally {
@@ -30,9 +31,16 @@ export function CustomerRegisterForm() {
   }
 
   return (
-    <form className="space-y-4" onSubmit={(e) => { void handleSubmit(e); }}>
+    <form
+      className="space-y-4"
+      onSubmit={(e) => {
+        void handleSubmit(e);
+      }}
+    >
       <div>
-        <h2 className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>Create an account.</h2>
+        <h2 className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>
+          Create an account.
+        </h2>
       </div>
       <ThemedField
         label="Email"
@@ -49,10 +57,16 @@ export function CustomerRegisterForm() {
         onChange={setPassword}
       />
       {error && <p className="text-sm text-red-500">{error}</p>}
-      <Button type="submit" loading={submitting}>Create Account</Button>
+      <Button type="submit" loading={submitting}>
+        Create Account
+      </Button>
       <p className="text-center text-xs" style={{ color: 'var(--color-text-muted)' }}>
         Already have an account?{' '}
-        <a href="/login" className="underline underline-offset-2" style={{ color: 'var(--color-primary)' }}>
+        <a
+          href="/auth/login"
+          className="underline underline-offset-2"
+          style={{ color: 'var(--color-primary)' }}
+        >
           Sign in
         </a>
       </p>

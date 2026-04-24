@@ -9,6 +9,7 @@ import {
   type CompleteOnboardingResult,
   type InviteSummary,
 } from '../../lib/api-client';
+
 import { AuthField } from './AuthField';
 
 type Stage = 'loading' | 'password' | 'mfa' | 'complete' | 'invalid';
@@ -30,15 +31,19 @@ export function AdminSetup({ token }: { token: string }) {
     void (async () => {
       try {
         const [csrf, inv] = await Promise.all([
-          apiClient.getCsrfToken(),
+          apiClient.getCsrfToken('store-admin'),
           apiClient.validateInvite(token),
         ]);
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
         setCsrfToken(csrf.token);
         setInvite(inv);
         setStage('password');
       } catch (err) {
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
         setError(err instanceof ApiClientError ? err.message : 'Could not validate invite.');
         setStage('invalid');
       }
@@ -49,7 +54,9 @@ export function AdminSetup({ token }: { token: string }) {
   }, [token]);
 
   const otpAuthUri = useMemo(() => {
-    if (!result?.email || !result.secretCode) return null;
+    if (!result?.email || !result.secretCode) {
+      return null;
+    }
     const issuer = 'SneakerEco';
     const label = `${issuer}:${result.email}`;
     return `otpauth://totp/${encodeURIComponent(label)}?secret=${encodeURIComponent(result.secretCode)}&issuer=${encodeURIComponent(issuer)}`;
@@ -63,10 +70,14 @@ export function AdminSetup({ token }: { token: string }) {
     }
     void QRCode.toDataURL(otpAuthUri, { errorCorrectionLevel: 'M', margin: 1, width: 220 })
       .then((url: string) => {
-        if (!cancelled) setQrCodeUrl(url);
+        if (!cancelled) {
+          setQrCodeUrl(url);
+        }
       })
       .catch(() => {
-        if (!cancelled) setQrCodeUrl(null);
+        if (!cancelled) {
+          setQrCodeUrl(null);
+        }
       });
     return () => {
       cancelled = true;
@@ -75,7 +86,9 @@ export function AdminSetup({ token }: { token: string }) {
 
   async function handlePasswordSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!csrfToken) return;
+    if (!csrfToken) {
+      return;
+    }
     if (password !== passwordConfirm) {
       setError('Passwords do not match.');
       return;
@@ -95,16 +108,17 @@ export function AdminSetup({ token }: { token: string }) {
 
   async function handleMfaSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!csrfToken || !invite || !result) return;
+    if (!csrfToken || !invite || !result) {
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
-      await apiClient.completeMfaSetup(
+      await apiClient.completeStoreAdminMfaSetup(
         {
           email: result.email,
           mfaCode,
           session: result.session,
-          tenantId: invite.tenantId,
         },
         csrfToken,
       );
