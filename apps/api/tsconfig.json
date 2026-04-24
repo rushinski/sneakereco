@@ -14,15 +14,8 @@
 
     "paths": {
       "@/*": ["./src/*"]
-    },
-
-    // Project references — tells TS about your workspace packages
-    "composite": true
+    }
   },
-  "references": [
-    { "path": "../../packages/shared" },
-    { "path": "../../packages/db" }
-  ],
   "include": ["src"],
   "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.e2e-spec.ts"]
 }
