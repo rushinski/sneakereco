@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { tenantCognitoConfig, tenantMembers, users } from '@sneakereco/db';
 import type { TenantMemberRole } from '@sneakereco/db';
 
@@ -36,6 +36,36 @@ export class JwtStrategyRepository {
       .from(users)
       .innerJoin(tenantMembers, eq(tenantMembers.userId, users.id))
       .where(eq(users.cognitoSub, sub))
+      .limit(1);
+
+    if (!row) {
+      return null;
+    }
+
+    return {
+      tenantId: row.tenantId,
+      role: row.role as TenantMemberRole,
+      memberId: row.memberId,
+    };
+  }
+
+  async findMembershipByCognitoSubAndTenant(
+    sub: string,
+    tenantId: string,
+  ): Promise<{
+    tenantId: string;
+    role: TenantMemberRole;
+    memberId: string;
+  } | null> {
+    const [row] = await this.db.systemDb
+      .select({
+        tenantId: tenantMembers.tenantId,
+        role: tenantMembers.role,
+        memberId: tenantMembers.id,
+      })
+      .from(users)
+      .innerJoin(tenantMembers, eq(tenantMembers.userId, users.id))
+      .where(and(eq(users.cognitoSub, sub), eq(tenantMembers.tenantId, tenantId)))
       .limit(1);
 
     if (!row) {

@@ -21,7 +21,7 @@ export class PoolResolverRepository {
     return config;
   }
 
-  async hasAdminMembership(tenantId: string, email: string): Promise<boolean> {
+  async hasStoreAdminMembership(tenantId: string, email: string): Promise<boolean> {
     const [member] = await this.db.systemDb
       .select({ id: tenantMembers.id })
       .from(users)

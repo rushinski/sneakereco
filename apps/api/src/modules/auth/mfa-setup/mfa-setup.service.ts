@@ -1,18 +1,20 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 
 import type { TokenResult } from '../auth.types';
 import { CognitoService } from '../shared/cognito/cognito.service';
 import type { PoolCredentials } from '../shared/cognito/cognito.types';
+import { AdminAccountClassifierService } from '../shared/pool-resolver/admin-account-classifier.service';
 import { PoolResolverService } from '../shared/pool-resolver/pool-resolver.service';
 import type { MfaSetupCompleteDto } from './mfa-setup-complete.dto';
 
-type LoginRole = 'platform' | 'admin' | 'customer';
+type LoginSurface = 'platform-admin' | 'store-admin' | 'customer';
 
 @Injectable()
 export class MfaSetupService {
   constructor(
     private readonly cognito: CognitoService,
     private readonly poolResolver: PoolResolverService,
+    private readonly classifier: AdminAccountClassifierService,
   ) {}
 
   associate(session: string) {
@@ -21,18 +23,30 @@ export class MfaSetupService {
 
   async complete(
     dto: MfaSetupCompleteDto,
-    params: { role: LoginRole; pool?: PoolCredentials; tenantId?: string },
+    params: { surface: LoginSurface; pool?: PoolCredentials; tenantId?: string },
   ): Promise<TokenResult> {
-    if (params.role === 'platform') {
+    if (params.surface === 'platform-admin') {
       return this.cognito.completeMfaSetupChallenge(dto, this.poolResolver.getPlatformAdminPool());
     }
 
-    if (params.role === 'admin') {
+    if (params.surface === 'store-admin') {
       if (!params.tenantId) {
         throw new InternalServerErrorException('Tenant context was not resolved');
       }
 
-      const pool = await this.poolResolver.resolveAdminAuthPool(params.tenantId, dto.email);
+      const audience = await this.classifier.classifyForStoreAdminSurface({
+        email: dto.email,
+        tenantId: params.tenantId,
+      });
+
+      if (audience === 'unavailable') {
+        throw new UnauthorizedException('Invalid MFA setup challenge');
+      }
+
+      const pool =
+        audience === 'store-admin'
+          ? this.poolResolver.getStoreAdminPool()
+          : this.poolResolver.getPlatformAdminPool();
       return this.cognito.completeMfaSetupChallenge(dto, pool);
     }
 

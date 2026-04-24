@@ -46,13 +46,17 @@ export class PasswordResetController {
     handler: (pool: PoolCredentials) => Promise<T> | T,
   ): Promise<T> {
     const ctx = RequestCtx.get();
-    const origin = ctx?.origin;
+    const surface = ctx?.surface;
 
-    if (origin === 'platform-admin') {
+    if (surface === 'platform-admin') {
       throw new ForbiddenException('Platform accounts use admin-managed password reset');
     }
 
-    if (!origin || origin === 'unknown') {
+    if (!surface || surface === 'unknown') {
+      throw new BadRequestException('Origin not allowed');
+    }
+
+    if (surface !== 'customer' && surface !== 'store-admin') {
       throw new BadRequestException('Origin not allowed');
     }
 

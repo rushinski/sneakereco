@@ -35,23 +35,23 @@ export class RefreshController {
     }
 
     const ctx = RequestCtx.get();
-    const origin = ctx?.origin;
+    const surface = ctx?.surface;
 
-    if (!origin || origin === 'unknown') {
+    if (!surface || surface === 'unknown') {
       throw new BadRequestException('Origin not allowed');
     }
 
-    if (origin === 'platform-admin') {
-      return this.refreshService.refresh(refreshToken, { role: 'platform' });
+    if (surface === 'platform-admin') {
+      return this.refreshService.refresh(refreshToken, { surface: 'platform-admin' });
     }
 
-    if (origin === 'store-admin') {
+    if (surface === 'store-admin') {
       if (!ctx.tenantId) {
         throw new BadRequestException('Tenant authentication is not configured');
       }
 
       return this.refreshService.refresh(refreshToken, {
-        role: 'admin',
+        surface: 'store-admin',
         tenantId: ctx.tenantId,
       });
     }
@@ -60,6 +60,6 @@ export class RefreshController {
       throw new BadRequestException('Tenant authentication is not configured');
     }
 
-    return this.refreshService.refresh(refreshToken, { role: 'customer', pool: ctx.pool });
+    return this.refreshService.refresh(refreshToken, { surface: 'customer', pool: ctx.pool });
   }
 }

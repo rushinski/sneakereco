@@ -5,7 +5,7 @@ import { CognitoService } from '../shared/cognito/cognito.service';
 import type { PoolCredentials } from '../shared/cognito/cognito.types';
 import { PoolResolverService } from '../shared/pool-resolver/pool-resolver.service';
 
-type LoginRole = 'platform' | 'admin' | 'customer';
+type RefreshSurface = 'platform-admin' | 'store-admin' | 'customer';
 
 @Injectable()
 export class RefreshService {
@@ -16,13 +16,13 @@ export class RefreshService {
 
   async refresh(
     refreshToken: string,
-    params: { role: LoginRole; pool?: PoolCredentials; tenantId?: string },
+    params: { surface: RefreshSurface; pool?: PoolCredentials; tenantId?: string },
   ): Promise<RefreshResult> {
-    if (params.role === 'platform') {
+    if (params.surface === 'platform-admin') {
       return this.cognito.refreshTokens(refreshToken, this.poolResolver.getPlatformAdminPool());
     }
 
-    if (params.role === 'admin') {
+    if (params.surface === 'store-admin') {
       if (!params.tenantId) {
         throw new InternalServerErrorException('Tenant context was not resolved');
       }
@@ -30,7 +30,7 @@ export class RefreshService {
       try {
         return await this.cognito.refreshTokens(
           refreshToken,
-          this.poolResolver.getTenantAdminPool(),
+          this.poolResolver.getStoreAdminPool(),
         );
       } catch (error) {
         if (!(error instanceof UnauthorizedException)) {

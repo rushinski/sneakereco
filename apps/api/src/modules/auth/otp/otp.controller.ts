@@ -36,7 +36,7 @@ export class OtpController {
   async request(@Body(new ZodValidationPipe(OtpRequestDtoSchema)) dto: OtpRequestDto) {
     const ctx = RequestCtx.get();
 
-    if (ctx?.origin !== 'customer') {
+    if (ctx?.surface !== 'customer') {
       throw new ForbiddenException('OTP login is only available for customer accounts');
     }
 
@@ -58,7 +58,7 @@ export class OtpController {
   ) {
     const ctx = RequestCtx.get();
 
-    if (ctx?.origin !== 'customer') {
+    if (ctx?.surface !== 'customer') {
       throw new ForbiddenException('OTP login is only available for customer accounts');
     }
 

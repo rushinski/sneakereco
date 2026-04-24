@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
+  AdminListGroupsForUserCommand,
   AdminGetUserCommand,
   AssociateSoftwareTokenCommand,
   CodeMismatchException,
@@ -36,12 +37,14 @@ import { throwCognitoError } from '../../../../core/cognito/cognito-error.mapper
 @Injectable()
 export class CognitoService {
   private readonly platformClientId: string;
+  private readonly platformPoolId: string;
 
   constructor(
     private readonly cognitoClientProvider: CognitoClientProvider,
     config: ConfigService,
   ) {
     this.platformClientId = config.getOrThrow<string>('PLATFORM_COGNITO_PLATFORM_CLIENT_ID');
+    this.platformPoolId = config.getOrThrow<string>('PLATFORM_COGNITO_POOL_ID');
   }
 
   private get client() {
@@ -384,6 +387,25 @@ export class CognitoService {
 
   async adminGetUser(email: string, userPoolId: string): Promise<string> {
     return getCognitoUserSub(this.client, { email, userPoolId });
+  }
+
+  async getUserGroups(email: string): Promise<string[]> {
+    try {
+      const response = await this.client.send(
+        new AdminListGroupsForUserCommand({
+          UserPoolId: this.platformPoolId,
+          Username: email,
+        }),
+      );
+
+      return response.Groups?.map((group) => group.GroupName).filter(Boolean) as string[];
+    } catch (error) {
+      if (error instanceof UserNotFoundException) {
+        return [];
+      }
+
+      throwCognitoError(error);
+    }
   }
 
   async adminCheckMfaEnabled(email: string, userPoolId: string): Promise<boolean> {

@@ -59,7 +59,7 @@ export class RegisterController {
   ): Promise<T> {
     const ctx = RequestCtx.get();
 
-    if (ctx?.origin !== 'customer') {
+    if (ctx?.surface !== 'customer') {
       throw new ForbiddenException('Customer auth context required');
     }
 

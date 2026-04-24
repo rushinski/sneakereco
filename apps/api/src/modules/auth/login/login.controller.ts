@@ -38,14 +38,14 @@ export class LoginController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const ctx = RequestCtx.get();
-    const origin = ctx?.origin;
+    const surface = ctx?.surface;
 
-    if (!origin || origin === 'unknown') {
+    if (!surface || surface === 'unknown') {
       throw new BadRequestException('Origin not allowed');
     }
 
-    if (origin === 'platform-admin') {
-      const result = await this.loginService.login(dto, { role: 'platform' });
+    if (surface === 'platform-admin') {
+      const result = await this.loginService.login(dto, { surface: 'platform-admin' });
 
       if (result.type === 'tokens') {
         return buildLoginResponse(
@@ -62,12 +62,15 @@ export class LoginController {
       return result;
     }
 
-    if (origin === 'store-admin') {
+    if (surface === 'store-admin') {
       if (!ctx.tenantId) {
         throw new BadRequestException('Tenant context is not configured');
       }
 
-      const result = await this.loginService.login(dto, { role: 'admin', tenantId: ctx.tenantId });
+      const result = await this.loginService.login(dto, {
+        surface: 'store-admin',
+        tenantId: ctx.tenantId,
+      });
 
       if (result.type === 'tokens') {
         return buildLoginResponse(
@@ -76,7 +79,7 @@ export class LoginController {
           this.security,
           this.csrfService,
           result,
-          origin,
+          'store-admin',
         );
       }
 
@@ -88,10 +91,17 @@ export class LoginController {
       throw new BadRequestException('Tenant authentication is not configured');
     }
 
-    const result = await this.loginService.login(dto, { role: 'customer', pool: ctx.pool });
+    const result = await this.loginService.login(dto, { surface: 'customer', pool: ctx.pool });
 
     if (result.type === 'tokens') {
-      return buildLoginResponse(request, response, this.security, this.csrfService, result, origin);
+      return buildLoginResponse(
+        request,
+        response,
+        this.security,
+        this.csrfService,
+        result,
+        'customer',
+      );
     }
 
     clearAuthCookies(response, this.security);

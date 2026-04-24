@@ -38,14 +38,14 @@ export class MfaChallengeController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const ctx = RequestCtx.get();
-    const origin = ctx?.origin;
+    const surface = ctx?.surface;
 
-    if (!origin || origin === 'unknown') {
+    if (!surface || surface === 'unknown') {
       throw new BadRequestException('Origin not allowed');
     }
 
-    if (origin === 'platform-admin') {
-      const result = await this.mfaChallengeService.respond(dto, { role: 'platform' });
+    if (surface === 'platform-admin') {
+      const result = await this.mfaChallengeService.respond(dto, { surface: 'platform-admin' });
       return buildLoginResponse(
         request,
         response,
@@ -56,16 +56,23 @@ export class MfaChallengeController {
       );
     }
 
-    if (origin === 'store-admin') {
+    if (surface === 'store-admin') {
       if (!ctx.tenantId) {
         throw new BadRequestException('Tenant authentication is not configured');
       }
 
       const result = await this.mfaChallengeService.respond(dto, {
-        role: 'admin',
+        surface: 'store-admin',
         tenantId: ctx.tenantId,
       });
-      return buildLoginResponse(request, response, this.security, this.csrfService, result, origin);
+      return buildLoginResponse(
+        request,
+        response,
+        this.security,
+        this.csrfService,
+        result,
+        'store-admin',
+      );
     }
 
     if (!ctx.pool) {
@@ -73,9 +80,9 @@ export class MfaChallengeController {
     }
 
     const result = await this.mfaChallengeService.respond(dto, {
-      role: 'customer',
+      surface: 'customer',
       pool: ctx.pool,
     });
-    return buildLoginResponse(request, response, this.security, this.csrfService, result, origin);
+    return buildLoginResponse(request, response, this.security, this.csrfService, result, 'customer');
   }
 }

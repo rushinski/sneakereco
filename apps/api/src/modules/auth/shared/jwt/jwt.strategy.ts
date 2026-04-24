@@ -18,7 +18,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   private readonly platformIssuer: string;
   private readonly platformPoolId: string;
   private readonly platformClientId: string;
-  private readonly tenantAdminClientId: string;
+  private readonly storeAdminClientId: string;
   private readonly platformJwksClient: JwksClient.JwksClient;
   private readonly tenantJwksClients = new Map<string, JwksClient.JwksClient>();
 
@@ -66,7 +66,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     this.platformIssuer = platformIssuer;
     this.platformPoolId = platformPoolId;
     this.platformClientId = config.getOrThrow<string>('PLATFORM_COGNITO_PLATFORM_CLIENT_ID');
-    this.tenantAdminClientId = config.getOrThrow<string>('PLATFORM_COGNITO_TENANT_ADMIN_CLIENT_ID');
+    this.storeAdminClientId = config.getOrThrow<string>('PLATFORM_COGNITO_TENANT_ADMIN_CLIENT_ID');
     this.platformJwksClient = JwksClient({
       jwksUri: `${platformIssuer}/.well-known/jwks.json`,
       cache: true,
@@ -96,11 +96,11 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         };
       }
 
-      if (payload.client_id !== this.tenantAdminClientId) {
+      if (payload.client_id !== this.storeAdminClientId) {
         throw new UnauthorizedException('Invalid token audience');
       }
 
-      if (ctx?.origin !== 'store-admin') {
+      if (ctx?.surface !== 'store-admin' || !ctx.tenantId) {
         throw new UnauthorizedException('Tenant admin token used from an invalid origin');
       }
 
@@ -111,7 +111,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         );
       }
 
-      const membership = await this.resolveMembership(payload.sub);
+      const membership = await this.resolveMembership(payload.sub, ctx.tenantId);
       if (!membership) {
         throw new UnauthorizedException('User has no tenant membership');
       }
@@ -138,32 +138,8 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       throw new UnauthorizedException('Invalid token audience');
     }
 
-    const userType = ctx.origin === 'store-admin' ? 'store-admin' : 'customer';
-
-    if (userType === 'store-admin') {
-      const poolId = payload.iss.split('/').pop()!;
-      const hasMfa = await this.resolveAdminMfa(payload.sub, payload.email, poolId);
-      if (!hasMfa) {
-        throw new ForbiddenException(
-          'MFA is required for admin accounts. Complete MFA setup before accessing the admin panel.',
-        );
-      }
-
-      const membership = await this.resolveMembership(payload.sub);
-      if (!membership) {
-        throw new UnauthorizedException('User has no tenant membership');
-      }
-
-      return {
-        cognitoSub: payload.sub,
-        email: payload.email,
-        isSuperAdmin: false,
-        tenantId: membership.tenantId,
-        memberId: membership.memberId,
-        userType: 'store-admin',
-        teamRole: membership.teamRole,
-        jti: payload.jti ?? null,
-      };
+    if (ctx.surface === 'store-admin') {
+      throw new UnauthorizedException('Invalid token audience');
     }
 
     // Customer — membership lookup for tenantId
@@ -213,12 +189,12 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     return key.getPublicKey();
   }
 
-  private async resolveMembership(sub: string): Promise<{
+  private async resolveMembership(sub: string, tenantId?: string | null): Promise<{
     tenantId: string;
     teamRole: TeamRole;
     memberId: string;
   } | null> {
-    const cacheKey = `membership:${sub}`;
+    const cacheKey = tenantId ? `membership:${sub}:${tenantId}` : `membership:${sub}`;
 
     const cached = await this.valkey.getJson<{
       tenantId: string;
@@ -227,7 +203,9 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     }>(cacheKey);
     if (cached) return cached;
 
-    const membership = await this.repository.findMembershipByCognitoSub(sub);
+    const membership = tenantId
+      ? await this.repository.findMembershipByCognitoSubAndTenant(sub, tenantId)
+      : await this.repository.findMembershipByCognitoSub(sub);
     if (!membership) return null;
 
     const result = {

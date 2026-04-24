@@ -50,18 +50,18 @@ export class MfaSetupController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const ctx = RequestCtx.get();
-    const origin = ctx?.origin;
+    const surface = ctx?.surface;
 
-    if (!origin || origin === 'unknown') {
+    if (!surface || surface === 'unknown') {
       throw new BadRequestException('Origin not allowed');
     }
 
     const tenantAdminTenantId =
-      origin === 'store-admin' ? ctx?.tenantId : clientContext === 'admin' ? tenantIdHeader : null;
+      surface === 'store-admin' ? ctx?.tenantId : clientContext === 'admin' ? tenantIdHeader : null;
 
     if (tenantAdminTenantId) {
       const result = await this.mfaSetupService.complete(dto, {
-        role: 'admin',
+        surface: 'store-admin',
         tenantId: tenantAdminTenantId,
       });
       return buildLoginResponse(
@@ -74,8 +74,8 @@ export class MfaSetupController {
       );
     }
 
-    if (origin === 'platform-admin') {
-      const result = await this.mfaSetupService.complete(dto, { role: 'platform' });
+    if (surface === 'platform-admin') {
+      const result = await this.mfaSetupService.complete(dto, { surface: 'platform-admin' });
       return buildLoginResponse(
         request,
         response,
@@ -90,8 +90,7 @@ export class MfaSetupController {
       throw new BadRequestException('Tenant authentication is not configured');
     }
 
-    const role = origin === 'store-admin' ? 'admin' : 'customer';
-    const result = await this.mfaSetupService.complete(dto, { role, pool: ctx.pool });
-    return buildLoginResponse(request, response, this.security, this.csrfService, result, origin);
+    const result = await this.mfaSetupService.complete(dto, { surface: 'customer', pool: ctx.pool });
+    return buildLoginResponse(request, response, this.security, this.csrfService, result, 'customer');
   }
 }

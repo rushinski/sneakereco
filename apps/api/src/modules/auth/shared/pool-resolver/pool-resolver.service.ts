@@ -11,7 +11,7 @@ const POOL_CACHE_TTL = 3600; // 1 hour
 export class PoolResolverService {
   private readonly platformPoolId: string;
   private readonly platformClientId: string;
-  private readonly tenantAdminClientId: string;
+  private readonly storeAdminClientId: string;
 
   constructor(
     private readonly repository: PoolResolverRepository,
@@ -20,7 +20,7 @@ export class PoolResolverService {
   ) {
     this.platformPoolId = config.getOrThrow<string>('PLATFORM_COGNITO_POOL_ID');
     this.platformClientId = config.getOrThrow<string>('PLATFORM_COGNITO_PLATFORM_CLIENT_ID');
-    this.tenantAdminClientId = config.getOrThrow<string>('PLATFORM_COGNITO_TENANT_ADMIN_CLIENT_ID');
+    this.storeAdminClientId = config.getOrThrow<string>('PLATFORM_COGNITO_TENANT_ADMIN_CLIENT_ID');
   }
 
   getPlatformAdminPool(): PoolCredentials {
@@ -30,16 +30,16 @@ export class PoolResolverService {
     };
   }
 
-  getTenantAdminPool(): PoolCredentials {
+  getStoreAdminPool(): PoolCredentials {
     return {
       userPoolId: this.platformPoolId,
-      clientId: this.tenantAdminClientId,
+      clientId: this.storeAdminClientId,
     };
   }
 
   async resolveTenantPool(tenantId: string, role: 'admin' | 'customer'): Promise<PoolCredentials> {
     if (role === 'admin') {
-      return this.getTenantAdminPool();
+      return this.getStoreAdminPool();
     }
 
     const cacheKey = `pool:${tenantId}:${role}`;
@@ -65,12 +65,5 @@ export class PoolResolverService {
 
   async invalidatePoolCache(tenantId: string): Promise<void> {
     await this.valkey.del(`pool:${tenantId}:admin`, `pool:${tenantId}:customer`);
-  }
-
-  async resolveAdminAuthPool(tenantId: string, email: string): Promise<PoolCredentials> {
-    const normalizedEmail = email.trim().toLowerCase();
-    const isTenantAdmin = await this.repository.hasAdminMembership(tenantId, normalizedEmail);
-
-    return isTenantAdmin ? this.getTenantAdminPool() : this.getPlatformAdminPool();
   }
 }

@@ -17,6 +17,7 @@ import { MfaSetupController } from './mfa-setup/mfa-setup.controller';
 import { MfaSetupService } from './mfa-setup/mfa-setup.service';
 import { PasswordResetController } from './password-reset/password-reset.controller';
 import { PasswordResetService } from './password-reset/password-reset.service';
+import { AdminAccountClassifierService } from './shared/pool-resolver/admin-account-classifier.service';
 import { PoolResolverRepository } from './shared/pool-resolver/pool-resolver.repository';
 import { PoolResolverService } from './shared/pool-resolver/pool-resolver.service';
 import { RefreshController } from './refresh/refresh.controller';
@@ -41,6 +42,7 @@ import { RegisterService } from './register/register.service';
   ],
   providers: [
     CognitoService,
+    AdminAccountClassifierService,
     JwtStrategyRepository,
     JwtStrategy,
     LoginService,
