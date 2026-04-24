@@ -9,6 +9,8 @@
  */
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 import type {
+  authSessionLineageRevocations,
+  authSubjectRevocations,
   auditEvents,
   chargebackEvidence,
   contactMessages,
@@ -54,6 +56,12 @@ export type NewUser = InferInsertModel<typeof users>;
 
 export type TenantMember = InferSelectModel<typeof tenantMembers>;
 export type NewTenantMember = InferInsertModel<typeof tenantMembers>;
+
+export type AuthSubjectRevocation = InferSelectModel<typeof authSubjectRevocations>;
+export type NewAuthSubjectRevocation = InferInsertModel<typeof authSubjectRevocations>;
+
+export type AuthSessionLineageRevocation = InferSelectModel<typeof authSessionLineageRevocations>;
+export type NewAuthSessionLineageRevocation = InferInsertModel<typeof authSessionLineageRevocations>;
 
 // --- Tenant Config ---
 export type TenantOnboarding = InferSelectModel<typeof tenantOnboarding>;

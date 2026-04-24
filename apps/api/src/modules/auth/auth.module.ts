@@ -26,6 +26,9 @@ import { OtpController } from './otp/otp.controller';
 import { OtpService } from './otp/otp.service';
 import { RegisterController } from './register/register.controller';
 import { RegisterService } from './register/register.service';
+import { SessionControlController } from './session-control/session-control.controller';
+import { SessionControlRepository } from './session-control/session-control.repository';
+import { SessionControlService } from './session-control/session-control.service';
 
 @Module({
   imports: [PassportModule, CsrfModule],
@@ -39,6 +42,7 @@ import { RegisterService } from './register/register.service';
     PasswordResetController,
     RefreshController,
     RegisterController,
+    SessionControlController,
   ],
   providers: [
     CognitoService,
@@ -56,6 +60,8 @@ import { RegisterService } from './register/register.service';
     PoolResolverService,
     RefreshService,
     RegisterService,
+    SessionControlRepository,
+    SessionControlService,
   ],
   exports: [PoolResolverService],
 })

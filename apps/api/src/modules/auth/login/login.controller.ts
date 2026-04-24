@@ -58,7 +58,7 @@ export class LoginController {
         );
       }
 
-      clearAuthCookies(response, this.security);
+      clearAuthCookies(request, response, this.security, 'platform-admin');
       return result;
     }
 
@@ -83,7 +83,7 @@ export class LoginController {
         );
       }
 
-      clearAuthCookies(response, this.security);
+      clearAuthCookies(request, response, this.security, 'store-admin');
       return result;
     }
 
@@ -104,7 +104,7 @@ export class LoginController {
       );
     }
 
-    clearAuthCookies(response, this.security);
+    clearAuthCookies(request, response, this.security, 'customer');
     return result;
   }
 }

@@ -72,7 +72,7 @@ export class OtpController {
       return buildLoginResponse(request, response, this.security, this.csrfService, result, 'customer');
     }
 
-    clearAuthCookies(response, this.security);
+    clearAuthCookies(request, response, this.security, 'customer');
     return result;
   }
 }

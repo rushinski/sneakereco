@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
-import { tenantCognitoConfig, tenantMembers, users } from '@sneakereco/db';
+import { and, eq, gt } from 'drizzle-orm';
+import {
+  authSessionLineageRevocations,
+  authSubjectRevocations,
+  tenantCognitoConfig,
+  tenantMembers,
+  users,
+} from '@sneakereco/db';
 import type { TenantMemberRole } from '@sneakereco/db';
 
 import { DatabaseService } from '../../../../core/database/database.service';
@@ -77,5 +83,46 @@ export class JwtStrategyRepository {
       role: row.role as TenantMemberRole,
       memberId: row.memberId,
     };
+  }
+
+  async findSubjectRevocation(
+    cognitoSub: string,
+    userPoolId: string,
+  ): Promise<Date | null> {
+    const [row] = await this.db.systemDb
+      .select({ revokeBefore: authSubjectRevocations.revokeBefore })
+      .from(authSubjectRevocations)
+      .where(
+        and(
+          eq(authSubjectRevocations.cognitoSub, cognitoSub),
+          eq(authSubjectRevocations.userPoolId, userPoolId),
+        ),
+      )
+      .limit(1);
+
+    return row?.revokeBefore ?? null;
+  }
+
+  async hasLineageRevocation(input: {
+    cognitoSub: string;
+    userPoolId: string;
+    originJti: string;
+    surfaceKey: string;
+  }): Promise<boolean> {
+    const [row] = await this.db.systemDb
+      .select({ id: authSessionLineageRevocations.id })
+      .from(authSessionLineageRevocations)
+      .where(
+        and(
+          eq(authSessionLineageRevocations.cognitoSub, input.cognitoSub),
+          eq(authSessionLineageRevocations.userPoolId, input.userPoolId),
+          eq(authSessionLineageRevocations.originJti, input.originJti),
+          eq(authSessionLineageRevocations.surfaceKey, input.surfaceKey),
+          gt(authSessionLineageRevocations.expiresAt, new Date()),
+        ),
+      )
+      .limit(1);
+
+    return Boolean(row);
   }
 }

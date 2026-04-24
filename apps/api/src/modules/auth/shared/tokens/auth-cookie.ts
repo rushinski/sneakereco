@@ -1,14 +1,30 @@
 import type { Request, Response } from 'express';
 
-import { CsrfService } from '../../../../core/security/csrf/csrf.service';
+import { RequestCtx } from '../../../../common/context/request-context';
+import type { CsrfService } from '../../../../core/security/csrf/csrf.service';
 import {
   AUTH_COOKIE_PATH,
-  CSRF_COOKIE_NAME,
-  REFRESH_COOKIE_NAME,
   REFRESH_MAX_AGE,
   SecurityConfig,
 } from '../../../../config/security.config';
 import type { LoginResponse, TokenResult, UserType } from '../../auth.types';
+
+export function buildSurfaceKey(input: {
+  surface: UserType;
+  canonicalHost?: string | null;
+  host?: string | null;
+}): string {
+  const host = (input.canonicalHost ?? input.host ?? '').toLowerCase();
+  return `${input.surface}:${host}`;
+}
+
+export function buildSurfaceCookieNames(surfaceKey: string) {
+  const suffix = surfaceKey.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  return {
+    refresh: `__Secure-sneakereco-refresh-${suffix}`,
+    csrf: `__Secure-sneakereco-csrf-${suffix}`,
+  };
+}
 
 export function buildLoginResponse(
   request: Request,
@@ -19,7 +35,7 @@ export function buildLoginResponse(
   userType: UserType,
 ): LoginResponse {
   const csrfToken = csrfService.generateToken(request, response);
-  setRefreshCookie(response, security, result.refreshToken, userType);
+  setRefreshCookie(request, response, security, result.refreshToken, userType);
 
   return {
     accessToken: result.accessToken,
@@ -29,8 +45,47 @@ export function buildLoginResponse(
   };
 }
 
-export function clearAuthCookies(response: Response, security: SecurityConfig): void {
-  response.clearCookie(REFRESH_COOKIE_NAME, {
+export function resolveCurrentSurfaceKey(request: Request, surface?: UserType): string | null {
+  const ctx = RequestCtx.get();
+  const resolvedSurface =
+    surface ?? (ctx?.surface && ctx.surface !== 'unknown' ? ctx.surface : null);
+  const host = ctx?.canonicalHost ?? ctx?.host ?? request.hostname ?? null;
+
+  if (!resolvedSurface || !host) {
+    return null;
+  }
+
+  return buildSurfaceKey({
+    surface: resolvedSurface,
+    canonicalHost: ctx?.canonicalHost,
+    host,
+  });
+}
+
+export function readRefreshCookie(request: Request, surface?: UserType): string | null {
+  const surfaceKey = resolveCurrentSurfaceKey(request, surface);
+  if (!surfaceKey) {
+    return null;
+  }
+
+  const cookieName = buildSurfaceCookieNames(surfaceKey).refresh;
+  return (request.cookies as Record<string, string | undefined>)[cookieName] ?? null;
+}
+
+export function clearAuthCookies(
+  request: Request,
+  response: Response,
+  security: SecurityConfig,
+  surface?: UserType,
+): void {
+  const surfaceKey = resolveCurrentSurfaceKey(request, surface);
+  if (!surfaceKey) {
+    return;
+  }
+
+  const cookieNames = buildSurfaceCookieNames(surfaceKey);
+
+  response.clearCookie(cookieNames.refresh, {
     httpOnly: true,
     secure: security.cookieSecure,
     sameSite: 'none',
@@ -38,7 +93,7 @@ export function clearAuthCookies(response: Response, security: SecurityConfig): 
     partitioned: true,
   });
 
-  response.clearCookie(CSRF_COOKIE_NAME, {
+  response.clearCookie(cookieNames.csrf, {
     httpOnly: false,
     secure: security.cookieSecure,
     sameSite: 'none',
@@ -48,12 +103,20 @@ export function clearAuthCookies(response: Response, security: SecurityConfig): 
 }
 
 function setRefreshCookie(
+  request: Request,
   response: Response,
   security: SecurityConfig,
   refreshToken: string,
   userType: UserType,
 ): void {
-  response.cookie(REFRESH_COOKIE_NAME, refreshToken, {
+  const surfaceKey = resolveCurrentSurfaceKey(request, userType);
+  if (!surfaceKey) {
+    return;
+  }
+
+  const cookieName = buildSurfaceCookieNames(surfaceKey).refresh;
+
+  response.cookie(cookieName, refreshToken, {
     httpOnly: true,
     secure: security.cookieSecure,
     sameSite: 'none',

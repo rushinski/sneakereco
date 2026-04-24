@@ -9,6 +9,7 @@ import { RequestCtx } from '../../../../common/context/request-context';
 import type { AuthenticatedUser, CognitoJwtPayload, TeamRole } from '../../auth.types';
 import { CognitoService } from '../cognito/cognito.service';
 import { JwtStrategyRepository } from './jwt-strategy.repository';
+import { buildSurfaceKey } from '../tokens/auth-cookie';
 
 const MFA_CACHE_TTL = 3600;
 const MEMBERSHIP_CACHE_TTL = 3600;
@@ -81,6 +82,15 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     }
 
     const ctx = RequestCtx.get();
+    const surfaceKey =
+      ctx && ctx.surface !== 'unknown'
+        ? buildSurfaceKey({
+            surface: ctx.surface,
+            canonicalHost: ctx.canonicalHost,
+            host: ctx.host,
+          })
+        : null;
+    await this.assertNotRevoked(payload, surfaceKey);
 
     if (payload.iss === this.platformIssuer) {
       if (payload.client_id === this.platformClientId) {
@@ -228,5 +238,43 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     await this.valkey.setJson(cacheKey, { hasMfa }, MFA_CACHE_TTL);
 
     return hasMfa;
+  }
+
+  private async assertNotRevoked(
+    payload: CognitoJwtPayload,
+    surfaceKey: string | null,
+  ): Promise<void> {
+    const userPoolId = this.extractUserPoolId(payload.iss);
+    const revokeBefore = await this.repository.findSubjectRevocation(payload.sub, userPoolId);
+
+    if (revokeBefore) {
+      const authTime = payload.auth_time ? new Date(payload.auth_time * 1000) : null;
+      if (!authTime || authTime <= revokeBefore) {
+        throw new UnauthorizedException('Session revoked');
+      }
+    }
+
+    if (surfaceKey && payload.origin_jti) {
+      const isRevoked = await this.repository.hasLineageRevocation({
+        cognitoSub: payload.sub,
+        userPoolId,
+        originJti: payload.origin_jti,
+        surfaceKey,
+      });
+
+      if (isRevoked) {
+        throw new UnauthorizedException('Session revoked');
+      }
+    }
+  }
+
+  private extractUserPoolId(issuer: string): string {
+    const poolId = issuer.split('/').pop();
+
+    if (!poolId) {
+      throw new UnauthorizedException('Unknown token issuer');
+    }
+
+    return poolId;
   }
 }

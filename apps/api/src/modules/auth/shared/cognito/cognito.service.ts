@@ -4,6 +4,7 @@ import {
   AdminListGroupsForUserCommand,
   AdminGetUserCommand,
   AssociateSoftwareTokenCommand,
+  AdminUserGlobalSignOutCommand,
   CodeMismatchException,
   ConfirmForgotPasswordCommand,
   ConfirmSignUpCommand,
@@ -13,6 +14,7 @@ import {
   InitiateAuthCommand,
   LimitExceededException,
   NotAuthorizedException,
+  RevokeTokenCommand,
   ResendConfirmationCodeCommand,
   RespondToAuthChallengeCommand,
   SetUserMFAPreferenceCommand,
@@ -262,6 +264,32 @@ export class CognitoService {
   async globalSignOut(accessToken: string): Promise<void> {
     try {
       await this.client.send(new GlobalSignOutCommand({ AccessToken: accessToken }));
+    } catch (error) {
+      throwCognitoError(error);
+    }
+  }
+
+  async adminGlobalSignOut(username: string, userPoolId: string): Promise<void> {
+    try {
+      await this.client.send(
+        new AdminUserGlobalSignOutCommand({
+          UserPoolId: userPoolId,
+          Username: username,
+        }),
+      );
+    } catch (error) {
+      throwCognitoError(error);
+    }
+  }
+
+  async revokeToken(refreshToken: string, clientId: string): Promise<void> {
+    try {
+      await this.client.send(
+        new RevokeTokenCommand({
+          ClientId: clientId,
+          Token: refreshToken,
+        }),
+      );
     } catch (error) {
       throwCognitoError(error);
     }
