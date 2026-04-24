@@ -20,6 +20,8 @@
   Responsibility: Restore the API integration-test harness at the actual `tests/` path so later auth integration tests run against a stable config location.
 - Modify: `apps/api/package.json`
   Responsibility: Point API test scripts at the restored `tests/` configs instead of the nonexistent `test/` directory.
+- Modify: `apps/api/tsconfig.json`
+  Responsibility: Remove the API's fresh-checkout dependency on built sibling-package declaration output during standalone `typecheck`.
 - Modify: `packages/db/package.json`
   Responsibility: Make the package type surface resolve from source in a fresh checkout instead of requiring prebuilt `dist` artifacts.
 - Modify: `packages/shared/package.json`
@@ -214,6 +216,7 @@
 - Create: `apps/api/tests/jest.unit.config.js`
 - Create: `apps/api/tests/jest.integration.config.js`
 - Modify: `apps/api/package.json`
+- Modify: `apps/api/tsconfig.json`
 - Modify: `packages/db/package.json`
 - Modify: `packages/shared/package.json`
 
@@ -267,6 +270,27 @@ module.exports = {
 ```
 
 ```json
+// apps/api/tsconfig.json
+{
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "nodenext",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "types": ["node"],
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.e2e-spec.ts"]
+}
+```
+
+```json
 // packages/db/package.json
 {
   "types": "./src/index.ts",
@@ -313,7 +337,7 @@ Expected: PASS, either with the first real unit tests from later tasks or with `
 - [ ] **Step 4: Commit**
 
 ```bash
-git add apps/api/package.json apps/api/tests/jest.unit.config.js apps/api/tests/jest.integration.config.js packages/db/package.json packages/shared/package.json
+git add apps/api/package.json apps/api/tsconfig.json apps/api/tests/jest.unit.config.js apps/api/tests/jest.integration.config.js packages/db/package.json packages/shared/package.json
 git commit -m "chore: restore workspace and api test baseline"
 ```
 
