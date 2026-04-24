@@ -38,9 +38,9 @@ export class CognitoProvisioningService {
     config: ConfigService,
   ) {
     this.region = config.getOrThrow<string>('AWS_REGION');
-    this.sharedAdminPoolId = config.getOrThrow<string>('PLATFORM_COGNITO_POOL_ID');
+    this.sharedAdminPoolId = config.getOrThrow<string>('COGNITO_POOL_ID');
     this.sesIdentityArn = config.get<string>('SES_IDENTITY_ARN');
-    this.tenantAdminClientId = config.getOrThrow<string>('PLATFORM_COGNITO_STORE_ADMIN_CLIENT_ID');
+    this.tenantAdminClientId = config.getOrThrow<string>('COGNITO_TENANT_ADMIN_CLIENT_ID');
   }
 
   private get client() {

@@ -45,8 +45,8 @@ export class CognitoService {
     private readonly cognitoClientProvider: CognitoClientProvider,
     config: ConfigService,
   ) {
-    this.platformClientId = config.getOrThrow<string>('PLATFORM_COGNITO_PLATFORM_CLIENT_ID');
-    this.platformPoolId = config.getOrThrow<string>('PLATFORM_COGNITO_POOL_ID');
+    this.platformClientId = config.getOrThrow<string>('COGNITO_PLATFORM_ADMIN_CLIENT_ID');
+    this.platformPoolId = config.getOrThrow<string>('COGNITO_POOL_ID');
   }
 
   private get client() {

@@ -18,13 +18,11 @@ export class CsrfService {
     string,
     ReturnType<typeof doubleCsrf>
   >();
-  private readonly cookieSecure: boolean;
   private readonly csrfSecret: string;
 
   constructor(private readonly configService: ConfigService) {
     this.csrfSecret = this.configService.getOrThrow<string>('CSRF_SECRET');
     const nodeEnv = this.configService.getOrThrow<string>('NODE_ENV');
-    this.cookieSecure = nodeEnv === 'production';
   }
 
   generateToken(req: Request, res: Response): string {
@@ -52,7 +50,7 @@ export class CsrfService {
           cookieOptions: {
             sameSite: 'none',
             path: AUTH_COOKIE_PATH,
-            secure: this.cookieSecure,
+            secure: true,
             httpOnly: true,
             partitioned: true,
           },

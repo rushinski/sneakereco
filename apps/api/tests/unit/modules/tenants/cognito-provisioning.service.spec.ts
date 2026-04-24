@@ -14,8 +14,8 @@ describe('CognitoProvisioningService.createTenantCustomerPool', () => {
     const config = {
       getOrThrow: jest.fn((key: string) => {
         if (key === 'AWS_REGION') return 'us-east-1';
-        if (key === 'PLATFORM_COGNITO_POOL_ID') return 'us-east-1_adminpool';
-        if (key === 'PLATFORM_COGNITO_STORE_ADMIN_CLIENT_ID') return 'storeadminclientid';
+        if (key === 'COGNITO_POOL_ID') return 'us-east-1_adminpool';
+        if (key === 'COGNITO_TENANT_ADMIN_CLIENT_ID') return 'storeadminclientid';
         throw new Error(`Unexpected config key: ${key}`);
       }),
       get: jest.fn().mockReturnValue(undefined),

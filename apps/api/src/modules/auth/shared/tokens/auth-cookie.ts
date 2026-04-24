@@ -87,7 +87,7 @@ export function clearAuthCookies(
 
   response.clearCookie(cookieNames.refresh, {
     httpOnly: true,
-    secure: security.cookieSecure,
+    secure: true,
     sameSite: 'none',
     path: AUTH_COOKIE_PATH,
     partitioned: true,
@@ -95,7 +95,7 @@ export function clearAuthCookies(
 
   response.clearCookie(cookieNames.csrf, {
     httpOnly: false,
-    secure: security.cookieSecure,
+    secure: true,
     sameSite: 'none',
     path: AUTH_COOKIE_PATH,
     partitioned: true,
@@ -118,7 +118,7 @@ function setRefreshCookie(
 
   response.cookie(cookieName, refreshToken, {
     httpOnly: true,
-    secure: security.cookieSecure,
+    secure: true,
     sameSite: 'none',
     path: AUTH_COOKIE_PATH,
     maxAge: REFRESH_MAX_AGE[userType],

@@ -30,7 +30,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     config: ConfigService,
   ) {
     const region = config.getOrThrow<string>('AWS_REGION');
-    const platformPoolId = config.getOrThrow<string>('PLATFORM_COGNITO_POOL_ID');
+    const platformPoolId = config.getOrThrow<string>('COGNITO_POOL_ID');
     const platformIssuer = `https://cognito-idp.${region}.amazonaws.com/${platformPoolId}`;
 
     super({
@@ -66,8 +66,8 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 
     this.platformIssuer = platformIssuer;
     this.platformPoolId = platformPoolId;
-    this.platformClientId = config.getOrThrow<string>('PLATFORM_COGNITO_PLATFORM_CLIENT_ID');
-    this.storeAdminClientId = config.getOrThrow<string>('PLATFORM_COGNITO_STORE_ADMIN_CLIENT_ID');
+    this.platformClientId = config.getOrThrow<string>('COGNITO_PLATFORM_ADMIN_CLIENT_ID');
+    this.storeAdminClientId = config.getOrThrow<string>('COGNITO_TENANT_ADMIN_CLIENT_ID');
     this.platformJwksClient = JwksClient({
       jwksUri: `${platformIssuer}/.well-known/jwks.json`,
       cache: true,

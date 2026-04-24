@@ -95,10 +95,6 @@ export const ORIGIN_CACHE_TTL_SECONDS = 300;
 
 @Injectable()
 export class SecurityConfig {
-  /** Whether cookies should carry the Secure flag. True in production or when
-   *  USE_HTTPS=true (local dev with mkcert + Caddy). */
-  readonly cookieSecure: boolean;
-
   /**
    * Content-Security-Policy directive map. Building block for helmetOptions —
    * exposed separately so it can be referenced in tests or docs without
@@ -114,10 +110,6 @@ export class SecurityConfig {
 
   constructor(config: ConfigService) {
     const isProduction = config.getOrThrow<string>('NODE_ENV') === 'production';
-    // USE_HTTPS is transformed to a boolean by Zod before reaching ConfigService
-    const useHttps    = config.get<boolean>('USE_HTTPS') ?? false;
-
-    this.cookieSecure = isProduction || useHttps;
 
     const r2PublicUrl = config.get<string>('R2_PUBLIC_URL');
     const awsRegion   = config.getOrThrow<string>('AWS_REGION');

@@ -24,13 +24,12 @@ export const envSchema = z.object({
 
   // --- AWS Cognito ---
   // Shared admin pool — manually created, used by both platform admins and tenant admins.
-  PLATFORM_COGNITO_POOL_ID: z.string().min(1, 'PLATFORM_COGNITO_POOL_ID is required'),
-  PLATFORM_COGNITO_PLATFORM_CLIENT_ID: z
+  COGNITO_POOL_ID: z.string().min(1, 'COGNITO_POOL_ID is required'),
+  COGNITO_PLATFORM_ADMIN_CLIENT_ID: z
     .string()
-    .min(1, 'PLATFORM_COGNITO_PLATFORM_CLIENT_ID is required'),
-  PLATFORM_COGNITO_STORE_ADMIN_CLIENT_ID: z.string().min(1),
-  PLATFORM_COGNITO_PLATFORM_ADMIN_GROUP_NAME: z.string().default('platform-admin'),
-  PLATFORM_COGNITO_STORE_ADMIN_GROUP_NAME: z.string().default('store-admin'),
+    .min(1, 'COGNITO_PLATFORM_ADMIN_CLIENT_ID is required'),
+  COGNITO_TENANT_ADMIN_CLIENT_ID: z.string().min(1, 'COGNITO_TENANT_ADMIN_CLIENT_ID is required'),
+  
   // --- Email ---
   MAIL_TRANSPORT: z.enum(['smtp', 'ses']).default('ses'),
   PLATFORM_FROM_EMAIL: z.string().email('PLATFORM_FROM_EMAIL must be a valid email'),
@@ -49,19 +48,6 @@ export const envSchema = z.object({
 
   // --- CSRF ---
   CSRF_SECRET: z.string().min(32, 'CSRF_SECRET must be at least 32 characters'),
-
-  // --- Cookies ---
-  // Set to the parent domain (e.g. .sneakereco.com in prod, .sneakereco.test in dev)
-  // so the refresh cookie is accessible across subdomains. Leave unset to use the default
-  // (current host), which is fine for single-domain deployments.
-  // Set to 'true' when running local dev with HTTPS (mkcert + Caddy). Controls the
-  // Secure flag on cookies in non-production environments.
-  USE_HTTPS: z
-    .string()
-    .transform((v) => v === 'true')
-    .pipe(z.boolean())
-    .optional()
-    .default('false'),
 });
 
 export type Env = z.infer<typeof envSchema>;
