@@ -25,8 +25,8 @@ export class TenantsService {
     return this.onboardingService.denyRequest(tenantId);
   }
 
-  async getTenantConfig(tenantIdOrSlug: string) {
-    const config = await this.tenantConfigService.getConfig(tenantIdOrSlug);
+  async getTenantConfig(input: { host?: string; slug?: string }) {
+    const config = await this.tenantConfigService.getConfig(input);
     if (!config) throw new NotFoundException('Tenant not found');
     return config;
   }

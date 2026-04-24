@@ -1,9 +1,15 @@
 import { AsyncLocalStorage } from 'async_hooks';
 import type { PoolCredentials } from '../../modules/auth/shared/cognito/cognito.types';
 import type { AuthenticatedUser, UserType } from '../../modules/auth/auth.types';
+import type { AppSurface, HostType } from './request-surface';
 
 export interface RequestContext {
   requestId: string;
+  host: string;
+  hostType: HostType;
+  surface: AppSurface;
+  canonicalHost: string | null;
+  isCanonicalHost: boolean;
   origin: UserType | 'unknown';
   tenantId: string | null;
   tenantSlug: string | null;

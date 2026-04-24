@@ -15,12 +15,22 @@ export interface OriginContext {
   tenantSlug: string | null;
 }
 
+export interface TenantHostContext {
+  tenantId: string;
+  tenantSlug: string;
+  subdomain: string;
+  customDomain: string | null;
+  adminDomain: string | null;
+}
+
 const CACHE_KEY_PREFIX = 'cors:origin:';
 
 @Injectable()
 export class OriginResolverService {
   private readonly platformOrigins: Set<string>;
   private readonly baseDomain: string;
+  private readonly platformHost: string;
+  private readonly dashboardHost: string;
 
   constructor(
     private readonly config: ConfigService,
@@ -34,7 +44,11 @@ export class OriginResolverService {
       [platformUrl, dashboardUrl].filter((v): v is string => Boolean(v)),
     );
 
-    this.baseDomain = new URL(this.config.getOrThrow<string>('PLATFORM_URL')).hostname.toLowerCase();
+    this.platformHost = new URL(this.config.getOrThrow<string>('PLATFORM_URL')).hostname.toLowerCase();
+    this.dashboardHost = dashboardUrl
+      ? new URL(dashboardUrl).hostname.toLowerCase()
+      : this.platformHost;
+    this.baseDomain = this.platformHost;
   }
 
   normalizeOrigin(origin: string | undefined | null): string | null {
@@ -54,6 +68,24 @@ export class OriginResolverService {
   isPlatformOrigin(origin: string | undefined | null): boolean {
     const normalized = this.normalizeOrigin(origin);
     return normalized ? this.platformOrigins.has(normalized) : false;
+  }
+
+  normalizeHost(host: string | undefined | null): string | null {
+    if (!host) return null;
+
+    try {
+      const parsed = host.includes('://') ? new URL(host) : new URL(`https://${host}`);
+      return parsed.hostname.toLowerCase();
+    } catch {
+      return null;
+    }
+  }
+
+  getPlatformHosts(): { platform: string; dashboard: string } {
+    return {
+      platform: this.platformHost,
+      dashboard: this.dashboardHost,
+    };
   }
 
   async classifyOrigin(origin: string | undefined | null): Promise<OriginContext> {
@@ -81,77 +113,95 @@ export class OriginResolverService {
     await this.valkey.del(`${CACHE_KEY_PREFIX}${hostname.toLowerCase()}`);
   }
 
-  private async resolveFromDb(hostname: string): Promise<OriginContext> {
-    const adminResult = await this.resolveAdminHostname(hostname);
-    if (adminResult) return { origin: 'tenant-admin', ...adminResult };
-
-    const tenantResult = await this.resolveTenantHostname(hostname);
-    if (tenantResult) return { origin: 'customer', ...tenantResult };
-
-    return { origin: 'unknown', tenantId: null, tenantSlug: null };
-  }
-
-  private async resolveAdminHostname(
-    hostname: string,
-  ): Promise<{ tenantId: string; tenantSlug: string } | null> {
-    if (!hostname.startsWith('admin.')) return null;
-
-    const baseHost = hostname.slice('admin.'.length);
-
-    if (hostname.endsWith(`.${this.baseDomain}`)) {
-      const subdomain = baseHost.replace(new RegExp(`\\.${this.baseDomain}$`, 'i'), '');
-      const [match] = await this.db.systemDb
-        .select({ tenantId: tenantDomainConfig.tenantId, subdomain: tenantDomainConfig.subdomain })
-        .from(tenantDomainConfig)
-        .where(
-          or(
-            eq(tenantDomainConfig.subdomain, subdomain),
-            sql`lower(${tenantDomainConfig.adminDomain}) = ${hostname}`,
-          ),
-        )
-        .limit(1);
-
-      return match ? { tenantId: match.tenantId, tenantSlug: match.subdomain } : null;
+  async resolveTenantByHost(hostname: string): Promise<TenantHostContext | null> {
+    const normalizedHost = this.normalizeHost(hostname);
+    if (!normalizedHost || normalizedHost === this.platformHost || normalizedHost === this.dashboardHost) {
+      return null;
     }
 
-    const [match] = await this.db.systemDb
-      .select({ tenantId: tenantDomainConfig.tenantId, subdomain: tenantDomainConfig.subdomain })
-      .from(tenantDomainConfig)
-      .where(
-        or(
-          sql`lower(${tenantDomainConfig.adminDomain}) = ${hostname}`,
-          sql`lower(${tenantDomainConfig.customDomain}) = ${baseHost}`,
-        ),
-      )
-      .limit(1);
-
-    return match ? { tenantId: match.tenantId, tenantSlug: match.subdomain } : null;
+    return this.resolveTenantRecord(normalizedHost);
   }
 
-  private async resolveTenantHostname(
-    hostname: string,
-  ): Promise<{ tenantId: string; tenantSlug: string } | null> {
-    if (hostname.endsWith(`.${this.baseDomain}`)) {
-      const subdomain = hostname.replace(new RegExp(`\\.${this.baseDomain}$`, 'i'), '');
+  private async resolveFromDb(hostname: string): Promise<OriginContext> {
+    const tenant = await this.resolveTenantRecord(hostname);
+    if (!tenant) {
+      return { origin: 'unknown', tenantId: null, tenantSlug: null };
+    }
+
+    if (
+      (tenant.adminDomain && tenant.adminDomain.toLowerCase() === hostname) ||
+      this.isManagedAdminHostname(hostname, tenant.subdomain)
+    ) {
+      return { origin: 'tenant-admin', tenantId: tenant.tenantId, tenantSlug: tenant.tenantSlug };
+    }
+
+    return { origin: 'customer', tenantId: tenant.tenantId, tenantSlug: tenant.tenantSlug };
+  }
+
+  private isManagedAdminHostname(hostname: string, subdomain: string): boolean {
+    return hostname === `admin.${subdomain}.${this.baseDomain}`.toLowerCase();
+  }
+
+  private async resolveTenantRecord(hostname: string): Promise<TenantHostContext | null> {
+    const normalizedHostname = hostname.toLowerCase();
+
+    if (normalizedHostname.endsWith(`.${this.baseDomain}`)) {
+      const withoutAdminPrefix = normalizedHostname.startsWith('admin.')
+        ? normalizedHostname.slice('admin.'.length)
+        : normalizedHostname;
+      const subdomain = withoutAdminPrefix.replace(new RegExp(`\\.${this.baseDomain}$`, 'i'), '');
+
       if (!subdomain || subdomain === 'www' || subdomain === 'dashboard') {
         return null;
       }
 
       const [match] = await this.db.systemDb
-        .select({ tenantId: tenantDomainConfig.tenantId, subdomain: tenantDomainConfig.subdomain })
+        .select({
+          tenantId: tenantDomainConfig.tenantId,
+          tenantSlug: tenantDomainConfig.subdomain,
+          subdomain: tenantDomainConfig.subdomain,
+          customDomain: tenantDomainConfig.customDomain,
+          adminDomain: tenantDomainConfig.adminDomain,
+        })
         .from(tenantDomainConfig)
-        .where(eq(tenantDomainConfig.subdomain, subdomain))
+        .where(
+          or(
+            eq(tenantDomainConfig.subdomain, subdomain),
+            sql`lower(${tenantDomainConfig.adminDomain}) = ${normalizedHostname}`,
+            sql`lower(${tenantDomainConfig.customDomain}) = ${normalizedHostname}`,
+          ),
+        )
         .limit(1);
 
-      return match ? { tenantId: match.tenantId, tenantSlug: match.subdomain } : null;
+      return match ?? null;
     }
 
+    const baseHost = normalizedHostname.startsWith('admin.')
+      ? normalizedHostname.slice('admin.'.length)
+      : normalizedHostname;
+
     const [match] = await this.db.systemDb
-      .select({ tenantId: tenantDomainConfig.tenantId, subdomain: tenantDomainConfig.subdomain })
+      .select({
+        tenantId: tenantDomainConfig.tenantId,
+        tenantSlug: tenantDomainConfig.subdomain,
+        subdomain: tenantDomainConfig.subdomain,
+        customDomain: tenantDomainConfig.customDomain,
+        adminDomain: tenantDomainConfig.adminDomain,
+      })
       .from(tenantDomainConfig)
-      .where(sql`lower(${tenantDomainConfig.customDomain}) = ${hostname}`)
+      .where(
+        normalizedHostname.startsWith('admin.')
+          ? or(
+              sql`lower(${tenantDomainConfig.adminDomain}) = ${normalizedHostname}`,
+              sql`lower(${tenantDomainConfig.customDomain}) = ${baseHost}`,
+            )
+          : or(
+              sql`lower(${tenantDomainConfig.customDomain}) = ${normalizedHostname}`,
+              sql`lower(${tenantDomainConfig.adminDomain}) = ${normalizedHostname}`,
+            ),
+      )
       .limit(1);
 
-    return match ? { tenantId: match.tenantId, tenantSlug: match.subdomain } : null;
+    return match ?? null;
   }
 }

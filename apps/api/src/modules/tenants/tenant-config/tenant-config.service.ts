@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { eq, or } from 'drizzle-orm';
 import { generateId } from '@sneakereco/shared';
-import { tenantThemeConfig, tenants } from '@sneakereco/db';
+import { tenantDomainConfig, tenantThemeConfig, tenants } from '@sneakereco/db';
 
 import { DatabaseService } from '../../../core/database/database.service';
 
@@ -46,6 +47,13 @@ export interface TenantConfigResult {
     authVariant: string;
     authHeadline: string | null;
     authDescription: string | null;
+  };
+  routing: {
+    canonicalHost: string;
+    canonicalCustomerHost: string;
+    managedCustomerHost: string;
+    canonicalAdminHost: string | null;
+    isCanonicalHost: boolean;
   };
 }
 
@@ -103,26 +111,44 @@ const THEME_DEFAULTS = {
 
 @Injectable()
 export class TenantConfigService {
-  constructor(private readonly db: DatabaseService) {}
+  private readonly baseDomain: string;
+
+  constructor(
+    private readonly db: DatabaseService,
+    config: ConfigService,
+  ) {
+    this.baseDomain = new URL(config.getOrThrow<string>('PLATFORM_URL')).hostname.toLowerCase();
+  }
 
   /**
-   * Fetch tenant config by tenant ID or slug.
+   * Fetch tenant config by tenant ID, slug, or public host.
    * Used by the web app admin login page (public, no auth).
    * Returns default theme values if no tenant_theme_config row exists yet.
    */
-  async getConfig(tenantIdOrSlug: string): Promise<TenantConfigResult | null> {
+  async getConfig(
+    input: string | { host?: string; slug?: string },
+  ): Promise<TenantConfigResult | null> {
+    const normalizedInput = typeof input === 'string' ? { slug: input } : input;
+    const normalizedHost = this.normalizeHost(normalizedInput.host);
+
     const result = await this.db.withSystemContext(async (tx) => {
-      // Resolve tenant by id or slug (id has prefix 'tnt_', slug is plain text)
-      const [tenantRow] = await tx
-        .select()
-        .from(tenants)
-        .where(
-          or(
-            eq(tenants.id, tenantIdOrSlug),
-            eq(tenants.slug, tenantIdOrSlug),
-          ),
-        )
-        .limit(1);
+      const domainRow = normalizedHost
+        ? await this.resolveDomainByHost(tx, normalizedHost)
+        : null;
+
+      const [tenantRow] =
+        domainRow
+          ? await tx.select().from(tenants).where(eq(tenants.id, domainRow.tenantId)).limit(1)
+          : await tx
+              .select()
+              .from(tenants)
+              .where(
+                or(
+                  eq(tenants.id, normalizedInput.slug ?? ''),
+                  eq(tenants.slug, normalizedInput.slug ?? ''),
+                ),
+              )
+              .limit(1);
 
       if (!tenantRow) return null;
 
@@ -132,12 +158,33 @@ export class TenantConfigService {
         .where(eq(tenantThemeConfig.tenantId, tenantRow.id))
         .limit(1);
 
-      return { tenant: tenantRow, theme: themeRow ?? null };
+      const [resolvedDomainRow] = domainRow
+        ? [domainRow]
+        : await tx
+            .select({
+              tenantId: tenantDomainConfig.tenantId,
+              subdomain: tenantDomainConfig.subdomain,
+              customDomain: tenantDomainConfig.customDomain,
+              adminDomain: tenantDomainConfig.adminDomain,
+            })
+            .from(tenantDomainConfig)
+            .where(eq(tenantDomainConfig.tenantId, tenantRow.id))
+            .limit(1);
+
+      return { tenant: tenantRow, theme: themeRow ?? null, domain: resolvedDomainRow ?? null };
     });
 
     if (!result) return null;
 
-    const { tenant, theme } = result;
+    const { tenant, theme, domain } = result;
+    const managedCustomerHost = `${domain?.subdomain ?? tenant.slug}.${this.baseDomain}`.toLowerCase();
+    const canonicalCustomerHost = (domain?.customDomain ?? managedCustomerHost).toLowerCase();
+    const canonicalAdminHost = domain?.adminDomain?.toLowerCase() ?? null;
+    const canonicalHost =
+      normalizedHost && canonicalAdminHost && normalizedHost === canonicalAdminHost
+        ? canonicalAdminHost
+        : canonicalCustomerHost;
+    const isCanonicalHost = normalizedHost ? normalizedHost === canonicalHost : true;
 
     return {
       tenant: {
@@ -181,6 +228,13 @@ export class TenantConfigService {
         authHeadline: theme?.authHeadline ?? THEME_DEFAULTS.authHeadline,
         authDescription: theme?.authDescription ?? THEME_DEFAULTS.authDescription,
       },
+      routing: {
+        canonicalHost,
+        canonicalCustomerHost,
+        managedCustomerHost,
+        canonicalAdminHost,
+        isCanonicalHost,
+      },
     };
   }
 
@@ -209,5 +263,64 @@ export class TenantConfigService {
         });
       }
     });
+  }
+
+  private normalizeHost(host: string | undefined): string | null {
+    if (!host) return null;
+
+    try {
+      const parsed = host.includes('://') ? new URL(host) : new URL(`https://${host}`);
+      return parsed.hostname.toLowerCase();
+    } catch {
+      return null;
+    }
+  }
+
+  private async resolveDomainByHost(
+    tx: Parameters<Parameters<DatabaseService['withSystemContext']>[0]>[0],
+    host: string,
+  ): Promise<
+    | {
+        tenantId: string;
+        subdomain: string;
+        customDomain: string | null;
+        adminDomain: string | null;
+      }
+    | null
+  > {
+    if (host.endsWith(`.${this.baseDomain}`)) {
+      const withoutAdminPrefix = host.startsWith('admin.') ? host.slice('admin.'.length) : host;
+      const subdomain = withoutAdminPrefix.replace(new RegExp(`\\.${this.baseDomain}$`, 'i'), '');
+
+      if (!subdomain || subdomain === 'www' || subdomain === 'dashboard') {
+        return null;
+      }
+
+      const [domainRow] = await tx
+        .select({
+          tenantId: tenantDomainConfig.tenantId,
+          subdomain: tenantDomainConfig.subdomain,
+          customDomain: tenantDomainConfig.customDomain,
+          adminDomain: tenantDomainConfig.adminDomain,
+        })
+        .from(tenantDomainConfig)
+        .where(eq(tenantDomainConfig.subdomain, subdomain))
+        .limit(1);
+
+      return domainRow ?? null;
+    }
+
+    const [domainRow] = await tx
+      .select({
+        tenantId: tenantDomainConfig.tenantId,
+        subdomain: tenantDomainConfig.subdomain,
+        customDomain: tenantDomainConfig.customDomain,
+        adminDomain: tenantDomainConfig.adminDomain,
+      })
+      .from(tenantDomainConfig)
+      .where(or(eq(tenantDomainConfig.customDomain, host), eq(tenantDomainConfig.adminDomain, host)))
+      .limit(1);
+
+    return domainRow ?? null;
   }
 }

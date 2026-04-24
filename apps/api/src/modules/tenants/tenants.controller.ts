@@ -1,7 +1,6 @@
 import {
   Controller,
   Get,
-  Headers,
   HttpCode,
   HttpStatus,
   Param,
@@ -45,9 +44,9 @@ export class TenantsController {
   @Public()
   @Get('config')
   getTenantConfig(
-    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Query('host') host: string | undefined,
     @Query('slug') slug: string | undefined,
   ) {
-    return this.tenantsService.getTenantConfig((tenantId ?? slug)!);
+    return this.tenantsService.getTenantConfig({ host, slug });
   }
 }

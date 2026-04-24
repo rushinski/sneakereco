@@ -4,9 +4,8 @@ import type { NextFunction, Request, Response } from 'express';
 import { OriginResolverService } from '../services/origin-resolver.service';
 import { PoolResolverService } from '../../modules/auth/shared/pool-resolver/pool-resolver.service';
 import type { PoolCredentials } from '../../modules/auth/shared/cognito/cognito.types';
-import type { OriginContext } from '../services/origin-resolver.service';
 import { RequestCtx, type RequestContext } from './request-context';
-import type { UserType } from '../../modules/auth/auth.types';
+import { normalizeAppSurfaceHeader, resolveRequestSurface, type AppSurface } from './request-surface';
 
 @Injectable()
 export class RequestContextMiddleware implements NestMiddleware {
@@ -21,14 +20,37 @@ export class RequestContextMiddleware implements NestMiddleware {
 
   private async handle(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const originCtx = await this.originResolver.classifyOrigin(req.headers.origin);
-      const pool = await this.resolvePool(originCtx);
+      const host =
+        this.originResolver.normalizeHost(
+          this.readHeaderValue(req.headers.host) ?? req.hostname,
+        ) ?? '';
+      const tenant = host ? await this.originResolver.resolveTenantByHost(host) : null;
+      const resolution = resolveRequestSurface({
+        appHost: host,
+        appSurface: normalizeAppSurfaceHeader(
+          this.readHeaderValue(req.headers['x-app-surface']),
+        ),
+        tenant: tenant
+          ? {
+              subdomain: tenant.subdomain,
+              customDomain: tenant.customDomain,
+              adminDomain: tenant.adminDomain,
+            }
+          : null,
+        platformHosts: this.originResolver.getPlatformHosts(),
+      });
+      const pool = await this.resolvePool(resolution.surface, tenant?.tenantId ?? null);
 
       const ctx: RequestContext = {
-        requestId: req.headers['x-request-id'] as string ?? '',
-        origin: this.mapOriginToUserType(originCtx.origin),
-        tenantId: originCtx.tenantId,
-        tenantSlug: originCtx.tenantSlug,
+        requestId: String(this.readHeaderValue(req.headers['x-request-id']) ?? ''),
+        host,
+        hostType: resolution.hostType,
+        surface: resolution.surface,
+        canonicalHost: resolution.canonicalHost,
+        isCanonicalHost: resolution.isCanonicalHost,
+        origin: this.mapSurfaceToOrigin(resolution.surface),
+        tenantId: tenant?.tenantId ?? null,
+        tenantSlug: tenant?.tenantSlug ?? null,
         pool,
         user: null,
       };
@@ -39,23 +61,31 @@ export class RequestContextMiddleware implements NestMiddleware {
     }
   }
 
-  private async resolvePool(originCtx: OriginContext): Promise<PoolCredentials | null> {
-    if (originCtx.origin === 'platform' || originCtx.origin === 'unknown' || !originCtx.tenantId) {
+  private async resolvePool(
+    surface: AppSurface,
+    tenantId: string | null,
+  ): Promise<PoolCredentials | null> {
+    if (surface === 'platform-admin' || surface === 'unknown' || !tenantId) {
       return null;
     }
 
-    const role = originCtx.origin === 'tenant-admin' ? 'admin' : 'customer';
+    const role = surface === 'store-admin' ? 'admin' : 'customer';
 
     try {
-      return await this.poolResolver.resolveTenantPool(originCtx.tenantId, role);
+      return await this.poolResolver.resolveTenantPool(tenantId, role);
     } catch {
       return null;
     }
   }
 
-  private mapOriginToUserType(origin: OriginContext['origin']): UserType | 'unknown' {
-    if (origin === 'platform') return 'platform-admin';
-    if (origin === 'tenant-admin') return 'store-admin';
-    return origin;
+  private mapSurfaceToOrigin(surface: AppSurface): RequestContext['origin'] {
+    if (surface === 'platform-admin') return 'platform-admin';
+    if (surface === 'store-admin') return 'store-admin';
+    return surface;
+  }
+
+  private readHeaderValue(value: string | string[] | undefined): string | undefined {
+    if (Array.isArray(value)) return value[0];
+    return value;
   }
 }

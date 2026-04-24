@@ -3,7 +3,12 @@ import { Injectable } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 
 import { OriginResolverService } from '../services/origin-resolver.service';
-import { CORS_ALLOWED_HEADERS, CORS_ALLOWED_METHODS, CORS_CREDENTIALS, CORS_PUBLIC_PATHS } from '../../config/security.config';
+import {
+  CORS_ALLOWED_HEADERS,
+  CORS_ALLOWED_METHODS,
+  CORS_CREDENTIALS,
+  CORS_PUBLIC_PATHS,
+} from '../../config/security.config';
 
 @Injectable()
 export class CorsMiddleware implements NestMiddleware {
