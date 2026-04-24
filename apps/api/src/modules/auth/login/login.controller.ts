@@ -44,7 +44,7 @@ export class LoginController {
       throw new BadRequestException('Origin not allowed');
     }
 
-    if (origin === 'platform') {
+    if (origin === 'platform-admin') {
       const result = await this.loginService.login(dto, { role: 'platform' });
 
       if (result.type === 'tokens') {
@@ -54,7 +54,7 @@ export class LoginController {
           this.security,
           this.csrfService,
           result,
-          'platform',
+          'platform-admin',
         );
       }
 
@@ -62,7 +62,7 @@ export class LoginController {
       return result;
     }
 
-    if (origin === 'tenant-admin') {
+    if (origin === 'store-admin') {
       if (!ctx.tenantId) {
         throw new BadRequestException('Tenant context is not configured');
       }

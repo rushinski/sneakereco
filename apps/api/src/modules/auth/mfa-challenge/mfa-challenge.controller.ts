@@ -44,7 +44,7 @@ export class MfaChallengeController {
       throw new BadRequestException('Origin not allowed');
     }
 
-    if (origin === 'platform') {
+    if (origin === 'platform-admin') {
       const result = await this.mfaChallengeService.respond(dto, { role: 'platform' });
       return buildLoginResponse(
         request,
@@ -52,11 +52,11 @@ export class MfaChallengeController {
         this.security,
         this.csrfService,
         result,
-        'platform',
+        'platform-admin',
       );
     }
 
-    if (origin === 'tenant-admin') {
+    if (origin === 'store-admin') {
       if (!ctx.tenantId) {
         throw new BadRequestException('Tenant authentication is not configured');
       }

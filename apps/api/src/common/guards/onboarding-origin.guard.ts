@@ -19,7 +19,7 @@ export class OnboardingOriginGuard implements CanActivate {
 
     const ctx = RequestCtx.get();
 
-    if (ctx?.origin !== 'platform') {
+    if (ctx?.origin !== 'platform-admin') {
       throw new ForbiddenException('Platform origin required');
     }
 

@@ -6,6 +6,7 @@ import { PoolResolverService } from '../../modules/auth/shared/pool-resolver/poo
 import type { PoolCredentials } from '../../modules/auth/shared/cognito/cognito.types';
 import type { OriginContext } from '../services/origin-resolver.service';
 import { RequestCtx, type RequestContext } from './request-context';
+import type { UserType } from '../../modules/auth/auth.types';
 
 @Injectable()
 export class RequestContextMiddleware implements NestMiddleware {
@@ -25,7 +26,7 @@ export class RequestContextMiddleware implements NestMiddleware {
 
       const ctx: RequestContext = {
         requestId: req.headers['x-request-id'] as string ?? '',
-        origin: originCtx.origin,
+        origin: this.mapOriginToUserType(originCtx.origin),
         tenantId: originCtx.tenantId,
         tenantSlug: originCtx.tenantSlug,
         pool,
@@ -50,5 +51,11 @@ export class RequestContextMiddleware implements NestMiddleware {
     } catch {
       return null;
     }
+  }
+
+  private mapOriginToUserType(origin: OriginContext['origin']): UserType | 'unknown' {
+    if (origin === 'platform') return 'platform-admin';
+    if (origin === 'tenant-admin') return 'store-admin';
+    return origin;
   }
 }

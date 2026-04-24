@@ -13,7 +13,7 @@ import { ROLES_KEY } from '../decorators/roles.decorator';
 
 /**
  * Checks user.userType against @Roles() after AuthGuard validates the JWT.
- * Platform admins are implicitly allowed on all tenant-admin routes.
+ * Platform admins are implicitly allowed on all store-admin routes.
  * Public routes are skipped.
  */
 @Injectable()
@@ -41,8 +41,8 @@ export class RolesGuard implements CanActivate {
 
     const user = request.user;
 
-    // Platform admins can access tenant-admin routes (to manage tenant dashboards)
-    if (user?.isSuperAdmin && requiredRoles.includes('tenant-admin')) {
+    // Platform admins can access store-admin routes (to manage tenant dashboards)
+    if (user?.isSuperAdmin && requiredRoles.includes('store-admin')) {
       return true;
     }
 

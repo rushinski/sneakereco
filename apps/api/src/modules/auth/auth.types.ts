@@ -1,3 +1,4 @@
+import type { AppSurface } from '../../common/context/request-surface';
 import type { TenantMemberRole } from '@sneakereco/db';
 
 /**
@@ -10,17 +11,19 @@ export interface CognitoJwtPayload {
   token_use: 'access' | 'id';
   client_id: string;
   jti?: string;
+  origin_jti?: string;
+  auth_time?: number;
+  'cognito:groups'?: string[];
 }
 
 /**
- * Which auth pathway this request is using.
- * Derived from the request origin in RequestContextMiddleware.
+ * Which authenticated surface the request is operating on.
  */
-export type UserType = 'platform' | 'tenant-admin' | 'customer';
+export type UserType = Exclude<AppSurface, 'unknown'>;
 
 /**
  * Permission level within a tenant's admin team.
- * Only present on tenant-admin users; null for customers and platform admins.
+ * Only present on store-admin users; null for customers and platform admins.
  */
 export type TeamRole = TenantMemberRole;
 

@@ -12,8 +12,8 @@ export const AUTH_COOKIE_PATH = '/';
 
 export const REFRESH_MAX_AGE = {
   customer: 30 * 24 * 60 * 60 * 1000,    // 30 days
-  'tenant-admin': 24 * 60 * 60 * 1000,   // 1 day
-  platform: 24 * 60 * 60 * 1000,          // 1 day
+  'store-admin': 24 * 60 * 60 * 1000,    // 1 day
+  'platform-admin': 24 * 60 * 60 * 1000, // 1 day
 } as const;
 
 export const CSRF_HEADER_NAME = 'x-csrf-token';

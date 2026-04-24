@@ -57,7 +57,7 @@ export class MfaSetupController {
     }
 
     const tenantAdminTenantId =
-      origin === 'tenant-admin' ? ctx?.tenantId : clientContext === 'admin' ? tenantIdHeader : null;
+      origin === 'store-admin' ? ctx?.tenantId : clientContext === 'admin' ? tenantIdHeader : null;
 
     if (tenantAdminTenantId) {
       const result = await this.mfaSetupService.complete(dto, {
@@ -70,11 +70,11 @@ export class MfaSetupController {
         this.security,
         this.csrfService,
         result,
-        'tenant-admin',
+        'store-admin',
       );
     }
 
-    if (origin === 'platform') {
+    if (origin === 'platform-admin') {
       const result = await this.mfaSetupService.complete(dto, { role: 'platform' });
       return buildLoginResponse(
         request,
@@ -82,7 +82,7 @@ export class MfaSetupController {
         this.security,
         this.csrfService,
         result,
-        'platform',
+        'platform-admin',
       );
     }
 
@@ -90,7 +90,7 @@ export class MfaSetupController {
       throw new BadRequestException('Tenant authentication is not configured');
     }
 
-    const role = origin === 'tenant-admin' ? 'admin' : 'customer';
+    const role = origin === 'store-admin' ? 'admin' : 'customer';
     const result = await this.mfaSetupService.complete(dto, { role, pool: ctx.pool });
     return buildLoginResponse(request, response, this.security, this.csrfService, result, origin);
   }

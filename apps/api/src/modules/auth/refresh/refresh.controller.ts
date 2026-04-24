@@ -41,11 +41,11 @@ export class RefreshController {
       throw new BadRequestException('Origin not allowed');
     }
 
-    if (origin === 'platform') {
+    if (origin === 'platform-admin') {
       return this.refreshService.refresh(refreshToken, { role: 'platform' });
     }
 
-    if (origin === 'tenant-admin') {
+    if (origin === 'store-admin') {
       if (!ctx.tenantId) {
         throw new BadRequestException('Tenant authentication is not configured');
       }

@@ -48,7 +48,7 @@ export class PasswordResetController {
     const ctx = RequestCtx.get();
     const origin = ctx?.origin;
 
-    if (origin === 'platform') {
+    if (origin === 'platform-admin') {
       throw new ForbiddenException('Platform accounts use admin-managed password reset');
     }
 

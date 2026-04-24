@@ -90,7 +90,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
           isSuperAdmin: true,
           tenantId: null,
           memberId: null,
-          userType: 'platform',
+          userType: 'platform-admin',
           teamRole: null,
           jti: payload.jti ?? null,
         };
@@ -100,7 +100,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         throw new UnauthorizedException('Invalid token audience');
       }
 
-      if (ctx?.origin !== 'tenant-admin') {
+      if (ctx?.origin !== 'store-admin') {
         throw new UnauthorizedException('Tenant admin token used from an invalid origin');
       }
 
@@ -122,7 +122,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         isSuperAdmin: false,
         tenantId: membership.tenantId,
         memberId: membership.memberId,
-        userType: 'tenant-admin',
+        userType: 'store-admin',
         teamRole: membership.teamRole,
         jti: payload.jti ?? null,
       };
@@ -138,9 +138,9 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       throw new UnauthorizedException('Invalid token audience');
     }
 
-    const userType = ctx.origin === 'tenant-admin' ? 'tenant-admin' : 'customer';
+    const userType = ctx.origin === 'store-admin' ? 'store-admin' : 'customer';
 
-    if (userType === 'tenant-admin') {
+    if (userType === 'store-admin') {
       const poolId = payload.iss.split('/').pop()!;
       const hasMfa = await this.resolveAdminMfa(payload.sub, payload.email, poolId);
       if (!hasMfa) {
@@ -160,7 +160,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         isSuperAdmin: false,
         tenantId: membership.tenantId,
         memberId: membership.memberId,
-        userType: 'tenant-admin',
+        userType: 'store-admin',
         teamRole: membership.teamRole,
         jti: payload.jti ?? null,
       };

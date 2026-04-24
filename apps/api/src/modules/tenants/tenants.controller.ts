@@ -22,20 +22,20 @@ import { ListRequestsDtoSchema, type ListRequestsDto } from './dto/list-requests
 export class TenantsController {
   constructor(private readonly tenantsService: TenantsService) {}
 
-  @Roles('platform')
+  @Roles('platform-admin')
   @Get('requests')
   listRequests(@Query(new ZodValidationPipe(ListRequestsDtoSchema)) dto: ListRequestsDto) {
     return this.tenantsService.listRequests(dto);
   }
 
-  @Roles('platform')
+  @Roles('platform-admin')
   @Post('requests/:tenantId/approve')
   @HttpCode(HttpStatus.OK)
   approveRequest(@Param('tenantId') tenantId: string) {
     return this.tenantsService.approveRequest(tenantId);
   }
 
-  @Roles('platform')
+  @Roles('platform-admin')
   @Post('requests/:tenantId/deny')
   @HttpCode(HttpStatus.OK)
   denyRequest(@Param('tenantId') tenantId: string) {
