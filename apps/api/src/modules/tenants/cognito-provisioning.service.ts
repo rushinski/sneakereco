@@ -40,7 +40,7 @@ export class CognitoProvisioningService {
     this.region = config.getOrThrow<string>('AWS_REGION');
     this.sharedAdminPoolId = config.getOrThrow<string>('PLATFORM_COGNITO_POOL_ID');
     this.sesIdentityArn = config.get<string>('SES_IDENTITY_ARN');
-    this.tenantAdminClientId = config.getOrThrow<string>('PLATFORM_COGNITO_TENANT_ADMIN_CLIENT_ID');
+    this.tenantAdminClientId = config.getOrThrow<string>('PLATFORM_COGNITO_STORE_ADMIN_CLIENT_ID');
   }
 
   private get client() {
@@ -119,6 +119,7 @@ export class CognitoProvisioningService {
           'ALLOW_REFRESH_TOKEN_AUTH',
         ],
         AuthSessionValidity: 10,
+        EnableTokenRevocation: true,
         RefreshTokenValidity: 30,
         AccessTokenValidity: 60,
         IdTokenValidity: 60,

@@ -20,7 +20,7 @@ export class PoolResolverService {
   ) {
     this.platformPoolId = config.getOrThrow<string>('PLATFORM_COGNITO_POOL_ID');
     this.platformClientId = config.getOrThrow<string>('PLATFORM_COGNITO_PLATFORM_CLIENT_ID');
-    this.storeAdminClientId = config.getOrThrow<string>('PLATFORM_COGNITO_TENANT_ADMIN_CLIENT_ID');
+    this.storeAdminClientId = config.getOrThrow<string>('PLATFORM_COGNITO_STORE_ADMIN_CLIENT_ID');
   }
 
   getPlatformAdminPool(): PoolCredentials {

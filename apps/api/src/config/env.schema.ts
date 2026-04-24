@@ -28,9 +28,9 @@ export const envSchema = z.object({
   PLATFORM_COGNITO_PLATFORM_CLIENT_ID: z
     .string()
     .min(1, 'PLATFORM_COGNITO_PLATFORM_CLIENT_ID is required'),
-  PLATFORM_COGNITO_TENANT_ADMIN_CLIENT_ID: z
-    .string()
-    .min(1, 'PLATFORM_COGNITO_TENANT_ADMIN_CLIENT_ID is required'),
+  PLATFORM_COGNITO_STORE_ADMIN_CLIENT_ID: z.string().min(1),
+  PLATFORM_COGNITO_PLATFORM_ADMIN_GROUP_NAME: z.string().default('platform-admin'),
+  PLATFORM_COGNITO_STORE_ADMIN_GROUP_NAME: z.string().default('store-admin'),
   // --- Email ---
   MAIL_TRANSPORT: z.enum(['smtp', 'ses']).default('ses'),
   PLATFORM_FROM_EMAIL: z.string().email('PLATFORM_FROM_EMAIL must be a valid email'),
