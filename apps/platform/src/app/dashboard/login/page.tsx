@@ -1,5 +1,5 @@
-import { DashboardLoginForm } from '../../../components/platform/DashboardLoginForm';
+import { redirect } from 'next/navigation';
 
-export default function DashboardLoginPage() {
-  return <DashboardLoginForm />;
+export default function LegacyDashboardLoginRedirect() {
+  redirect('/auth/login');
 }

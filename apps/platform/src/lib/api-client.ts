@@ -63,7 +63,9 @@ interface RequestOptions extends Omit<RequestInit, 'body'> {
 }
 
 export function readCsrfTokenCookie(): string | null {
-  if (typeof document === 'undefined') return null;
+  if (typeof document === 'undefined') {
+    return null;
+  }
 
   const prefix = `${CSRF_COOKIE_NAME}=`;
   const cookie = document.cookie.split('; ').find((entry: string) => entry.startsWith(prefix));
@@ -110,6 +112,10 @@ async function request<T>(
     requestHeaders.set('X-Client-Context', clientContext);
   }
 
+  if (!requestHeaders.has('X-App-Surface')) {
+    requestHeaders.set('X-App-Surface', 'platform-admin');
+  }
+
   const response = await fetch(`${API_BASE_URL}/v1${path}`, {
     ...init,
     body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -136,7 +142,9 @@ async function request<T>(
 function extractErrorMessage(
   payload: ApiEnvelope<unknown> | ApiErrorPayload | null,
 ): string | null {
-  if (!payload || !isErrorEnvelope(payload)) return null;
+  if (!payload || !isErrorEnvelope(payload)) {
+    return null;
+  }
   return payload.error.message;
 }
 
@@ -306,9 +314,15 @@ export const apiClient = {
 
   listRequests: (params: ListRequestsParams, accessToken: string) => {
     const query = new URLSearchParams();
-    if (params.status) query.set('status', params.status);
-    if (params.page) query.set('page', String(params.page));
-    if (params.pageSize) query.set('pageSize', String(params.pageSize));
+    if (params.status) {
+      query.set('status', params.status);
+    }
+    if (params.page) {
+      query.set('page', String(params.page));
+    }
+    if (params.pageSize) {
+      query.set('pageSize', String(params.pageSize));
+    }
     return request<ListRequestsResult>(`/platform/requests?${query.toString()}`, {
       accessToken,
       method: 'GET',

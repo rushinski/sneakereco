@@ -42,7 +42,9 @@ export function ApprovalDashboard() {
     void (async () => {
       try {
         const csrf = await apiClient.getCsrfToken();
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
         setCsrfToken(csrf.token);
 
@@ -54,14 +56,16 @@ export function ApprovalDashboard() {
         }
 
         const result = await apiClient.refreshAdmin(csrf.token);
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
         setAccessToken(result.accessToken);
         setToken(result.accessToken);
         setAuthReady(true);
       } catch {
         if (!cancelled) {
-          router.push('/login');
+          router.push('/auth/login');
         }
       }
     })();
@@ -72,7 +76,9 @@ export function ApprovalDashboard() {
   }, [router]);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token) {
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -86,7 +92,7 @@ export function ApprovalDashboard() {
       .catch((err) => {
         if (err instanceof ApiClientError && err.status === 401) {
           clearAccessToken();
-          router.push('/login');
+          router.push('/auth/login');
           return;
         }
         setError(err instanceof ApiClientError ? err.message : 'Failed to load requests.');
@@ -122,7 +128,9 @@ export function ApprovalDashboard() {
     }
   }
 
-  if (!authReady) return null;
+  if (!authReady) {
+    return null;
+  }
 
   return (
     <div className="dashboard">

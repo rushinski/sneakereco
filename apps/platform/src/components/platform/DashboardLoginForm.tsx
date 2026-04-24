@@ -24,7 +24,9 @@ export function DashboardLoginForm() {
   const [submitting, setSubmitting] = useState(false);
 
   const otpAuthUri = useMemo(() => {
-    if (!setupSecretCode || !email) return null;
+    if (!setupSecretCode || !email) {
+      return null;
+    }
     const issuer = 'SneakerEco';
     const label = `${issuer}:${email}`;
     return `otpauth://totp/${encodeURIComponent(label)}?secret=${encodeURIComponent(setupSecretCode)}&issuer=${encodeURIComponent(issuer)}`;
@@ -32,22 +34,40 @@ export function DashboardLoginForm() {
 
   useEffect(() => {
     let cancelled = false;
-    if (!otpAuthUri) { setQrCodeUrl(null); return; }
+    if (!otpAuthUri) {
+      setQrCodeUrl(null);
+      return;
+    }
     void QRCode.toDataURL(otpAuthUri, { errorCorrectionLevel: 'M', margin: 1, width: 200 })
-      .then((url: string) => { if (!cancelled) setQrCodeUrl(url); })
-      .catch(() => { if (!cancelled) setQrCodeUrl(null); });
-    return () => { cancelled = true; };
+      .then((url: string) => {
+        if (!cancelled) {
+          setQrCodeUrl(url);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setQrCodeUrl(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [otpAuthUri]);
 
   useEffect(() => {
-    apiClient.getCsrfToken().then((data) => setCsrfToken(data.token)).catch(() => {
-      setError('Could not initialise security token. Try refreshing.');
-    });
+    apiClient
+      .getCsrfToken()
+      .then((data) => setCsrfToken(data.token))
+      .catch(() => {
+        setError('Could not initialise security token. Try refreshing.');
+      });
   }, []);
 
   async function handleLoginSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!csrfToken) return;
+    if (!csrfToken) {
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
@@ -81,7 +101,9 @@ export function DashboardLoginForm() {
 
   async function handleMfaSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!csrfToken || !mfaSession) return;
+    if (!csrfToken || !mfaSession) {
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
@@ -103,7 +125,9 @@ export function DashboardLoginForm() {
 
   async function handleMfaSetupSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!csrfToken || !setupSession) return;
+    if (!csrfToken || !setupSession) {
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
@@ -135,17 +159,38 @@ export function DashboardLoginForm() {
             {qrCodeUrl ? (
               <img alt="Authenticator QR code" height={200} src={qrCodeUrl} width={200} />
             ) : (
-              <div style={{ width: 200, height: 200, background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.875rem', color: '#666' }}>
+              <div
+                style={{
+                  width: 200,
+                  height: 200,
+                  background: '#f5f5f5',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.875rem',
+                  color: '#666',
+                }}
+              >
                 QR unavailable
               </div>
             )}
-            <p style={{ fontFamily: 'monospace', fontSize: '0.75rem', marginTop: '0.5rem', wordBreak: 'break-all', color: '#666' }}>
+            <p
+              style={{
+                fontFamily: 'monospace',
+                fontSize: '0.75rem',
+                marginTop: '0.5rem',
+                wordBreak: 'break-all',
+                color: '#666',
+              }}
+            >
               {setupSecretCode}
             </p>
           </div>
           <form
             className="stack"
-            onSubmit={(e) => { void handleMfaSetupSubmit(e); }}
+            onSubmit={(e) => {
+              void handleMfaSetupSubmit(e);
+            }}
             style={{ flex: 1, minWidth: 200 }}
           >
             <label className="field">
@@ -233,7 +278,11 @@ export function DashboardLoginForm() {
           />
         </label>
         {error ? <p className="form-error">{error}</p> : null}
-        <button className="button button--primary" disabled={!csrfToken || submitting} type="submit">
+        <button
+          className="button button--primary"
+          disabled={!csrfToken || submitting}
+          type="submit"
+        >
           {submitting ? 'Signing in...' : 'Sign In'}
         </button>
       </form>
