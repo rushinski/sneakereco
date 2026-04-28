@@ -29,6 +29,7 @@ export const CORS_CREDENTIALS = true as const;
 export const CORS_ALLOWED_HEADERS = [
   'Content-Type',
   'Authorization',
+  'X-App-Surface',
   'X-Request-ID',
   'X-CSRF-Token',
   'X-Client-Context',
