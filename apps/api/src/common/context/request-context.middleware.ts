@@ -26,12 +26,20 @@ export class RequestContextMiddleware implements NestMiddleware {
 
   private async handle(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const host =
+      const transportHost =
         this.originResolver.normalizeHost(this.readHeaderValue(req.headers.host) ?? req.hostname) ??
         '';
-      const tenant = host ? await this.originResolver.resolveTenantByHost(host) : null;
+      const rawOrigin = this.readHeaderValue(req.headers.origin);
+      const originHost = this.originResolver.normalizeHost(rawOrigin);
+      const originContext = rawOrigin
+        ? await this.originResolver.classifyOrigin(rawOrigin)
+        : { origin: 'unknown' as const, tenantId: null, tenantSlug: null };
+      const resolvedHost = originHost && originContext.origin !== 'unknown' ? originHost : transportHost;
+      const tenant = resolvedHost
+        ? await this.originResolver.resolveTenantByHost(resolvedHost)
+        : null;
       const resolution = resolveRequestSurface({
-        appHost: host,
+        appHost: resolvedHost,
         appSurface: normalizeAppSurfaceHeader(this.readHeaderValue(req.headers['x-app-surface'])),
         tenant: tenant
           ? {
@@ -46,7 +54,7 @@ export class RequestContextMiddleware implements NestMiddleware {
 
       const ctx: RequestContext = {
         requestId: String(this.readHeaderValue(req.headers['x-request-id']) ?? ''),
-        host,
+        host: resolvedHost,
         hostType: resolution.hostType,
         surface: resolution.surface,
         canonicalHost: resolution.canonicalHost,

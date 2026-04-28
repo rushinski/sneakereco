@@ -27,8 +27,10 @@ export class AdminAccountClassifierService {
       return 'store-admin';
     }
 
-    const groups = await this.cognito.getUserGroups(normalizedEmail);
-    if (groups.includes('platform-admin')) {
+    const hasAnyStoreMembership =
+      await this.repository.hasAnyStoreAdminMembership(normalizedEmail);
+
+    if (!hasAnyStoreMembership && (await this.cognito.hasPlatformUser(normalizedEmail))) {
       return 'platform-admin';
     }
 

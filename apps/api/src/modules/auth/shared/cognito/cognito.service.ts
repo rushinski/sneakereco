@@ -437,10 +437,29 @@ export class CognitoService {
     }
   }
 
-  async adminCheckMfaEnabled(email: string, userPoolId: string): Promise<boolean> {
+  async hasPlatformUser(email: string): Promise<boolean> {
+    try {
+      await this.client.send(
+        new AdminGetUserCommand({
+          UserPoolId: this.platformPoolId,
+          Username: email,
+        }),
+      );
+
+      return true;
+    } catch (error) {
+      if (error instanceof UserNotFoundException) {
+        return false;
+      }
+
+      throwCognitoError(error);
+    }
+  }
+
+  async adminCheckMfaEnabled(username: string, userPoolId: string): Promise<boolean> {
     try {
       const response = await this.client.send(
-        new AdminGetUserCommand({ UserPoolId: userPoolId, Username: email }),
+        new AdminGetUserCommand({ UserPoolId: userPoolId, Username: username }),
       );
 
       return response.UserMFASettingList?.includes('SOFTWARE_TOKEN_MFA') ?? false;

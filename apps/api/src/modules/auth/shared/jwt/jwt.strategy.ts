@@ -102,7 +102,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       if (payload.client_id === this.platformClientId) {
         return {
           cognitoSub: payload.sub,
-          email: payload.email,
+          email: payload.email ?? '',
           isSuperAdmin: true,
           tenantId: null,
           memberId: null,
@@ -120,7 +120,11 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         throw new UnauthorizedException('Tenant admin token used from an invalid origin');
       }
 
-      const hasMfa = await this.resolveAdminMfa(payload.sub, payload.email, this.platformPoolId);
+      const hasMfa = await this.resolveAdminMfa(
+        payload.sub,
+        payload.username ?? payload.sub,
+        this.platformPoolId,
+      );
       if (!hasMfa) {
         throw new ForbiddenException(
           'MFA is required for admin accounts. Complete MFA setup before accessing the admin panel.',
@@ -134,7 +138,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 
       return {
         cognitoSub: payload.sub,
-        email: payload.email,
+        email: payload.email ?? '',
         isSuperAdmin: false,
         tenantId: membership.tenantId,
         memberId: membership.memberId,
@@ -163,7 +167,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 
     return {
       cognitoSub: payload.sub,
-      email: payload.email,
+      email: payload.email ?? '',
       isSuperAdmin: false,
       tenantId: ctx.tenantId ?? membership?.tenantId ?? null,
       memberId: membership?.memberId ?? null,
@@ -241,7 +245,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     return result;
   }
 
-  private async resolveAdminMfa(sub: string, email: string, poolId: string): Promise<boolean> {
+  private async resolveAdminMfa(sub: string, username: string, poolId: string): Promise<boolean> {
     const cacheKey = `mfa:${sub}`;
 
     const cached = await this.valkey.getJson<{ hasMfa: boolean }>(cacheKey);
@@ -249,7 +253,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       return cached.hasMfa;
     }
 
-    const hasMfa = await this.cognito.adminCheckMfaEnabled(email, poolId);
+    const hasMfa = await this.cognito.adminCheckMfaEnabled(username, poolId);
     await this.valkey.setJson(cacheKey, { hasMfa }, MFA_CACHE_TTL);
 
     return hasMfa;

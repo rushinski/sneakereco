@@ -3,8 +3,11 @@ import { AdminAccountClassifierService } from '../../../../../../src/modules/aut
 describe('AdminAccountClassifierService', () => {
   it('returns store-admin only when the email has admin membership in the current tenant', async () => {
     const service = new AdminAccountClassifierService(
-      { hasStoreAdminMembership: jest.fn().mockResolvedValue(true) } as never,
-      { getUserGroups: jest.fn().mockResolvedValue([]) } as never,
+      {
+        hasStoreAdminMembership: jest.fn().mockResolvedValue(true),
+        hasAnyStoreAdminMembership: jest.fn().mockResolvedValue(true),
+      } as never,
+      { hasPlatformUser: jest.fn().mockResolvedValue(true) } as never,
     );
 
     await expect(
@@ -17,8 +20,11 @@ describe('AdminAccountClassifierService', () => {
 
   it('returns platform-admin for a platform operator on any store-admin surface', async () => {
     const service = new AdminAccountClassifierService(
-      { hasStoreAdminMembership: jest.fn().mockResolvedValue(false) } as never,
-      { getUserGroups: jest.fn().mockResolvedValue(['platform-admin']) } as never,
+      {
+        hasStoreAdminMembership: jest.fn().mockResolvedValue(false),
+        hasAnyStoreAdminMembership: jest.fn().mockResolvedValue(false),
+      } as never,
+      { hasPlatformUser: jest.fn().mockResolvedValue(true) } as never,
     );
 
     await expect(
@@ -31,8 +37,11 @@ describe('AdminAccountClassifierService', () => {
 
   it('returns unavailable for a store admin on the wrong tenant', async () => {
     const service = new AdminAccountClassifierService(
-      { hasStoreAdminMembership: jest.fn().mockResolvedValue(false) } as never,
-      { getUserGroups: jest.fn().mockResolvedValue([]) } as never,
+      {
+        hasStoreAdminMembership: jest.fn().mockResolvedValue(false),
+        hasAnyStoreAdminMembership: jest.fn().mockResolvedValue(true),
+      } as never,
+      { hasPlatformUser: jest.fn().mockResolvedValue(true) } as never,
     );
 
     await expect(

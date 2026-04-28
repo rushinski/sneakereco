@@ -127,6 +127,7 @@ export class OnboardingService {
   async approveRequest(tenantId: string) {
     const inviteToken = createInviteToken();
     const inviteTokenHash = hashInviteToken(inviteToken);
+    const platformHost = new URL(this.config.getOrThrow<string>('PLATFORM_URL')).hostname;
 
     this.logger.log(`Approving onboarding request tenantId=${tenantId}`);
 
@@ -141,7 +142,7 @@ export class OnboardingService {
         record.businessName ?? record.tenantName,
         tx,
       );
-      const adminDomain = buildAdminDomain(subdomain);
+      const adminDomain = buildAdminDomain(subdomain, platformHost);
 
       await this.onboardingRepository.updateTenantSlug(tenantId, subdomain, tx);
       await this.onboardingRepository.upsertDomainConfig(
@@ -192,8 +193,6 @@ export class OnboardingService {
 
     // Invite link points to the web app's admin setup page on the tenant's subdomain.
     // Derive the base domain from PLATFORM_URL (e.g. http://sneakereco.test:3002 → sneakereco.test).
-    const platformHost = new URL(this.config.getOrThrow<string>('PLATFORM_URL')).hostname;
-
     // Invalidate the CORS origin cache for the new tenant's hostname so the
     // 5-minute cache doesn't serve a stale 'unknown' classification.
     await this.originResolver.invalidateOriginCache(`${approval.subdomain}.${platformHost}`);

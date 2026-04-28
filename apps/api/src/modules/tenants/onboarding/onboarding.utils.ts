@@ -26,8 +26,8 @@ export function buildInstagramUrl(handle: string): string {
   return `https://instagram.com/${normalized.replace(/^@/, '')}`;
 }
 
-export function buildAdminDomain(subdomain: string): string {
-  return `${subdomain}.sneakereco.com`;
+export function buildAdminDomain(subdomain: string, platformHost: string): string {
+  return `${subdomain}.${platformHost}`;
 }
 
 export function buildCandidateSlug(value: string): string {

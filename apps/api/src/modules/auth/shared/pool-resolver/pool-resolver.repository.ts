@@ -37,4 +37,15 @@ export class PoolResolverRepository {
 
     return Boolean(member);
   }
+
+  async hasAnyStoreAdminMembership(email: string): Promise<boolean> {
+    const [member] = await this.db.systemDb
+      .select({ id: tenantMembers.id })
+      .from(users)
+      .innerJoin(tenantMembers, eq(tenantMembers.userId, users.id))
+      .where(and(eq(users.email, email), eq(tenantMembers.role, 'admin')))
+      .limit(1);
+
+    return Boolean(member);
+  }
 }

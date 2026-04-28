@@ -1,15 +1,19 @@
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import type { Request } from 'express';
 
 import { ONBOARDING_ONLY_KEY } from '../decorators/onboarding-only.decorator';
-import { RequestCtx } from '../context/request-context';
+import { OriginResolverService } from '../services/origin-resolver.service';
 
 @Injectable()
 export class OnboardingOriginGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector) {}
+  constructor(
+    private readonly reflector: Reflector,
+    private readonly originResolver: OriginResolverService,
+  ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const onboardingOnly = this.reflector.getAllAndOverride<boolean>(ONBOARDING_ONLY_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -19,9 +23,13 @@ export class OnboardingOriginGuard implements CanActivate {
       return true;
     }
 
-    const ctx = RequestCtx.get();
+    const request = context.switchToHttp().getRequest<Request>();
+    const rawOrigin = Array.isArray(request.headers.origin)
+      ? request.headers.origin[0]
+      : request.headers.origin;
+    const origin = await this.originResolver.classifyOrigin(rawOrigin);
 
-    if (ctx?.origin !== 'platform-admin') {
+    if (origin.origin !== 'platform') {
       throw new ForbiddenException('Platform origin required');
     }
 

@@ -7,10 +7,11 @@ import type { AppSurface } from '../../common/context/request-surface';
  */
 export interface CognitoJwtPayload {
   sub: string;
-  email: string;
+  email?: string;
   iss: string;
   token_use: 'access' | 'id';
   client_id: string;
+  username?: string;
   jti?: string;
   origin_jti?: string;
   auth_time?: number;
