@@ -1,6 +1,0 @@
-import { Controller } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
-
-@ApiTags('tax')
-@Controller({ path: 'tax' })
-export class TaxController {}
