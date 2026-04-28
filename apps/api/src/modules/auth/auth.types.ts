@@ -1,5 +1,6 @@
-import type { AppSurface } from '../../common/context/request-surface';
 import type { TenantMemberRole } from '@sneakereco/db';
+
+import type { AppSurface } from '../../common/context/request-surface';
 
 /**
  * Raw JWT claims from Cognito before any business-logic mapping.

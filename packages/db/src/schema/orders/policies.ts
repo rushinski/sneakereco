@@ -1,33 +1,34 @@
-import { sql } from "drizzle-orm";
-import { pgPolicy } from "drizzle-orm/pg-core";
+import { sql } from 'drizzle-orm';
+import { pgPolicy } from 'drizzle-orm/pg-core';
 
-import { sneakerecoAppRole } from "../shared/roles";
+import { sneakerecoAppRole } from '../shared/roles';
 import {
   currentTenantId,
   currentTenantScope,
   currentUserId,
   tenantAdminScope,
-} from "../shared/rls";
-import { orderAddresses } from "./order-addresses";
-import { orderLineItems } from "./order-line-items";
-import { orders } from "./orders";
-import { paymentTransactions } from "./payment-transactions";
+} from '../shared/rls';
 
-export const ordersAdminAllPolicy = pgPolicy("orders_admin_all", {
-  for: "all",
+import { orderAddresses } from './order-addresses';
+import { orderLineItems } from './order-line-items';
+import { orders } from './orders';
+import { paymentTransactions } from './payment-transactions';
+
+export const ordersAdminAllPolicy = pgPolicy('orders_admin_all', {
+  for: 'all',
   to: sneakerecoAppRole,
   using: tenantAdminScope(orders.tenantId),
   withCheck: tenantAdminScope(orders.tenantId),
 }).link(orders);
 
-export const ordersCustomerSelectPolicy = pgPolicy("orders_customer_select", {
-  for: "select",
+export const ordersCustomerSelectPolicy = pgPolicy('orders_customer_select', {
+  for: 'select',
   to: sneakerecoAppRole,
   using: sql`${currentTenantScope(orders.tenantId)} and ${orders.userId} = ${currentUserId}`,
 }).link(orders);
 
-export const ordersCustomerInsertPolicy = pgPolicy("orders_customer_insert", {
-  for: "insert",
+export const ordersCustomerInsertPolicy = pgPolicy('orders_customer_insert', {
+  for: 'insert',
   to: sneakerecoAppRole,
   withCheck: sql`${currentTenantScope(orders.tenantId)} and (
     ${orders.userId} = ${currentUserId}
@@ -35,61 +36,46 @@ export const ordersCustomerInsertPolicy = pgPolicy("orders_customer_insert", {
   )`,
 }).link(orders);
 
-export const orderLineItemsAdminAllPolicy = pgPolicy(
-  "order_line_items_admin_all",
-  {
-    for: "all",
-    to: sneakerecoAppRole,
-    using: tenantAdminScope(orderLineItems.tenantId),
-    withCheck: tenantAdminScope(orderLineItems.tenantId),
-  },
-).link(orderLineItems);
+export const orderLineItemsAdminAllPolicy = pgPolicy('order_line_items_admin_all', {
+  for: 'all',
+  to: sneakerecoAppRole,
+  using: tenantAdminScope(orderLineItems.tenantId),
+  withCheck: tenantAdminScope(orderLineItems.tenantId),
+}).link(orderLineItems);
 
-export const orderLineItemsCustomerReadPolicy = pgPolicy(
-  "order_line_items_customer_read",
-  {
-    for: "select",
-    to: sneakerecoAppRole,
-    using: sql`${currentTenantScope(orderLineItems.tenantId)} and exists (
+export const orderLineItemsCustomerReadPolicy = pgPolicy('order_line_items_customer_read', {
+  for: 'select',
+  to: sneakerecoAppRole,
+  using: sql`${currentTenantScope(orderLineItems.tenantId)} and exists (
       select 1
       from ${orders}
       where ${orders.id} = ${orderLineItems.orderId}
         and ${orders.tenantId} = ${currentTenantId}
         and ${orders.userId} = ${currentUserId}
     )`,
-  },
-).link(orderLineItems);
+}).link(orderLineItems);
 
-export const orderAddressesAdminAllPolicy = pgPolicy(
-  "order_addresses_admin_all",
-  {
-    for: "all",
-    to: sneakerecoAppRole,
-    using: tenantAdminScope(orderAddresses.tenantId),
-    withCheck: tenantAdminScope(orderAddresses.tenantId),
-  },
-).link(orderAddresses);
+export const orderAddressesAdminAllPolicy = pgPolicy('order_addresses_admin_all', {
+  for: 'all',
+  to: sneakerecoAppRole,
+  using: tenantAdminScope(orderAddresses.tenantId),
+  withCheck: tenantAdminScope(orderAddresses.tenantId),
+}).link(orderAddresses);
 
-export const orderAddressesCustomerReadPolicy = pgPolicy(
-  "order_addresses_customer_read",
-  {
-    for: "select",
-    to: sneakerecoAppRole,
-    using: sql`${currentTenantScope(orderAddresses.tenantId)} and exists (
+export const orderAddressesCustomerReadPolicy = pgPolicy('order_addresses_customer_read', {
+  for: 'select',
+  to: sneakerecoAppRole,
+  using: sql`${currentTenantScope(orderAddresses.tenantId)} and exists (
       select 1
       from ${orders}
       where ${orders.id} = ${orderAddresses.orderId}
         and ${orders.tenantId} = ${currentTenantId}
         and ${orders.userId} = ${currentUserId}
     )`,
-  },
-).link(orderAddresses);
+}).link(orderAddresses);
 
-export const paymentTransactionsAdminReadPolicy = pgPolicy(
-  "payment_transactions_admin_read",
-  {
-    for: "select",
-    to: sneakerecoAppRole,
-    using: tenantAdminScope(paymentTransactions.tenantId),
-  },
-).link(paymentTransactions);
+export const paymentTransactionsAdminReadPolicy = pgPolicy('payment_transactions_admin_read', {
+  for: 'select',
+  to: sneakerecoAppRole,
+  using: tenantAdminScope(paymentTransactions.tenantId),
+}).link(paymentTransactions);

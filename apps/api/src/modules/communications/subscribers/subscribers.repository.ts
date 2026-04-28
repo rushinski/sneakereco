@@ -22,10 +22,7 @@ export class SubscribersRepository {
     await this.db.appDb.insert(emailSubscribers).values(subscriber);
   }
 
-  async updateStatus(
-    id: string,
-    status: EmailSubscriber['status'],
-  ): Promise<void> {
+  async updateStatus(id: string, status: EmailSubscriber['status']): Promise<void> {
     await this.db.appDb
       .update(emailSubscribers)
       .set({ status, updatedAt: new Date() })

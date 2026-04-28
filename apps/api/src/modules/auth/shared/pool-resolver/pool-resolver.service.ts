@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 
 import { ValkeyService } from '../../../../core/valkey/valkey.service';
 import type { PoolCredentials } from '../cognito/cognito.types';
+
 import { PoolResolverRepository } from './pool-resolver.repository';
 
 const POOL_CACHE_TTL = 3600; // 1 hour
@@ -45,7 +46,9 @@ export class PoolResolverService {
     const cacheKey = `pool:${tenantId}:${role}`;
 
     const cached = await this.valkey.getJson<PoolCredentials>(cacheKey);
-    if (cached) return cached;
+    if (cached) {
+      return cached;
+    }
 
     const config = await this.repository.findByTenantId(tenantId);
 

@@ -10,19 +10,18 @@ import {
   CSRF_HEADER_NAME,
   CSRF_IGNORED_METHODS,
 } from '../../../config/security.config';
-import { buildSurfaceCookieNames, buildSurfaceKey } from '../../../modules/auth/shared/tokens/auth-cookie';
+import {
+  buildSurfaceCookieNames,
+  buildSurfaceKey,
+} from '../../../modules/auth/shared/tokens/auth-cookie';
 
 @Injectable()
 export class CsrfService {
-  private readonly csrfByCookieName = new Map<
-    string,
-    ReturnType<typeof doubleCsrf>
-  >();
+  private readonly csrfByCookieName = new Map<string, ReturnType<typeof doubleCsrf>>();
   private readonly csrfSecret: string;
 
   constructor(private readonly configService: ConfigService) {
     this.csrfSecret = this.configService.getOrThrow<string>('CSRF_SECRET');
-    const nodeEnv = this.configService.getOrThrow<string>('NODE_ENV');
   }
 
   generateToken(req: Request, res: Response): string {

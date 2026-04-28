@@ -1,9 +1,11 @@
 import { Controller, Get } from '@nestjs/common';
-import { HealthCheck, HealthCheckService } from '@nestjs/terminus';
+import { HealthCheckService } from '@nestjs/terminus';
+import { HealthCheck } from '@nestjs/terminus';
 import { ApiTags } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 
 import { Public } from '../../common/decorators/public.decorator';
+
 import { DatabaseHealthIndicator } from './indicators/database.health';
 import { RedisHealthIndicator } from './indicators/valkey.health';
 

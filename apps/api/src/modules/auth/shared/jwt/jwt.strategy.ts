@@ -8,8 +8,9 @@ import { ValkeyService } from '../../../../core/valkey/valkey.service';
 import { RequestCtx } from '../../../../common/context/request-context';
 import type { AuthenticatedUser, CognitoJwtPayload, TeamRole } from '../../auth.types';
 import { CognitoService } from '../cognito/cognito.service';
-import { JwtStrategyRepository } from './jwt-strategy.repository';
 import { buildSurfaceKey } from '../tokens/auth-cookie';
+
+import { JwtStrategyRepository } from './jwt-strategy.repository';
 
 const MFA_CACHE_TTL = 3600;
 const MEMBERSHIP_CACHE_TTL = 3600;
@@ -34,11 +35,11 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     const platformIssuer = `https://cognito-idp.${region}.amazonaws.com/${platformPoolId}`;
 
     super({
-      secretOrKeyProvider: async (
+      secretOrKeyProvider: (
         _request: unknown,
         rawJwtToken: string,
         done: (err: Error | null, secret?: string) => void,
-      ) => {
+      ): void => {
         try {
           const [headerBase64, payloadBase64] = rawJwtToken.split('.');
           const header = JSON.parse(
@@ -54,8 +55,13 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
             return done(new UnauthorizedException('Malformed token'));
           }
 
-          const publicKey = await this.resolveSigningKey(issuer, keyId);
-          done(null, publicKey);
+          void this.resolveSigningKey(issuer, keyId)
+            .then((publicKey) => {
+              done(null, publicKey);
+            })
+            .catch((error: unknown) => {
+              done(error instanceof Error ? error : new Error(String(error)));
+            });
         } catch (error) {
           done(error instanceof Error ? error : new Error(String(error)));
         }
@@ -138,7 +144,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       };
     }
 
-    // Tenant pool — validate against pool from RequestContext
+    // Tenant pool â€” validate against pool from RequestContext
     const pool = ctx?.pool;
     if (!pool) {
       throw new UnauthorizedException('Unknown token issuer');
@@ -152,7 +158,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       throw new UnauthorizedException('Invalid token audience');
     }
 
-    // Customer — membership lookup for tenantId
+    // Customer â€” membership lookup for tenantId
     const membership = await this.resolveMembership(payload.sub);
 
     return {
@@ -199,7 +205,10 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     return key.getPublicKey();
   }
 
-  private async resolveMembership(sub: string, tenantId?: string | null): Promise<{
+  private async resolveMembership(
+    sub: string,
+    tenantId?: string | null,
+  ): Promise<{
     tenantId: string;
     teamRole: TeamRole;
     memberId: string;
@@ -211,12 +220,16 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       teamRole: TeamRole;
       memberId: string;
     }>(cacheKey);
-    if (cached) return cached;
+    if (cached) {
+      return cached;
+    }
 
     const membership = tenantId
       ? await this.repository.findMembershipByCognitoSubAndTenant(sub, tenantId)
       : await this.repository.findMembershipByCognitoSub(sub);
-    if (!membership) return null;
+    if (!membership) {
+      return null;
+    }
 
     const result = {
       tenantId: membership.tenantId,
@@ -232,7 +245,9 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     const cacheKey = `mfa:${sub}`;
 
     const cached = await this.valkey.getJson<{ hasMfa: boolean }>(cacheKey);
-    if (cached) return cached.hasMfa;
+    if (cached) {
+      return cached.hasMfa;
+    }
 
     const hasMfa = await this.cognito.adminCheckMfaEnabled(email, poolId);
     await this.valkey.setJson(cacheKey, { hasMfa }, MFA_CACHE_TTL);

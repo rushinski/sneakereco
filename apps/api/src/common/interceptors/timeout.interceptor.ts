@@ -1,11 +1,7 @@
-import {
-  CallHandler,
-  ExecutionContext,
-  Injectable,
-  NestInterceptor,
-  RequestTimeoutException,
-} from '@nestjs/common';
-import { Observable, throwError, TimeoutError } from 'rxjs';
+import type { CallHandler, ExecutionContext, NestInterceptor } from '@nestjs/common';
+import { Injectable, RequestTimeoutException } from '@nestjs/common';
+import type { Observable } from 'rxjs';
+import { throwError, TimeoutError } from 'rxjs';
 import { catchError, timeout } from 'rxjs/operators';
 
 const DEFAULT_TIMEOUT_MS = 30_000;

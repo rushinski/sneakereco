@@ -14,9 +14,11 @@ import type { Request, Response } from 'express';
 import { Public } from '../../../common/decorators/public.decorator';
 import { ZodValidationPipe } from '../../../common/pipes/zod-validation.pipe';
 import { RequestCtx } from '../../../common/context/request-context';
-import { SecurityConfig, THROTTLE } from '../../../config/security.config';
+import { SecurityConfig } from '../../../config/security.config';
+import { THROTTLE } from '../../../config/security.config';
 import { CsrfService } from '../../../core/security/csrf/csrf.service';
 import { buildLoginResponse } from '../shared/tokens/auth-cookie';
+
 import { MfaChallengeDtoSchema, type MfaChallengeDto } from './mfa-challenge.dto';
 import { MfaChallengeService } from './mfa-challenge.service';
 
@@ -83,6 +85,13 @@ export class MfaChallengeController {
       surface: 'customer',
       pool: ctx.pool,
     });
-    return buildLoginResponse(request, response, this.security, this.csrfService, result, 'customer');
+    return buildLoginResponse(
+      request,
+      response,
+      this.security,
+      this.csrfService,
+      result,
+      'customer',
+    );
   }
 }

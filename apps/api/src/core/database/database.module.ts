@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Pool } from 'pg';
+
 import { DatabaseService } from './database.service';
 
 const APP_POOL = 'APP_POOL';
@@ -31,8 +32,7 @@ const SYSTEM_POOL = 'SYSTEM_POOL';
     },
     {
       provide: DatabaseService,
-      useFactory: (appPool: Pool, systemPool: Pool) =>
-        new DatabaseService(appPool, systemPool),
+      useFactory: (appPool: Pool, systemPool: Pool) => new DatabaseService(appPool, systemPool),
       inject: [APP_POOL, SYSTEM_POOL],
     },
   ],

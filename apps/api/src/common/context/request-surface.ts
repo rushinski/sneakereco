@@ -16,7 +16,9 @@ export interface RequestSurfaceResolution {
 }
 
 export function normalizeAppSurfaceHeader(value: string | undefined): AppSurface {
-  if (value === 'tenant-admin') return 'store-admin';
+  if (value === 'tenant-admin') {
+    return 'store-admin';
+  }
   if (value === 'platform-admin' || value === 'store-admin' || value === 'customer') {
     return value;
   }

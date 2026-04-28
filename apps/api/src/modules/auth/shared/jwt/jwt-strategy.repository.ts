@@ -85,10 +85,7 @@ export class JwtStrategyRepository {
     };
   }
 
-  async findSubjectRevocation(
-    cognitoSub: string,
-    userPoolId: string,
-  ): Promise<Date | null> {
+  async findSubjectRevocation(cognitoSub: string, userPoolId: string): Promise<Date | null> {
     const [row] = await this.db.systemDb
       .select({ revokeBefore: authSubjectRevocations.revokeBefore })
       .from(authSubjectRevocations)

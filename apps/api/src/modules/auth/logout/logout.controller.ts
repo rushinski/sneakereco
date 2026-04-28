@@ -16,6 +16,7 @@ import { CsrfGuard } from '../../../common/guards/csrf.guard';
 import { SecurityConfig } from '../../../config/security.config';
 import { clearAuthCookies, readRefreshCookie } from '../shared/tokens/auth-cookie';
 import type { AuthenticatedUser } from '../auth.types';
+
 import { LogoutService } from './logout.service';
 
 @Controller('auth')

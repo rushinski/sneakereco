@@ -15,7 +15,9 @@ export class OnboardingOriginGuard implements CanActivate {
       context.getClass(),
     ]);
 
-    if (!onboardingOnly) return true;
+    if (!onboardingOnly) {
+      return true;
+    }
 
     const ctx = RequestCtx.get();
 

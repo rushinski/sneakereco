@@ -27,7 +27,9 @@ export class TenantsService {
 
   async getTenantConfig(input: { host?: string; slug?: string }) {
     const config = await this.tenantConfigService.getConfig(input);
-    if (!config) throw new NotFoundException('Tenant not found');
+    if (!config) {
+      throw new NotFoundException('Tenant not found');
+    }
     return config;
   }
 }

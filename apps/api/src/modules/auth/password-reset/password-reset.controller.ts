@@ -13,10 +13,11 @@ import { Public } from '../../../common/decorators/public.decorator';
 import { ZodValidationPipe } from '../../../common/pipes/zod-validation.pipe';
 import { RequestCtx } from '../../../common/context/request-context';
 import { THROTTLE } from '../../../config/security.config';
+import type { PoolCredentials } from '../shared/cognito/cognito.types';
+
 import { ForgotPasswordDtoSchema, type ForgotPasswordDto } from './forgot-password.dto';
 import { PasswordResetService } from './password-reset.service';
 import { ResetPasswordDtoSchema, type ResetPasswordDto } from './reset-password.dto';
-import type { PoolCredentials } from '../shared/cognito/cognito.types';
 
 @Controller('auth')
 export class PasswordResetController {
@@ -27,9 +28,7 @@ export class PasswordResetController {
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   forgotPassword(@Body(new ZodValidationPipe(ForgotPasswordDtoSchema)) dto: ForgotPasswordDto) {
-    return this.resolveSupportedFlow((pool) =>
-      this.passwordResetService.forgotPassword(dto, pool),
-    );
+    return this.resolveSupportedFlow((pool) => this.passwordResetService.forgotPassword(dto, pool));
   }
 
   @Public()
@@ -37,9 +36,7 @@ export class PasswordResetController {
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   resetPassword(@Body(new ZodValidationPipe(ResetPasswordDtoSchema)) dto: ResetPasswordDto) {
-    return this.resolveSupportedFlow((pool) =>
-      this.passwordResetService.resetPassword(dto, pool),
-    );
+    return this.resolveSupportedFlow((pool) => this.passwordResetService.resetPassword(dto, pool));
   }
 
   private async resolveSupportedFlow<T>(

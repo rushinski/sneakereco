@@ -1,6 +1,8 @@
 import { Global, Module } from '@nestjs/common';
-import { OriginResolverService } from './services/origin-resolver.service';
+
 import { SecurityConfig } from '../config/security.config';
+
+import { OriginResolverService } from './services/origin-resolver.service';
 
 @Global()
 @Module({

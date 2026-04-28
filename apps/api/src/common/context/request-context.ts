@@ -1,6 +1,8 @@
 import { AsyncLocalStorage } from 'async_hooks';
+
 import type { PoolCredentials } from '../../modules/auth/shared/cognito/cognito.types';
 import type { AuthenticatedUser, UserType } from '../../modules/auth/auth.types';
+
 import type { AppSurface, HostType } from './request-surface';
 
 export interface RequestContext {
@@ -24,6 +26,8 @@ export const RequestCtx = {
   get: (): RequestContext | undefined => store.getStore(),
   setUser: (user: AuthenticatedUser): void => {
     const ctx = store.getStore();
-    if (ctx) ctx.user = user;
+    if (ctx) {
+      ctx.user = user;
+    }
   },
 };

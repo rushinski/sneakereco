@@ -132,25 +132,24 @@ export class TenantConfigService {
     const normalizedHost = this.normalizeHost(normalizedInput.host);
 
     const result = await this.db.withSystemContext(async (tx) => {
-      const domainRow = normalizedHost
-        ? await this.resolveDomainByHost(tx, normalizedHost)
-        : null;
+      const domainRow = normalizedHost ? await this.resolveDomainByHost(tx, normalizedHost) : null;
 
-      const [tenantRow] =
-        domainRow
-          ? await tx.select().from(tenants).where(eq(tenants.id, domainRow.tenantId)).limit(1)
-          : await tx
-              .select()
-              .from(tenants)
-              .where(
-                or(
-                  eq(tenants.id, normalizedInput.slug ?? ''),
-                  eq(tenants.slug, normalizedInput.slug ?? ''),
-                ),
-              )
-              .limit(1);
+      const [tenantRow] = domainRow
+        ? await tx.select().from(tenants).where(eq(tenants.id, domainRow.tenantId)).limit(1)
+        : await tx
+            .select()
+            .from(tenants)
+            .where(
+              or(
+                eq(tenants.id, normalizedInput.slug ?? ''),
+                eq(tenants.slug, normalizedInput.slug ?? ''),
+              ),
+            )
+            .limit(1);
 
-      if (!tenantRow) return null;
+      if (!tenantRow) {
+        return null;
+      }
 
       const [themeRow] = await tx
         .select()
@@ -174,10 +173,13 @@ export class TenantConfigService {
       return { tenant: tenantRow, theme: themeRow ?? null, domain: resolvedDomainRow ?? null };
     });
 
-    if (!result) return null;
+    if (!result) {
+      return null;
+    }
 
     const { tenant, theme, domain } = result;
-    const managedCustomerHost = `${domain?.subdomain ?? tenant.slug}.${this.baseDomain}`.toLowerCase();
+    const managedCustomerHost =
+      `${domain?.subdomain ?? tenant.slug}.${this.baseDomain}`.toLowerCase();
     const canonicalCustomerHost = (domain?.customDomain ?? managedCustomerHost).toLowerCase();
     const canonicalAdminHost = domain?.adminDomain?.toLowerCase() ?? null;
     const canonicalHost =
@@ -266,7 +268,9 @@ export class TenantConfigService {
   }
 
   private normalizeHost(host: string | undefined): string | null {
-    if (!host) return null;
+    if (!host) {
+      return null;
+    }
 
     try {
       const parsed = host.includes('://') ? new URL(host) : new URL(`https://${host}`);
@@ -279,15 +283,12 @@ export class TenantConfigService {
   private async resolveDomainByHost(
     tx: Parameters<Parameters<DatabaseService['withSystemContext']>[0]>[0],
     host: string,
-  ): Promise<
-    | {
-        tenantId: string;
-        subdomain: string;
-        customDomain: string | null;
-        adminDomain: string | null;
-      }
-    | null
-  > {
+  ): Promise<{
+    tenantId: string;
+    subdomain: string;
+    customDomain: string | null;
+    adminDomain: string | null;
+  } | null> {
     if (host.endsWith(`.${this.baseDomain}`)) {
       const withoutAdminPrefix = host.startsWith('admin.') ? host.slice('admin.'.length) : host;
       const subdomain = withoutAdminPrefix.replace(new RegExp(`\\.${this.baseDomain}$`, 'i'), '');
@@ -318,7 +319,9 @@ export class TenantConfigService {
         adminDomain: tenantDomainConfig.adminDomain,
       })
       .from(tenantDomainConfig)
-      .where(or(eq(tenantDomainConfig.customDomain, host), eq(tenantDomainConfig.adminDomain, host)))
+      .where(
+        or(eq(tenantDomainConfig.customDomain, host), eq(tenantDomainConfig.adminDomain, host)),
+      )
       .limit(1);
 
     return domainRow ?? null;

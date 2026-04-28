@@ -61,7 +61,9 @@ export type AuthSubjectRevocation = InferSelectModel<typeof authSubjectRevocatio
 export type NewAuthSubjectRevocation = InferInsertModel<typeof authSubjectRevocations>;
 
 export type AuthSessionLineageRevocation = InferSelectModel<typeof authSessionLineageRevocations>;
-export type NewAuthSessionLineageRevocation = InferInsertModel<typeof authSessionLineageRevocations>;
+export type NewAuthSessionLineageRevocation = InferInsertModel<
+  typeof authSessionLineageRevocations
+>;
 
 // --- Tenant Config ---
 export type TenantOnboarding = InferSelectModel<typeof tenantOnboarding>;

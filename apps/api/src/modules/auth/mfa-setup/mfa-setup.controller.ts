@@ -15,9 +15,11 @@ import type { Request, Response } from 'express';
 import { Public } from '../../../common/decorators/public.decorator';
 import { ZodValidationPipe } from '../../../common/pipes/zod-validation.pipe';
 import { RequestCtx } from '../../../common/context/request-context';
-import { SecurityConfig, THROTTLE } from '../../../config/security.config';
+import { SecurityConfig } from '../../../config/security.config';
+import { THROTTLE } from '../../../config/security.config';
 import { CsrfService } from '../../../core/security/csrf/csrf.service';
 import { buildLoginResponse } from '../shared/tokens/auth-cookie';
+
 import { MfaSetupAssociateDtoSchema, type MfaSetupAssociateDto } from './mfa-setup-associate.dto';
 import { MfaSetupCompleteDtoSchema, type MfaSetupCompleteDto } from './mfa-setup-complete.dto';
 import { MfaSetupService } from './mfa-setup.service';
@@ -90,7 +92,17 @@ export class MfaSetupController {
       throw new BadRequestException('Tenant authentication is not configured');
     }
 
-    const result = await this.mfaSetupService.complete(dto, { surface: 'customer', pool: ctx.pool });
-    return buildLoginResponse(request, response, this.security, this.csrfService, result, 'customer');
+    const result = await this.mfaSetupService.complete(dto, {
+      surface: 'customer',
+      pool: ctx.pool,
+    });
+    return buildLoginResponse(
+      request,
+      response,
+      this.security,
+      this.csrfService,
+      result,
+      'customer',
+    );
   }
 }

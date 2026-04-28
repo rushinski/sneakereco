@@ -7,15 +7,15 @@ import type { Request } from 'express';
  * scopes limits per-tenant and per-user/IP rather than by IP alone.
  *
  * Key strategy:
- *  - Authenticated requests: `{tenantId}:{userId}` — limits are per user, not
+ *  - Authenticated requests: `{tenantId}:{userId}` â€” limits are per user, not
  *    per IP, so VPNs/shared IPs don't cause cross-user throttle collisions.
- *  - Unauthenticated requests with a tenant header: `{tenantId}:{ip}` — limits
+ *  - Unauthenticated requests with a tenant header: `{tenantId}:{ip}` â€” limits
  *    are scoped to the tenant so a DDoS on one tenant doesn't affect others.
  *  - No tenant context (platform routes, public): IP only.
  */
 @Injectable()
 export class CustomThrottlerGuard extends ThrottlerGuard {
-  protected override async getTracker(req: Request): Promise<string> {
+  protected override getTracker(req: Request): Promise<string> {
     const userId = (req as Request & { user?: { sub?: string } }).user?.sub;
     const tenantId = req.headers['x-tenant-id'] as string | undefined;
     const ip =
@@ -23,8 +23,12 @@ export class CustomThrottlerGuard extends ThrottlerGuard {
       req.ip ??
       'unknown';
 
-    if (userId && tenantId) return `${tenantId}:${userId}`;
-    if (tenantId) return `${tenantId}:${ip}`;
-    return ip;
+    if (userId && tenantId) {
+      return Promise.resolve(`${tenantId}:${userId}`);
+    }
+    if (tenantId) {
+      return Promise.resolve(`${tenantId}:${ip}`);
+    }
+    return Promise.resolve(ip);
   }
 }

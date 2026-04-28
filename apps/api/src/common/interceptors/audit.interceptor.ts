@@ -1,13 +1,9 @@
-import {
-  CallHandler,
-  ExecutionContext,
-  Injectable,
-  NestInterceptor,
-  Logger,
-} from '@nestjs/common';
-import { Observable } from 'rxjs';
+import type { CallHandler, ExecutionContext, NestInterceptor } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import type { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import type { Request } from 'express';
+
 import type { AuthenticatedUser } from '../../modules/auth/auth.types';
 
 /**
@@ -21,17 +17,10 @@ import type { AuthenticatedUser } from '../../modules/auth/auth.types';
 export class AuditInterceptor implements NestInterceptor {
   private readonly logger = new Logger(AuditInterceptor.name);
 
-  private static readonly AUDITABLE_METHODS = new Set([
-    'POST',
-    'PUT',
-    'PATCH',
-    'DELETE',
-  ]);
+  private static readonly AUDITABLE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
-    const request = context.switchToHttp().getRequest<
-      Request & { user?: AuthenticatedUser }
-    >();
+    const request = context.switchToHttp().getRequest<Request & { user?: AuthenticatedUser }>();
 
     if (!AuditInterceptor.AUDITABLE_METHODS.has(request.method)) {
       return next.handle();
@@ -44,7 +33,9 @@ export class AuditInterceptor implements NestInterceptor {
         const duration = Date.now() - startTime;
         const user = request.user;
 
-        if (!user) return;
+        if (!user) {
+          return;
+        }
 
         // TODO: Persist to audit_events table via AuditRepository
         this.logger.debug({

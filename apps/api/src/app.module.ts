@@ -3,12 +3,14 @@ import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { EventEmitterModule } from '@nestjs/event-emitter';
+
+import { HealthModule } from '@/core/health/health.module';
+
 import { CustomThrottlerGuard } from './common/guards/throttler.guard';
 import { LoggingModule } from './core/logging/logging.module';
 import { ThrottlingModule } from './core/security/throttling/throttling.module';
-
 import { envSchema } from './config/env.schema';
-import { EventEmitterModule } from '@nestjs/event-emitter';
 import { CognitoModule } from './core/cognito/cognito.module';
 import { CsrfModule } from './core/security/csrf/csrf.module';
 import { ValkeyModule } from './core/valkey/valkey.module';
@@ -30,7 +32,6 @@ import { SubscribersModule } from './modules/communications/subscribers/subscrib
 import { CustomersModule } from './modules/customers/customers.module';
 import { FeaturedModule } from './modules/featured/featured.module';
 import { FraudModule } from './modules/fraud/fraud.module';
-import { HealthModule } from '@/core/health/health.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { ProductsModule } from './modules/products/products.module';

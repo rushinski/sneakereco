@@ -5,6 +5,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/user.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import type { AuthenticatedUser } from '../auth/auth.types';
+
 import { TenantConfigService } from './tenant-config/tenant-config.service';
 import { UpdateThemeDtoSchema, type UpdateThemeDto } from './dto/update-theme.dto';
 

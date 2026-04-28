@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { CognitoService } from '../cognito/cognito.service';
+
 import { PoolResolverRepository } from './pool-resolver.repository';
 
 export type AdminAudience = 'platform-admin' | 'store-admin' | 'unavailable';

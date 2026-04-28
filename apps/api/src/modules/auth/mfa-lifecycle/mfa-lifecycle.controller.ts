@@ -12,6 +12,7 @@ import {
 import { CurrentUser } from '../../../common/decorators/user.decorator';
 import { ZodValidationPipe } from '../../../common/pipes/zod-validation.pipe';
 import type { AuthenticatedUser } from '../auth.types';
+
 import { DisableMfaDtoSchema, type DisableMfaDto } from './disable-mfa.dto';
 import { MfaLifecycleService } from './mfa-lifecycle.service';
 import { VerifyMfaDtoSchema, type VerifyMfaDto } from './verify-mfa.dto';

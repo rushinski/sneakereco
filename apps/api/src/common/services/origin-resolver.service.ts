@@ -38,13 +38,17 @@ export class OriginResolverService {
     private readonly valkey: ValkeyService,
   ) {
     const platformUrl = this.normalizeOrigin(this.config.getOrThrow<string>('PLATFORM_URL'));
-    const dashboardUrl = this.normalizeOrigin(this.config.get<string>('PLATFORM_DASHBOARD_URL') ?? '');
+    const dashboardUrl = this.normalizeOrigin(
+      this.config.get<string>('PLATFORM_DASHBOARD_URL') ?? '',
+    );
 
     this.platformOrigins = new Set(
       [platformUrl, dashboardUrl].filter((v): v is string => Boolean(v)),
     );
 
-    this.platformHost = new URL(this.config.getOrThrow<string>('PLATFORM_URL')).hostname.toLowerCase();
+    this.platformHost = new URL(
+      this.config.getOrThrow<string>('PLATFORM_URL'),
+    ).hostname.toLowerCase();
     this.dashboardHost = dashboardUrl
       ? new URL(dashboardUrl).hostname.toLowerCase()
       : this.platformHost;
@@ -52,7 +56,9 @@ export class OriginResolverService {
   }
 
   normalizeOrigin(origin: string | undefined | null): string | null {
-    if (!origin) return null;
+    if (!origin) {
+      return null;
+    }
 
     try {
       const parsed = new URL(origin);
@@ -71,7 +77,9 @@ export class OriginResolverService {
   }
 
   normalizeHost(host: string | undefined | null): string | null {
-    if (!host) return null;
+    if (!host) {
+      return null;
+    }
 
     try {
       const parsed = host.includes('://') ? new URL(host) : new URL(`https://${host}`);
@@ -90,7 +98,9 @@ export class OriginResolverService {
 
   async classifyOrigin(origin: string | undefined | null): Promise<OriginContext> {
     const normalized = this.normalizeOrigin(origin);
-    if (!normalized) return { origin: 'unknown', tenantId: null, tenantSlug: null };
+    if (!normalized) {
+      return { origin: 'unknown', tenantId: null, tenantSlug: null };
+    }
 
     if (this.platformOrigins.has(normalized)) {
       return { origin: 'platform', tenantId: null, tenantSlug: null };
@@ -100,7 +110,9 @@ export class OriginResolverService {
     const cacheKey = `${CACHE_KEY_PREFIX}${hostname}`;
 
     const cached = await this.valkey.getJson<OriginContext>(cacheKey);
-    if (cached) return cached;
+    if (cached) {
+      return cached;
+    }
 
     const context = await this.resolveFromDb(hostname);
 
@@ -115,7 +127,11 @@ export class OriginResolverService {
 
   async resolveTenantByHost(hostname: string): Promise<TenantHostContext | null> {
     const normalizedHost = this.normalizeHost(hostname);
-    if (!normalizedHost || normalizedHost === this.platformHost || normalizedHost === this.dashboardHost) {
+    if (
+      !normalizedHost ||
+      normalizedHost === this.platformHost ||
+      normalizedHost === this.dashboardHost
+    ) {
       return null;
     }
 

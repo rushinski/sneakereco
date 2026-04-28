@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
-import { NestExpressApplication } from '@nestjs/platform-express';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
@@ -51,10 +51,7 @@ async function bootstrap() {
   // Global pipes, filters, interceptors
   app.useGlobalPipes(new ZodValidationPipe());
   app.useGlobalFilters(new HttpExceptionFilter());
-  app.useGlobalInterceptors(
-    new TimeoutInterceptor(),
-    new TransformInterceptor(),
-  );
+  app.useGlobalInterceptors(new TimeoutInterceptor(), new TransformInterceptor());
 
   // Swagger (non-production only)
   if (!isProduction) {

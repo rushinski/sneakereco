@@ -1,11 +1,17 @@
-import { Injectable, NestMiddleware } from '@nestjs/common';
+import type { NestMiddleware } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 
 import { OriginResolverService } from '../services/origin-resolver.service';
 import { PoolResolverService } from '../../modules/auth/shared/pool-resolver/pool-resolver.service';
 import type { PoolCredentials } from '../../modules/auth/shared/cognito/cognito.types';
+
 import { RequestCtx, type RequestContext } from './request-context';
-import { normalizeAppSurfaceHeader, resolveRequestSurface, type AppSurface } from './request-surface';
+import {
+  normalizeAppSurfaceHeader,
+  resolveRequestSurface,
+  type AppSurface,
+} from './request-surface';
 
 @Injectable()
 export class RequestContextMiddleware implements NestMiddleware {
@@ -21,15 +27,12 @@ export class RequestContextMiddleware implements NestMiddleware {
   private async handle(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const host =
-        this.originResolver.normalizeHost(
-          this.readHeaderValue(req.headers.host) ?? req.hostname,
-        ) ?? '';
+        this.originResolver.normalizeHost(this.readHeaderValue(req.headers.host) ?? req.hostname) ??
+        '';
       const tenant = host ? await this.originResolver.resolveTenantByHost(host) : null;
       const resolution = resolveRequestSurface({
         appHost: host,
-        appSurface: normalizeAppSurfaceHeader(
-          this.readHeaderValue(req.headers['x-app-surface']),
-        ),
+        appSurface: normalizeAppSurfaceHeader(this.readHeaderValue(req.headers['x-app-surface'])),
         tenant: tenant
           ? {
               subdomain: tenant.subdomain,
@@ -79,13 +82,19 @@ export class RequestContextMiddleware implements NestMiddleware {
   }
 
   private mapSurfaceToOrigin(surface: AppSurface): RequestContext['origin'] {
-    if (surface === 'platform-admin') return 'platform-admin';
-    if (surface === 'store-admin') return 'store-admin';
+    if (surface === 'platform-admin') {
+      return 'platform-admin';
+    }
+    if (surface === 'store-admin') {
+      return 'store-admin';
+    }
     return surface;
   }
 
   private readHeaderValue(value: string | string[] | undefined): string | undefined {
-    if (Array.isArray(value)) return value[0];
+    if (Array.isArray(value)) {
+      return value[0];
+    }
     return value;
   }
 }

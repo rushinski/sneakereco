@@ -1,4 +1,5 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import type { OnModuleDestroy } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
@@ -36,7 +37,9 @@ export class ValkeyService implements OnModuleDestroy {
 
   async del(...keys: string[]): Promise<void> {
     try {
-      if (keys.length > 0) await this.client.del(...keys);
+      if (keys.length > 0) {
+        await this.client.del(...keys);
+      }
     } catch {
       // non-fatal
     }
@@ -44,7 +47,9 @@ export class ValkeyService implements OnModuleDestroy {
 
   async getJson<T>(key: string): Promise<T | null> {
     const raw = await this.get(key);
-    if (!raw) return null;
+    if (!raw) {
+      return null;
+    }
     try {
       return JSON.parse(raw) as T;
     } catch {

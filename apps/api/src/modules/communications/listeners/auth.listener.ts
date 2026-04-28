@@ -3,7 +3,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { eq } from 'drizzle-orm';
 import { tenants } from '@sneakereco/db';
 
-import { CustomerRegisteredEvent } from '../../../common/events/auth.events';
+import type { CustomerRegisteredEvent } from '../../../common/events/auth.events';
 import { DatabaseService } from '../../../core/database/database.service';
 import { EmailService } from '../email/email.service';
 
@@ -25,7 +25,9 @@ export class AuthListener {
         .where(eq(tenants.id, event.tenantId))
         .limit(1);
 
-      if (!tenant) return;
+      if (!tenant) {
+        return;
+      }
 
       await this.email.sendCustomerWelcome({
         email: event.email,

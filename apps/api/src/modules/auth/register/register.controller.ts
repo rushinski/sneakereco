@@ -13,11 +13,12 @@ import { Public } from '../../../common/decorators/public.decorator';
 import { ZodValidationPipe } from '../../../common/pipes/zod-validation.pipe';
 import { RequestCtx } from '../../../common/context/request-context';
 import { THROTTLE } from '../../../config/security.config';
+import type { PoolCredentials } from '../shared/cognito/cognito.types';
+
 import { ConfirmEmailDtoSchema, type ConfirmEmailDto } from './confirm-email.dto';
 import { RegisterDtoSchema, type RegisterDto } from './register.dto';
 import { RegisterService } from './register.service';
 import { ResendConfirmationDtoSchema, type ResendConfirmationDto } from './resend-confirmation.dto';
-import type { PoolCredentials } from '../shared/cognito/cognito.types';
 
 @Controller('auth')
 export class RegisterController {
@@ -27,9 +28,7 @@ export class RegisterController {
   @Throttle({ default: THROTTLE.signup })
   @Post('register')
   register(@Body(new ZodValidationPipe(RegisterDtoSchema)) dto: RegisterDto) {
-    return this.resolveCustomerFlow((_tenantId, pool) =>
-      this.registerService.register(dto, pool),
-    );
+    return this.resolveCustomerFlow((_tenantId, pool) => this.registerService.register(dto, pool));
   }
 
   @Public()

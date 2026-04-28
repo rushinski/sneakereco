@@ -1,27 +1,27 @@
-import { index, jsonb, pgTable, text } from "drizzle-orm/pg-core";
+import { index, jsonb, pgTable, text } from 'drizzle-orm/pg-core';
 
-import { createdAtColumn } from "../shared/columns";
-import { tenants } from "../identity/tenants";
-import { users } from "../identity/users";
+import { createdAtColumn } from '../shared/columns';
+import { tenants } from '../identity/tenants';
+import { users } from '../identity/users';
 
 export const contactMessages = pgTable(
-  "contact_messages",
+  'contact_messages',
   {
-    id: text("id").primaryKey(),
-    tenantId: text("tenant_id")
+    id: text('id').primaryKey(),
+    tenantId: text('tenant_id')
       .notNull()
-      .references(() => tenants.id, { onDelete: "cascade" }),
-    userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
-    name: text("name"),
-    email: text("email").notNull(),
-    subject: text("subject"),
-    message: text("message").notNull(),
-    source: text("source"),
-    attachments: jsonb("attachments"),
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    userId: text('user_id').references(() => users.id, { onDelete: 'set null' }),
+    name: text('name'),
+    email: text('email').notNull(),
+    subject: text('subject'),
+    message: text('message').notNull(),
+    source: text('source'),
+    attachments: jsonb('attachments'),
     createdAt: createdAtColumn(),
   },
   (table) => [
-    index("idx_contact_messages_tenant").on(table.tenantId, table.createdAt.desc()),
-    index("idx_contact_messages_email").on(table.email),
+    index('idx_contact_messages_tenant').on(table.tenantId, table.createdAt.desc()),
+    index('idx_contact_messages_email').on(table.email),
   ],
 );

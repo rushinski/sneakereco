@@ -1,3 +1,4 @@
+import { describe, expect, it, jest } from '@jest/globals';
 import { CognitoProvisioningService } from '../../../../src/modules/tenants/cognito-provisioning.service';
 
 describe('CognitoProvisioningService.createTenantCustomerPool', () => {

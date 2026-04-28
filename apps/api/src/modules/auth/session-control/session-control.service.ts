@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import type { PoolCredentials } from '../shared/cognito/cognito.types';
 import { CognitoService } from '../shared/cognito/cognito.service';
+
 import { SessionControlRepository } from './session-control.repository';
 
 @Injectable()

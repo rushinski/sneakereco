@@ -3,6 +3,7 @@ import { count, desc, eq } from 'drizzle-orm';
 import { tenantOnboarding } from '@sneakereco/db';
 
 import { DatabaseService } from '../../core/database/database.service';
+
 import type { ListRequestsDto } from './dto/list-requests.dto';
 
 export interface RequestSummary {
@@ -43,10 +44,7 @@ export class TenantsRepository {
         .limit(dto.pageSize)
         .offset(offset);
 
-      const totals = await tx
-        .select({ total: count() })
-        .from(tenantOnboarding)
-        .where(where);
+      const totals = await tx.select({ total: count() }).from(tenantOnboarding).where(where);
 
       return [rows, totals] as const;
     });

@@ -2,11 +2,8 @@ import type { Request, Response } from 'express';
 
 import { RequestCtx } from '../../../../common/context/request-context';
 import type { CsrfService } from '../../../../core/security/csrf/csrf.service';
-import {
-  AUTH_COOKIE_PATH,
-  REFRESH_MAX_AGE,
-  SecurityConfig,
-} from '../../../../config/security.config';
+import type { SecurityConfig } from '../../../../config/security.config';
+import { AUTH_COOKIE_PATH, REFRESH_MAX_AGE } from '../../../../config/security.config';
 import type { LoginResponse, TokenResult, UserType } from '../../auth.types';
 
 export function buildSurfaceKey(input: {
@@ -19,7 +16,10 @@ export function buildSurfaceKey(input: {
 }
 
 export function buildSurfaceCookieNames(surfaceKey: string) {
-  const suffix = surfaceKey.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  const suffix = surfaceKey
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
   return {
     refresh: `__Secure-sneakereco-refresh-${suffix}`,
     csrf: `__Secure-sneakereco-csrf-${suffix}`,

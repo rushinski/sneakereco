@@ -1,6 +1,8 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import type { OnModuleDestroy } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
-import { drizzle, NodePgDatabase } from 'drizzle-orm/node-postgres';
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
 import * as schema from '@sneakereco/db';
 
@@ -28,22 +30,14 @@ export class DatabaseService implements OnModuleDestroy {
     fn: (tx: DrizzleTransaction) => Promise<T>,
   ): Promise<T> {
     return this.appDb.transaction(async (tx) => {
-      await tx.execute(
-        sql`SELECT SET_CONFIG('app.current_tenant_id', ${tenantId}, true)`,
-      );
-      await tx.execute(
-        sql`SELECT SET_CONFIG('app.current_user_id', ${userId}, true)`,
-      );
-      await tx.execute(
-        sql`SELECT SET_CONFIG('app.current_user_role', ${role}, true)`,
-      );
+      await tx.execute(sql`SELECT SET_CONFIG('app.current_tenant_id', ${tenantId}, true)`);
+      await tx.execute(sql`SELECT SET_CONFIG('app.current_user_id', ${userId}, true)`);
+      await tx.execute(sql`SELECT SET_CONFIG('app.current_user_role', ${role}, true)`);
       return fn(tx);
     });
   }
 
-  async withSystemContext<T>(
-    fn: (tx: DrizzleTransaction) => Promise<T>,
-  ): Promise<T> {
+  async withSystemContext<T>(fn: (tx: DrizzleTransaction) => Promise<T>): Promise<T> {
     return this.systemDb.transaction(async (tx) => fn(tx));
   }
 

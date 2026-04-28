@@ -2,7 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { generateId } from '@sneakereco/shared';
 
-import { CustomerRegisteredEvent } from '../../common/events/auth.events';
+import type { CustomerRegisteredEvent } from '../../common/events/auth.events';
+
 import { CustomersRepository } from './customers.repository';
 
 @Injectable()

@@ -19,6 +19,7 @@ import { SecurityConfig } from '../../../config/security.config';
 import type { AuthenticatedUser } from '../auth.types';
 import { PoolResolverService } from '../shared/pool-resolver/pool-resolver.service';
 import { clearAuthCookies } from '../shared/tokens/auth-cookie';
+
 import { SessionControlService } from './session-control.service';
 
 @Controller('auth/sessions')
@@ -51,9 +52,7 @@ export class SessionControlController {
   @UseGuards(CsrfGuard)
   @Post('revoke-user')
   @HttpCode(HttpStatus.OK)
-  revokeTargetUserSessions(
-    @Body() body: { cognitoSub?: string; userPoolId?: string },
-  ) {
+  revokeTargetUserSessions(@Body() body: { cognitoSub?: string; userPoolId?: string }) {
     if (!body.cognitoSub || !body.userPoolId) {
       throw new BadRequestException('cognitoSub and userPoolId are required');
     }

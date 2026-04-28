@@ -1,9 +1,5 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  ForbiddenException,
-  Injectable,
-} from '@nestjs/common';
+import type { CanActivate, ExecutionContext } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import type { Request, Response } from 'express';
 
 import { CsrfService } from '../../core/security/csrf/csrf.service';

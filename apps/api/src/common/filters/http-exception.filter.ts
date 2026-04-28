@@ -1,11 +1,5 @@
-import {
-  ArgumentsHost,
-  Catch,
-  ExceptionFilter,
-  HttpException,
-  HttpStatus,
-  Logger,
-} from '@nestjs/common';
+import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
+import { Catch, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import type { Request, Response } from 'express';
 
 /**
@@ -37,9 +31,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const request = ctx.getRequest<Request>();
 
     const isHttpException = exception instanceof HttpException;
-    const status = isHttpException
-      ? exception.getStatus()
-      : HttpStatus.INTERNAL_SERVER_ERROR;
+    const status = isHttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
 
     // Log the full error server-side for observability
     if (!isHttpException || status >= 500) {
@@ -90,10 +82,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     return {
       code: this.statusToCode(status),
-      message:
-        typeof exceptionResponse === 'string'
-          ? exceptionResponse
-          : exception.message,
+      message: typeof exceptionResponse === 'string' ? exceptionResponse : exception.message,
     };
   }
 

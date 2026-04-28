@@ -4,6 +4,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CustomerRegisteredEvent } from '../../../common/events/auth.events';
 import { CognitoService } from '../shared/cognito/cognito.service';
 import type { PoolCredentials } from '../shared/cognito/cognito.types';
+
 import type { ConfirmEmailDto } from './confirm-email.dto';
 import type { RegisterDto } from './register.dto';
 import type { ResendConfirmationDto } from './resend-confirmation.dto';

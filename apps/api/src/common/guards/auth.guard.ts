@@ -1,10 +1,8 @@
-import {
-  ExecutionContext,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import type { ExecutionContext } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard as PassportAuthGuard } from '@nestjs/passport';
+
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import type { AuthenticatedUser } from '../../modules/auth/auth.types';
 import { RequestCtx } from '../context/request-context';

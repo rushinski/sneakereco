@@ -11,8 +11,8 @@ export const CSRF_COOKIE_NAME = '__Secure-sneakereco-csrf';
 export const AUTH_COOKIE_PATH = '/';
 
 export const REFRESH_MAX_AGE = {
-  customer: 30 * 24 * 60 * 60 * 1000,    // 30 days
-  'store-admin': 24 * 60 * 60 * 1000,    // 1 day
+  customer: 30 * 24 * 60 * 60 * 1000, // 30 days
+  'store-admin': 24 * 60 * 60 * 1000, // 1 day
   'platform-admin': 24 * 60 * 60 * 1000, // 1 day
 } as const;
 
@@ -35,15 +35,7 @@ export const CORS_ALLOWED_HEADERS = [
   'X-Tenant-ID',
 ];
 
-export const CORS_ALLOWED_METHODS = [
-  'GET',
-  'HEAD',
-  'POST',
-  'PUT',
-  'PATCH',
-  'DELETE',
-  'OPTIONS',
-];
+export const CORS_ALLOWED_METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'];
 
 /**
  * Paths that must be reachable from any origin (e.g. the CSRF token endpoint,
@@ -59,21 +51,21 @@ export const CORS_PUBLIC_PATHS: ReadonlySet<string> = new Set(['/v1/csrf-token']
 export const THROTTLE = {
   // Global default — applied to every route that has no @Throttle() override.
   // Generous enough not to affect normal usage.
-  default:        { ttl: 60_000,     limit: 120 },
+  default: { ttl: 60_000, limit: 120 },
   // Per-route overrides — referenced directly in @Throttle() decorators.
-  auth:           { ttl: 60_000,     limit: 5   },
-  signup:         { ttl: 3_600_000,  limit: 5   },
-  confirmEmail:   { ttl: 3_600_000,  limit: 10  }, // code submission — brute-forceable
-  confirmResend:  { ttl: 3_600_000,  limit: 3   },
-  forgotPassword: { ttl: 3_600_000,  limit: 3   },
-  resetPassword:  { ttl: 3_600_000,  limit: 5   }, // code submission — matches forgotPassword
-  mfaChallenge:   { ttl: 60_000,     limit: 5   }, // TOTP brute-force vector
-  mfaSetup:       { ttl: 60_000,     limit: 5   }, // MFA setup completion
-  refresh:        { ttl: 60_000,     limit: 20  },
-  onboarding:     { ttl: 3_600_000,  limit: 5   }, // one-time flow, low volume
-  checkout:       { ttl: 60_000,     limit: 10  },
-  apiWrite:       { ttl: 60_000,     limit: 60  },
-  webhook:        { ttl: 60_000,     limit: 100 },
+  auth: { ttl: 60_000, limit: 5 },
+  signup: { ttl: 3_600_000, limit: 5 },
+  confirmEmail: { ttl: 3_600_000, limit: 10 }, // code submission — brute-forceable
+  confirmResend: { ttl: 3_600_000, limit: 3 },
+  forgotPassword: { ttl: 3_600_000, limit: 3 },
+  resetPassword: { ttl: 3_600_000, limit: 5 }, // code submission — matches forgotPassword
+  mfaChallenge: { ttl: 60_000, limit: 5 }, // TOTP brute-force vector
+  mfaSetup: { ttl: 60_000, limit: 5 }, // MFA setup completion
+  refresh: { ttl: 60_000, limit: 20 },
+  onboarding: { ttl: 3_600_000, limit: 5 }, // one-time flow, low volume
+  checkout: { ttl: 60_000, limit: 10 },
+  apiWrite: { ttl: 60_000, limit: 60 },
+  webhook: { ttl: 60_000, limit: 100 },
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -112,27 +104,27 @@ export class SecurityConfig {
     const isProduction = config.getOrThrow<string>('NODE_ENV') === 'production';
 
     const r2PublicUrl = config.get<string>('R2_PUBLIC_URL');
-    const awsRegion   = config.getOrThrow<string>('AWS_REGION');
+    const awsRegion = config.getOrThrow<string>('AWS_REGION');
 
     this.cspDirectives = {
-      defaultSrc:    ["'self'"],
-      scriptSrc:     ["'self'", 'tokenization.payrillagateway.com', 'services.nofraud.com'],
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", 'tokenization.payrillagateway.com', 'services.nofraud.com'],
       // 'unsafe-inline' is required by Swagger UI (dev only). Dropped in production
       // because the API serves no HTML in prod — only JSON responses.
-      styleSrc:      isProduction ? ["'self'"] : ["'self'", "'unsafe-inline'"],
-      imgSrc:        ["'self'", 'data:', 'https:', ...(r2PublicUrl ? [r2PublicUrl] : [])],
-      fontSrc:       ["'self'", 'fonts.gstatic.com'],
-      connectSrc:    [
+      styleSrc: isProduction ? ["'self'"] : ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'https:', ...(r2PublicUrl ? [r2PublicUrl] : [])],
+      fontSrc: ["'self'", 'fonts.gstatic.com'],
+      connectSrc: [
         "'self'",
         'tokenization.payrillagateway.com',
         'services.nofraud.com',
         `https://cognito-idp.${awsRegion}.amazonaws.com`,
       ],
-      frameSrc:      ['tokenization.payrillagateway.com'],
+      frameSrc: ['tokenization.payrillagateway.com'],
       frameAncestors: ["'none'"],
-      baseUri:       ["'self'"],
-      formAction:    ["'self'"],
-      objectSrc:     ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+      objectSrc: ["'none'"],
     };
 
     this.helmetOptions = {

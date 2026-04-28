@@ -11,12 +11,8 @@ import { THROTTLE } from '../../../config/security.config';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        throttlers: [
-          { name: 'default', ...THROTTLE.default },
-        ],
-        storage: new ThrottlerStorageRedisService(
-          config.getOrThrow<string>('VALKEY_URL'),
-        ),
+        throttlers: [{ name: 'default', ...THROTTLE.default }],
+        storage: new ThrottlerStorageRedisService(config.getOrThrow<string>('VALKEY_URL')),
       }),
     }),
   ],

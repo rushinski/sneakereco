@@ -1,5 +1,7 @@
-import { createParamDecorator, ExecutionContext } from '@nestjs/common';
+import type { ExecutionContext } from '@nestjs/common';
+import { createParamDecorator } from '@nestjs/common';
 import type { Request } from 'express';
+
 import type { AuthenticatedUser } from '../../modules/auth/auth.types';
 
 /**
@@ -14,13 +16,8 @@ import type { AuthenticatedUser } from '../../modules/auth/auth.types';
  */
 export const CurrentTenant = createParamDecorator(
   (_data: unknown, ctx: ExecutionContext): string | undefined => {
-    const request = ctx
-      .switchToHttp()
-      .getRequest<Request & { user?: AuthenticatedUser }>();
+    const request = ctx.switchToHttp().getRequest<Request & { user?: AuthenticatedUser }>();
 
-    return (
-      request.user?.tenantId ??
-      (request.headers['x-tenant-id'] as string | undefined)
-    );
+    return request.user?.tenantId ?? (request.headers['x-tenant-id'] as string | undefined);
   },
 );

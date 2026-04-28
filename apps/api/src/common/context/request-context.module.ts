@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+
 import { AuthModule } from '../../modules/auth/auth.module';
 
 import { RequestContextMiddleware } from './request-context.middleware';

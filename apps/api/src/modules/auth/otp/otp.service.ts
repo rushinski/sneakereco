@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import type { OtpSentResult, OtpVerifyResult } from '../auth.types';
 import { CognitoService } from '../shared/cognito/cognito.service';
 import type { PoolCredentials } from '../shared/cognito/cognito.types';
+
 import type { OtpRequestDto } from './otp.dto';
 import type { OtpVerifyDto } from './otp.dto';
 

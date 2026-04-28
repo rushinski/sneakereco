@@ -19,8 +19,8 @@ export function toDollars(cents: number): number {
  * Example: formatMoney(1999) => "$19.99"
  */
 export function formatMoney(cents: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
   }).format(toDollars(cents));
 }

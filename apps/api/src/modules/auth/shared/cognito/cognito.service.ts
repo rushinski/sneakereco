@@ -33,8 +33,9 @@ import type {
   RefreshResult,
   TokenResult,
 } from '../../auth.types';
-import type { PoolCredentials } from './cognito.types';
 import { throwCognitoError } from '../../../../core/cognito/cognito-error.mapper';
+
+import type { PoolCredentials } from './cognito.types';
 
 @Injectable()
 export class CognitoService {
@@ -467,7 +468,9 @@ export class CognitoService {
 
       return { type: 'otp_sent', session: response.Session! };
     } catch (error) {
-      if (error instanceof BadRequestException) throw error;
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
       if (error instanceof UserNotFoundException) {
         // Don't reveal whether the account exists
         return { type: 'otp_sent', session: '' };
