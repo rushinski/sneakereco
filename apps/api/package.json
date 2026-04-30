@@ -6,6 +6,7 @@
     "build": "npm run clean && nest build",
     "dev": "doppler run -- nest start --watch",
     "start": "node dist/main",
+    "start:worker": "node dist/worker-main",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "test:unit": "jest --config tests/jest.unit.config.js",

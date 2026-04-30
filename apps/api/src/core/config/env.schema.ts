@@ -4,12 +4,19 @@ export const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'staging', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3000),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+  REQUEST_ID_HEADER: z.string().default('x-request-id'),
+  CORRELATION_ID_HEADER: z.string().default('x-correlation-id'),
 
   BASE_DOMAIN: z.string().min(1),
   API_BASE_URL: z.string().url(),
   PLATFORM_URL: z.string().url(),
   PLATFORM_DASHBOARD_URL: z.string().url(),
   STATIC_ALLOWED_ORIGINS: z.string().optional(),
+  SWAGGER_ENABLED: z
+    .string()
+    .optional()
+    .transform((value) => value !== 'false'),
+  SWAGGER_PATH: z.string().default('docs'),
 
   DATABASE_URL: z.string().min(1),
   DATABASE_SYSTEM_URL: z.string().min(1),

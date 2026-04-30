@@ -1,19 +1,12 @@
-import { sql } from 'drizzle-orm';
 import { pgPolicy } from 'drizzle-orm/pg-core';
 
 import { sneakerecoAppRole } from '../shared/roles';
-import {
-  currentTenantId,
-  currentTenantScope,
-  currentUserScope,
-  isTenantAdmin,
-  tenantAdminScope,
-  tenantUserScope,
-} from '../shared/rls';
+import { currentTenantScope, currentUserScope, tenantAdminScope } from '../shared/rls';
 
-import { tenantMembers } from './tenant-members';
+import { adminTenantRelationships } from './admin-tenant-relationships';
+import { adminUsers } from './admin-users';
+import { customerUsers } from './customer-users';
 import { tenants } from './tenants';
-import { users } from './users';
 
 export const tenantsSelectPolicy = pgPolicy('tenants_select', {
   for: 'select',
@@ -21,59 +14,72 @@ export const tenantsSelectPolicy = pgPolicy('tenants_select', {
   using: currentTenantScope(tenants.id),
 }).link(tenants);
 
-export const usersSelectOwnPolicy = pgPolicy('users_select_own', {
+export const customerUsersSelectOwnPolicy = pgPolicy('customer_users_select_own', {
   for: 'select',
   to: sneakerecoAppRole,
-  using: currentUserScope(users.id),
-}).link(users);
+  using: currentUserScope(customerUsers.id),
+}).link(customerUsers);
 
-export const usersAdminSelectPolicy = pgPolicy('users_admin_select', {
+export const customerUsersAdminSelectPolicy = pgPolicy('customer_users_admin_select', {
   for: 'select',
   to: sneakerecoAppRole,
-  using: sql`${isTenantAdmin} and exists (
-    select 1
-    from ${tenantMembers}
-    where ${tenantMembers.tenantId} = ${currentTenantId}
-      and ${tenantMembers.userId} = ${users.id}
-  )`,
-}).link(users);
+  using: tenantAdminScope(customerUsers.tenantId),
+}).link(customerUsers);
 
-export const usersUpdateOwnPolicy = pgPolicy('users_update_own', {
+export const customerUsersUpdateOwnPolicy = pgPolicy('customer_users_update_own', {
   for: 'update',
   to: sneakerecoAppRole,
-  using: currentUserScope(users.id),
-  withCheck: currentUserScope(users.id),
-}).link(users);
+  using: currentUserScope(customerUsers.id),
+  withCheck: currentUserScope(customerUsers.id),
+}).link(customerUsers);
 
-export const tenantMembersTenantIsolationPolicy = pgPolicy('tenant_members_tenant_isolation', {
-  as: 'restrictive',
+export const adminUsersSelectOwnPolicy = pgPolicy('admin_users_select_own', {
   for: 'select',
   to: sneakerecoAppRole,
-  using: currentTenantScope(tenantMembers.tenantId),
-}).link(tenantMembers);
+  using: currentUserScope(adminUsers.id),
+}).link(adminUsers);
 
-export const tenantMembersSelectOwnPolicy = pgPolicy('tenant_members_select_own', {
-  for: 'select',
-  to: sneakerecoAppRole,
-  using: currentUserScope(tenantMembers.userId),
-}).link(tenantMembers);
-
-export const tenantMembersAdminSelectPolicy = pgPolicy('tenant_members_admin_select', {
-  for: 'select',
-  to: sneakerecoAppRole,
-  using: tenantAdminScope(tenantMembers.tenantId),
-}).link(tenantMembers);
-
-export const tenantMembersAdminManagePolicy = pgPolicy('tenant_members_admin_manage', {
-  for: 'all',
-  to: sneakerecoAppRole,
-  using: tenantAdminScope(tenantMembers.tenantId),
-  withCheck: tenantAdminScope(tenantMembers.tenantId),
-}).link(tenantMembers);
-
-export const tenantMembersUpdateOwnPolicy = pgPolicy('tenant_members_update_own', {
+export const adminUsersUpdateOwnPolicy = pgPolicy('admin_users_update_own', {
   for: 'update',
   to: sneakerecoAppRole,
-  using: tenantUserScope(tenantMembers.tenantId, tenantMembers.userId),
-  withCheck: tenantUserScope(tenantMembers.tenantId, tenantMembers.userId),
-}).link(tenantMembers);
+  using: currentUserScope(adminUsers.id),
+  withCheck: currentUserScope(adminUsers.id),
+}).link(adminUsers);
+
+export const adminTenantRelationshipsTenantIsolationPolicy = pgPolicy(
+  'admin_tenant_relationships_tenant_isolation',
+  {
+    as: 'restrictive',
+    for: 'select',
+    to: sneakerecoAppRole,
+    using: currentTenantScope(adminTenantRelationships.tenantId),
+  },
+).link(adminTenantRelationships);
+
+export const adminTenantRelationshipsSelectOwnPolicy = pgPolicy(
+  'admin_tenant_relationships_select_own',
+  {
+    for: 'select',
+    to: sneakerecoAppRole,
+    using: currentUserScope(adminTenantRelationships.adminUserId),
+  },
+).link(adminTenantRelationships);
+
+export const adminTenantRelationshipsAdminSelectPolicy = pgPolicy(
+  'admin_tenant_relationships_admin_select',
+  {
+    for: 'select',
+    to: sneakerecoAppRole,
+    using: tenantAdminScope(adminTenantRelationships.tenantId),
+  },
+).link(adminTenantRelationships);
+
+export const adminTenantRelationshipsAdminManagePolicy = pgPolicy(
+  'admin_tenant_relationships_admin_manage',
+  {
+    for: 'all',
+    to: sneakerecoAppRole,
+    using: tenantAdminScope(adminTenantRelationships.tenantId),
+    withCheck: tenantAdminScope(adminTenantRelationships.tenantId),
+  },
+).link(adminTenantRelationships);

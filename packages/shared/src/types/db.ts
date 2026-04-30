@@ -42,7 +42,6 @@ import type {
   tenantEmailConfig,
   tenantApplications,
   tenantBusinessProfiles,
-  tenantMembers,
   tenantOnboarding,
   tenantReleaseHistory,
   tenantReleaseSets,
@@ -52,16 +51,12 @@ import type {
   tenantTaxSettings,
   tenantThemeConfig,
   tenants,
-  users,
   webhookEvents,
 } from '@sneakereco/db';
 
 // --- Identity ---
-export type User = InferSelectModel<typeof users>;
-export type NewUser = InferInsertModel<typeof users>;
-
-export type TenantMember = InferSelectModel<typeof tenantMembers>;
-export type NewTenantMember = InferInsertModel<typeof tenantMembers>;
+export type Tenant = InferSelectModel<typeof tenants>;
+export type NewTenant = InferInsertModel<typeof tenants>;
 
 export type AdminUser = InferSelectModel<typeof adminUsers>;
 export type NewAdminUser = InferInsertModel<typeof adminUsers>;
