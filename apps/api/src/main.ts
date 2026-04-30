@@ -23,6 +23,7 @@ async function bootstrap() {
   const securityService = app.get(SecurityService);
   const requestContextService = app.get(RequestContextService);
   const logger = app.get(LoggerService);
+  const tenantDomainConfigRepository = app.get(TenantDomainConfigRepository);
 
   app.useLogger(logger);
 
@@ -45,7 +46,7 @@ async function bootstrap() {
         const parsed = new URL(origin);
         void tenantDomainConfigRepository
           .findByOriginHost(parsed.hostname)
-          .then((tenantOrigin) => callback(null, Boolean(tenantOrigin)))
+          .then((tenantOrigin: unknown) => callback(null, Boolean(tenantOrigin)))
           .catch(() => callback(null, false));
       } catch {
         callback(null, false);
