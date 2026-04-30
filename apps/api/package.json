@@ -12,7 +12,10 @@
     "test:integration": "doppler run -- jest --config tests/jest.integration.config.js",
     "clean": "rm -rf dist"
   },
-  "dependencies": {
+    "dependencies": {
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/cors": "^11.1.0",
+    "@fastify/helmet": "^13.0.2",
     "@aws-sdk/client-cognito-identity-provider": "^3",
     "@aws-sdk/client-lambda": "^3.1027.0",
     "@aws-sdk/client-ses": "^3",
@@ -24,6 +27,7 @@
     "@nestjs/core": "^11",
     "@nestjs/event-emitter": "^3.0.1",
     "@nestjs/passport": "^11",
+    "@nestjs/platform-fastify": "^11",
     "@nestjs/platform-express": "^11",
     "@nestjs/schedule": "^5",
     "@nestjs/swagger": "^11",
