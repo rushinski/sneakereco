@@ -1,7 +1,13 @@
 import type { NextRequest } from 'next/server';
 
 import { handleAuthCompletion } from '@/lib/auth/bff';
+import { validateBrowserMutation } from '@/lib/auth/csrf';
 
 export function POST(request: NextRequest) {
+  const rejected = validateBrowserMutation(request);
+  if (rejected) {
+    return Promise.resolve(rejected);
+  }
+  
   return request.json().then((body) => handleAuthCompletion(request, 'auth/login', body as Record<string, unknown>));
 }

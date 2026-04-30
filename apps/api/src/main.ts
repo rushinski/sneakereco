@@ -11,6 +11,7 @@ import { envSchema } from './core/config';
 import { LoggerService } from './core/observability/logging/logger.service';
 import { RequestContextService } from './core/observability/logging/request-context.service';
 import { SecurityService } from './core/security/security.service';
+import { TenantDomainConfigRepository } from './modules/tenants/tenant-domain-config.repository';
 
 async function bootstrap() {
   const env = envSchema.parse(process.env);
@@ -27,7 +28,30 @@ async function bootstrap() {
 
   await app.register(fastifyHelmet, securityService.getHelmetOptions());
   await app.register(fastifyCookie);
-  await app.register(fastifyCors, securityService.getCorsOptions());
+  await app.register(fastifyCors, {
+    ...securityService.getCorsOptions(),
+    origin: (origin, callback) => {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      if (securityService.isKnownPlatformOrigin(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      try {
+        const parsed = new URL(origin);
+        void tenantDomainConfigRepository
+          .findByOriginHost(parsed.hostname)
+          .then((tenantOrigin) => callback(null, Boolean(tenantOrigin)))
+          .catch(() => callback(null, false));
+      } catch {
+        callback(null, false);
+      }
+    },
+  });
 
   const fastify = app.getHttpAdapter().getInstance();
   fastify.addHook('onRequest', async (request, reply) => {

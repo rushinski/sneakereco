@@ -37,6 +37,12 @@ export interface AdminLoginChallenge {
   challengeSessionToken: string;
 }
 
+export interface AdminSetupBeginResult {
+  challengeSessionToken: string;
+  totpSecret: string;
+  otpauthUri: string;
+}
+
 export interface CustomerRegistrationResult {
   status: 'confirmation_required';
 }

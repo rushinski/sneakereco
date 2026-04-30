@@ -1,9 +1,15 @@
 import type { NextRequest } from 'next/server';
 
 import { proxyJson, jsonError } from '@/lib/auth/bff';
+import { validateBrowserMutation } from '@/lib/auth/csrf';
 import { resolveTenantContext } from '@/lib/auth/tenant';
 
 export async function POST(request: NextRequest) {
+  const rejected = validateBrowserMutation(request);
+  if (rejected) {
+    return rejected;
+  }
+
   const body = (await request.json()) as Record<string, unknown>;
   const tenant = resolveTenantContext(request, typeof body.tenantId === 'string' ? body.tenantId : undefined);
   const result = await proxyJson('auth/register', {

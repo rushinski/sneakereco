@@ -6,6 +6,8 @@ describe('SecurityService', () => {
     CORRELATION_ID_HEADER: 'x-correlation-id',
     CSRF_SECRET: 'a'.repeat(32),
   } as never, {
+    baseDomain: 'sneakereco.test',
+    apiBaseUrl: 'https://api.sneakereco.test',
     platformUrl: 'https://sneakereco.test',
     platformDashboardUrl: 'https://dashboard.sneakereco.test',
     staticAllowedOrigins: ['https://sneakereco.test'],
@@ -17,6 +19,10 @@ describe('SecurityService', () => {
       origin: ['https://sneakereco.test', 'https://dashboard.sneakereco.test'],
       methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     });
+    expect(service.isKnownPlatformOrigin('https://sneakereco.test')).toBe(true);
+    expect(service.isKnownPlatformOrigin('https://dashboard.sneakereco.test')).toBe(true);
+    expect(service.isBaseDomainHost('heat-kings.sneakereco.test')).toBe(true);
+    expect(service.isBaseDomainHost('heatkings.com')).toBe(false);
   });
 
   it('builds CSRF and route-class rate-limit scaffolding', () => {

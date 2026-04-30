@@ -20,6 +20,8 @@ import { SentEmailRepository } from '../../../../src/core/email/sent-email.repos
 import { EmailWorker } from '../../../../src/workers/email/email.worker';
 import { TenantProvisioningWorkerService } from '../../../../src/workers/tenant-provisioning/tenant-provisioning.worker.service';
 import { WebBuilderModule } from '../../../../src/modules/web-builder/web-builder.module';
+import { CognitoAuthGateway } from '../../../../src/modules/auth/shared/cognito-auth.gateway';
+import { AdminUsersRepository } from '../../../../src/modules/auth/shared/admin-users.repository';
 
 describe('Platform onboarding flows', () => {
   beforeAll(() => {
@@ -81,6 +83,26 @@ describe('Platform onboarding flows', () => {
         cognitoSub: 'tenant-admin-sub',
       }),
     };
+    const cognitoAuthGateway = {
+      beginAdminSetup: jest.fn().mockResolvedValue({
+        totpSecret: 'JBSWY3DPEHPK3PXP',
+        otpauthUri:
+          'otpauth://totp/SneakerEco%20Admin:owner%40heatkings.com?secret=JBSWY3DPEHPK3PXP&issuer=SneakerEco%20Admin',
+        challengeSessionToken: 'setup-challenge-token',
+      }),
+      completeAdminSetup: jest.fn().mockResolvedValue({
+        actorType: 'tenant_admin',
+        cognitoSub: 'tenant-admin-sub',
+        userPoolId: 'pool-1',
+        appClientId: 'tenant-client',
+        groups: ['tenant_admin'],
+        email: 'owner@heatkings.com',
+        tenantId: 'tnt_heatkings',
+        accessToken: 'tenant-admin-access-token',
+        refreshToken: 'tenant-admin-refresh-token',
+        originJti: 'tenant-admin-origin-jti',
+      }),
+    };
 
     const moduleRef = await Test.createTestingModule({
       imports: [
@@ -95,6 +117,8 @@ describe('Platform onboarding flows', () => {
     })
       .overrideProvider(TenantProvisioningGateway)
       .useValue(gateway)
+      .overrideProvider(CognitoAuthGateway)
+      .useValue(cognitoAuthGateway)
       .compile();
 
     const app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
@@ -106,6 +130,7 @@ describe('Platform onboarding flows', () => {
       gateway,
       applicationsRepository: app.get(TenantApplicationsRepository),
       tenantRepository: app.get(TenantRepository),
+      adminUsersRepository: app.get(AdminUsersRepository),
       businessProfilesRepository: app.get(TenantBusinessProfileRepository),
       domainConfigRepository: app.get(TenantDomainConfigRepository),
       cognitoConfigRepository: app.get(TenantCognitoConfigRepository),
@@ -115,6 +140,7 @@ describe('Platform onboarding flows', () => {
       sentEmailRepository: app.get(SentEmailRepository),
       emailWorker: app.get(EmailWorker),
       worker: app.get(TenantProvisioningWorkerService),
+      cognitoAuthGateway,
     };
   }
 
@@ -366,6 +392,98 @@ describe('Platform onboarding flows', () => {
       },
     });
     expect(consumeAgainResponse.statusCode).toBe(401);
+    await app.close();
+  });
+
+  
+  it('completes invited tenant admin setup, activates the tenant, and issues a logged-in session', async () => {
+    const {
+      app,
+      applicationsRepository,
+      tenantRepository,
+      adminUsersRepository,
+      outboxDispatcherService,
+      worker,
+      cognitoAuthGateway,
+    } = await createApp();
+
+    const submitResponse = await app.inject({
+      method: 'POST',
+      url: '/platform/onboarding/applications',
+      payload: {
+        requestedByName: 'Setup Owner',
+        requestedByEmail: 'owner@heatkings.com',
+        businessName: 'Heat Kings',
+      },
+    });
+    const application = submitResponse.json();
+
+    await app.inject({
+      method: 'POST',
+      url: `/platform/onboarding/applications/${application.id}/approve`,
+      payload: {
+        reviewedByAdminUserId: 'adm_platform_owner',
+      },
+    });
+    await worker.drain();
+
+    const invitationEvent = (await outboxDispatcherService.listPending()).find(
+      (event) => event.name === 'tenant.setup.email.requested',
+    );
+    expect(invitationEvent).toBeDefined();
+
+    const consumeResponse = await app.inject({
+      method: 'POST',
+      url: '/platform/onboarding/setup-invitations/consume',
+      payload: {
+        token: String(invitationEvent?.payload.invitationToken),
+      },
+    });
+    expect(consumeResponse.statusCode).toBe(201);
+    expect(consumeResponse.json().setupSessionToken).toBeDefined();
+
+    const beginResponse = await app.inject({
+      method: 'POST',
+      url: '/auth/admin/setup/begin',
+      payload: {
+        setupSessionToken: consumeResponse.json().setupSessionToken,
+        password: 'Password123!',
+      },
+    });
+    expect(beginResponse.statusCode).toBe(201);
+    expect(beginResponse.json()).toMatchObject({
+      challengeSessionToken: 'setup-challenge-token',
+      totpSecret: 'JBSWY3DPEHPK3PXP',
+    });
+
+    const approvedApplication = await applicationsRepository.findById(application.id);
+    const completeResponse = await app.inject({
+      method: 'POST',
+      url: '/auth/admin/setup/complete',
+      payload: {
+        challengeSessionToken: beginResponse.json().challengeSessionToken,
+        code: '123456',
+        deviceId: 'browser-1',
+      },
+    });
+    expect(completeResponse.statusCode).toBe(201);
+    expect(completeResponse.json()).toMatchObject({
+      accessToken: 'tenant-admin-access-token',
+      principal: {
+        actorType: 'tenant_admin',
+      },
+    });
+
+    expect(cognitoAuthGateway.beginAdminSetup).toHaveBeenCalled();
+    expect(cognitoAuthGateway.completeAdminSetup).toHaveBeenCalled();
+    expect(await tenantRepository.findById(String(approvedApplication?.approvedTenantId))).toMatchObject({
+      status: 'active',
+    });
+
+    const adminUser = await adminUsersRepository.findByEmail('owner@heatkings.com');
+    expect(adminUser).toMatchObject({
+      status: 'active',
+    });
     await app.close();
   });
 });

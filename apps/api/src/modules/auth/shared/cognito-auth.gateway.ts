@@ -1,11 +1,15 @@
 import {
+  AdminSetUserMFAPreferenceCommand,
+  AdminSetUserPasswordCommand,
   AdminGetUserCommand,
+  AssociateSoftwareTokenCommand,
   ConfirmForgotPasswordCommand,
   ConfirmSignUpCommand,
   ForgotPasswordCommand,
   InitiateAuthCommand,
   RespondToAuthChallengeCommand,
   SignUpCommand,
+  VerifySoftwareTokenCommand,
   type AuthenticationResultType,
   type AttributeType,
   type InitiateAuthCommandInput,
@@ -20,6 +24,7 @@ import { CacheService } from '../../../core/cache/cache.service';
 import { TenantCognitoConfigRepository } from '../../tenants/tenant-cognito-config.repository';
 import type {
   AdminLoginChallenge,
+  AdminSetupBeginResult,
   CompletedAuthChallenge,
   CustomerConfirmationResult,
   CustomerRegistrationResult,
@@ -107,6 +112,111 @@ export class CognitoAuthGateway {
     return this.buildCompletedChallenge({
       authenticationResult: response.AuthenticationResult,
       actorType: challenge.actorType,
+      tenantId: challenge.tenantId,
+    });
+  }
+
+  async beginAdminSetup(input: {
+    email: string;
+    password: string;
+    tenantId: string;
+  }): Promise<AdminSetupBeginResult> {
+    const adminPool = this.cognitoAdminService.getAdminPoolIdentity();
+    const client = this.cognitoAdminService.getClient();
+
+    await client.send(
+      new AdminSetUserPasswordCommand({
+        UserPoolId: adminPool.userPoolId,
+        Username: input.email,
+        Password: input.password,
+        Permanent: true,
+      }),
+    );
+
+    const authResponse = await client.send(
+      new InitiateAuthCommand({
+        AuthFlow: 'USER_PASSWORD_AUTH',
+        ClientId: adminPool.tenantAdminClientId,
+        AuthParameters: {
+          USERNAME: input.email,
+          PASSWORD: input.password,
+        },
+      }),
+    );
+
+    if (authResponse.ChallengeName !== 'MFA_SETUP' || !authResponse.Session) {
+      throw new UnauthorizedException('Expected MFA_SETUP challenge from Cognito');
+    }
+
+    const associateResponse = await client.send(
+      new AssociateSoftwareTokenCommand({
+        Session: authResponse.Session,
+      }),
+    );
+
+    if (!associateResponse.SecretCode || !associateResponse.Session) {
+      throw new UnauthorizedException('Cognito did not return a TOTP setup secret');
+    }
+
+    return {
+      challengeSessionToken: this.encodeChallenge({
+        session: associateResponse.Session,
+        email: input.email,
+        clientId: adminPool.tenantAdminClientId,
+        actorType: 'tenant_admin',
+        tenantId: input.tenantId,
+      }),
+      totpSecret: associateResponse.SecretCode,
+      otpauthUri: this.buildTotpUri(input.email, associateResponse.SecretCode),
+    };
+  }
+
+  async completeAdminSetup(input: {
+    challengeSessionToken: string;
+    code: string;
+    deviceId: string;
+  }): Promise<CompletedAuthChallenge> {
+    const challenge = this.decodeChallenge(input.challengeSessionToken);
+    const client = this.cognitoAdminService.getClient();
+    const adminPool = this.cognitoAdminService.getAdminPoolIdentity();
+
+    const verifyResponse = await client.send(
+      new VerifySoftwareTokenCommand({
+        Session: challenge.session,
+        UserCode: input.code,
+        FriendlyDeviceName: input.deviceId,
+      }),
+    );
+
+    if (verifyResponse.Status !== 'SUCCESS') {
+      throw new UnauthorizedException('TOTP verification failed');
+    }
+
+    const response = await client.send(
+      new RespondToAuthChallengeCommand({
+        ChallengeName: 'MFA_SETUP',
+        ClientId: challenge.clientId,
+        Session: verifyResponse.Session ?? challenge.session,
+        ChallengeResponses: {
+          USERNAME: challenge.email,
+        },
+      }),
+    );
+
+    await client.send(
+      new AdminSetUserMFAPreferenceCommand({
+        UserPoolId: adminPool.userPoolId,
+        Username: challenge.email,
+        SoftwareTokenMfaSettings: {
+          Enabled: true,
+          PreferredMfa: true,
+        },
+      }),
+    );
+
+    return this.buildCompletedChallenge({
+      authenticationResult: response.AuthenticationResult,
+      actorType: 'tenant_admin',
       tenantId: challenge.tenantId,
     });
   }
@@ -394,6 +504,11 @@ export class CognitoAuthGateway {
 
   private fallbackOriginJti(accessToken: string) {
     return createHash('sha256').update(accessToken).digest('hex');
+  }
+
+  private buildTotpUri(email: string, secret: string) {
+    const issuer = 'SneakerEco Admin';
+    return `otpauth://totp/${encodeURIComponent(`${issuer}:${email}`)}?secret=${encodeURIComponent(secret)}&issuer=${encodeURIComponent(issuer)}`;
   }
 
   private encodeChallenge(challenge: AdminChallengePayload) {

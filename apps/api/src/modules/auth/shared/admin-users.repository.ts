@@ -29,6 +29,10 @@ export class AdminUsersRepository {
     return [...this.records.values()].find((record) => record.email === email) ?? null;
   }
 
+  async findById(id: string) {
+    return this.records.get(id) ?? null;
+  }
+
   async findByCognitoSub(cognitoSub: string) {
     return [...this.records.values()].find((record) => record.cognitoSub === cognitoSub) ?? null;
   }

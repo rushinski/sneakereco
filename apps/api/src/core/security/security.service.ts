@@ -28,15 +28,40 @@ export class SecurityService {
     };
   }
 
+  isAllowedPlatformOrigin(origin: string | undefined) {
+    if (!origin) {
+      return true;
+    }
+
+    return this.allowedPlatformOrigins().includes(origin);
+  }
+
+  isKnownPlatformOrigin(origin: string) {
+    return this.allowedPlatformOrigins().includes(origin);
+  }
+
+  isBaseDomainHost(host: string) {
+    return host === this.domainConfig.baseDomain || host.endsWith(`.${this.domainConfig.baseDomain}`);
+  }
+
   getHelmetOptions(): FastifyHelmetOptions {
     return {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
           imgSrc: ["'self'", 'data:', 'https:'],
-          connectSrc: ["'self'", this.domainConfig.apiBaseUrl, this.domainConfig.platformUrl],
+          connectSrc: [
+            "'self'",
+            this.domainConfig.apiBaseUrl,
+            this.domainConfig.platformUrl,
+            this.domainConfig.platformDashboardUrl,
+          ],
           scriptSrc: ["'self'"],
           styleSrc: ["'self'", "'unsafe-inline'"],
+          objectSrc: ["'none'"],
+          baseUri: ["'self'"],
+          frameAncestors: ["'none'"],
+          formAction: ["'self'"],
         },
       },
     };
@@ -75,5 +100,13 @@ export class SecurityService {
   
   hasValidOpsToken(value: string | undefined) {
     return value === this.env.OPS_API_TOKEN;
+  }
+
+  private allowedPlatformOrigins() {
+    return [
+      this.domainConfig.platformUrl,
+      this.domainConfig.platformDashboardUrl,
+      ...this.domainConfig.staticAllowedOrigins,
+    ];
   }
 }

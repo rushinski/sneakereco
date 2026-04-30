@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { startTransition, useState } from 'react';
 
+import { getCsrfToken } from '@/lib/auth/csrf-client';
 import { setClientSession } from '@/lib/auth/client-session';
 
 interface Field {
@@ -37,9 +38,14 @@ export function PlatformAuthForm(props: {
 
         startTransition(async () => {
           try {
+            const csrfToken = await getCsrfToken();
             const response = await fetch(props.endpoint, {
               method: 'POST',
               headers: { 'content-type': 'application/json' },
+              headers: {
+                'content-type': 'application/json',
+                'x-csrf-token': csrfToken,
+              },
               body: JSON.stringify(values),
             });
             const payload = (await response.json().catch(() => ({}))) as Record<string, unknown> & {

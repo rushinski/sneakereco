@@ -41,4 +41,15 @@ export class TenantDomainConfigRepository {
   async findByTenantId(tenantId: string) {
     return [...this.records.values()].find((record) => record.tenantId === tenantId) ?? null;
   }
+
+  async findByOriginHost(host: string) {
+    return (
+      [...this.records.values()].find(
+        (record) =>
+          record.subdomain === host ||
+          (record.storefrontCustomDomain === host && record.storefrontReadinessState === 'ready') ||
+          (record.adminDomain === host && record.adminReadinessState === 'ready'),
+      ) ?? null
+    );
+  }
 }

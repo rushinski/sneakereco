@@ -23,6 +23,6 @@ import { TenantSetupInvitationsRepository } from './tenant-setup-invitations.rep
     TenantApplicationsRepository,
     TenantSetupInvitationsRepository,
   ],
-  exports: [TenantApplicationsRepository, TenantSetupInvitationsRepository],
+  exports: [TenantApplicationsRepository, TenantSetupInvitationsRepository, SetupSessionService],
 })
 export class PlatformOnboardingModule {}

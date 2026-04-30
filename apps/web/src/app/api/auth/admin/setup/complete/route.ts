@@ -10,5 +10,5 @@ export async function POST(request: NextRequest) {
   }
 
   const body = (await request.json()) as Record<string, unknown>;
-  return handleAuthCompletion(request, 'auth/mfa/challenge', body);
+  return handleAuthCompletion(request, 'auth/admin/setup/complete', body);
 }

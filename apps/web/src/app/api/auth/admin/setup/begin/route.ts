@@ -2,20 +2,18 @@ import type { NextRequest } from 'next/server';
 
 import { jsonError, proxyJson } from '@/lib/auth/bff';
 import { validateBrowserMutation } from '@/lib/auth/csrf';
-import { resolveTenantContext } from '@/lib/auth/tenant';
 
 export async function POST(request: NextRequest) {
   const rejected = validateBrowserMutation(request);
   if (rejected) {
     return rejected;
   }
-  
+
   const body = (await request.json()) as Record<string, unknown>;
-  const tenant = resolveTenantContext(request, typeof body.tenantId === 'string' ? body.tenantId : undefined);
-  const result = await proxyJson('auth/password-reset/forgot', {
+  const result = await proxyJson('auth/admin/setup/begin', {
     body: {
-      tenantId: tenant.tenantId,
-      email: body.email,
+      setupSessionToken: body.setupSessionToken,
+      password: body.password,
     },
   });
 
@@ -25,6 +23,6 @@ export async function POST(request: NextRequest) {
 
   return Response.json({
     ...(typeof result.payload === 'object' && result.payload ? result.payload : {}),
-    message: 'Password reset code requested.',
+    message: 'Password saved. Complete authenticator setup to finish onboarding.',
   });
 }
