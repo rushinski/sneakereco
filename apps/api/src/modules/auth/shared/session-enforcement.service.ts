@@ -34,6 +34,22 @@ export class SessionEnforcementService {
       throw new UnauthorizedException('Session version mismatch');
     }
 
+    if (
+      session.actorType !== principal.actorType ||
+      session.cognitoSub !== principal.cognitoSub ||
+      session.userPoolId !== principal.userPoolId ||
+      session.appClientId !== principal.appClientId ||
+      (session.tenantId ?? undefined) !== (principal.tenantId ?? undefined)
+    ) {
+      this.suspiciousAuthTelemetryService.record('session_claim_mismatch', {
+        actorType: principal.actorType,
+        tenantId: principal.tenantId,
+        sessionId: principal.sessionId,
+        cognitoSub: principal.cognitoSub,
+      });
+      throw new UnauthorizedException('Presented principal does not match the active session');
+    }
+
     const subjectRevocation = await this.authSubjectRevocationsRepository.findBySubject(
       principal.cognitoSub,
       principal.userPoolId,

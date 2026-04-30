@@ -1,5 +1,23 @@
-import { Injectable, NotImplementedException } from '@nestjs/common';
+import {
+  AdminGetUserCommand,
+  ConfirmForgotPasswordCommand,
+  ConfirmSignUpCommand,
+  ForgotPasswordCommand,
+  InitiateAuthCommand,
+  RespondToAuthChallengeCommand,
+  SignUpCommand,
+  type AuthenticationResultType,
+  type AttributeType,
+  type InitiateAuthCommandInput,
+} from '@aws-sdk/client-cognito-identity-provider';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { createHash, createHmac } from 'node:crypto';
 
+import { CognitoAdminService } from '../../../core/cognito/cognito-admin.service';
+import type { AuthConfig, Env } from '../../../core/config';
+import { AUTH_CONFIG, ENVIRONMENT } from '../../../core/config/config.module';
+import { CacheService } from '../../../core/cache/cache.service';
+import { TenantCognitoConfigRepository } from '../../tenants/tenant-cognito-config.repository';
 import type {
   AdminLoginChallenge,
   CompletedAuthChallenge,
@@ -9,75 +27,263 @@ import type {
   PasswordResetRequestResult,
 } from './auth.types';
 
+type AdminChallengePayload = {
+  session: string;
+  email: string;
+  clientId: string;
+  actorType: 'platform_admin' | 'tenant_admin';
+  tenantId?: string;
+};
+
 @Injectable()
 export class CognitoAuthGateway {
-  async adminLogin(_: { email: string; password: string }): Promise<AdminLoginChallenge> {
-    throw new NotImplementedException('Cognito admin login is not wired yet');
+  constructor(
+    private readonly cognitoAdminService: CognitoAdminService,
+    private readonly tenantCognitoConfigRepository: TenantCognitoConfigRepository,
+    private readonly cacheService: CacheService,
+    @Inject(AUTH_CONFIG) private readonly authConfig: AuthConfig,
+    @Inject(ENVIRONMENT) private readonly env: Env,
+  ) {}
+
+  async adminLogin(input: {
+    email: string;
+    password: string;
+    actorType: 'platform_admin' | 'tenant_admin';
+    tenantId?: string;
+  }): Promise<AdminLoginChallenge> {
+    const clientId =
+      input.actorType === 'platform_admin'
+        ? this.authConfig.platformAdminClientId
+        : this.authConfig.tenantAdminClientId;
+
+    const response = await this.cognitoAdminService.getClient().send(
+      new InitiateAuthCommand({
+        AuthFlow: 'USER_PASSWORD_AUTH',
+        ClientId: clientId,
+        AuthParameters: {
+          USERNAME: input.email,
+          PASSWORD: input.password,
+        },
+      }),
+    );
+
+    if (response.ChallengeName !== 'SOFTWARE_TOKEN_MFA' || !response.Session) {
+      throw new UnauthorizedException('Expected TOTP challenge from Cognito');
+    }
+
+    return {
+      status: 'mfa_required',
+      challengeType: 'totp',
+      challengeSessionToken: this.encodeChallenge({
+        session: response.Session,
+        email: input.email,
+        clientId,
+        actorType: input.actorType,
+        tenantId: input.tenantId,
+      }),
+    };
   }
 
-  async completeMfaChallenge(_: {
+  async completeMfaChallenge(input: {
     challengeSessionToken: string;
     code: string;
     deviceId: string;
     ipAddress?: string;
     userAgent?: string;
   }): Promise<CompletedAuthChallenge> {
-    throw new NotImplementedException('Cognito MFA challenge is not wired yet');
+    const challenge = this.decodeChallenge(input.challengeSessionToken);
+    const response = await this.cognitoAdminService.getClient().send(
+      new RespondToAuthChallengeCommand({
+        ChallengeName: 'SOFTWARE_TOKEN_MFA',
+        ClientId: challenge.clientId,
+        Session: challenge.session,
+        ChallengeResponses: {
+          USERNAME: challenge.email,
+          SOFTWARE_TOKEN_MFA_CODE: input.code,
+        },
+      }),
+    );
+
+    return this.buildCompletedChallenge({
+      authenticationResult: response.AuthenticationResult,
+      actorType: challenge.actorType,
+      tenantId: challenge.tenantId,
+    });
   }
 
-  async registerCustomer(_: {
+  async registerCustomer(input: {
     tenantId: string;
     email: string;
     password: string;
     fullName?: string;
   }): Promise<CustomerRegistrationResult> {
-    throw new NotImplementedException('Cognito customer registration is not wired yet');
+    const tenantConfig = await this.requireTenantConfig(input.tenantId);
+    await this.cognitoAdminService.getClient().send(
+      new SignUpCommand({
+        ClientId: tenantConfig.customerClientId,
+        Username: input.email,
+        Password: input.password,
+        UserAttributes: this.userAttributes([
+          ['email', input.email],
+          ['name', input.fullName],
+        ]),
+      }),
+    );
+
+    return {
+      status: 'confirmation_required',
+    };
   }
 
-  async confirmCustomerEmail(_: {
+  async confirmCustomerEmail(input: {
     tenantId: string;
     email: string;
     code: string;
   }): Promise<CustomerConfirmationResult> {
-    throw new NotImplementedException('Cognito email confirmation is not wired yet');
+    const tenantConfig = await this.requireTenantConfig(input.tenantId);
+    await this.cognitoAdminService.getClient().send(
+      new ConfirmSignUpCommand({
+        ClientId: tenantConfig.customerClientId,
+        Username: input.email,
+        ConfirmationCode: input.code,
+      }),
+    );
+
+    const user = await this.cognitoAdminService.getClient().send(
+      new AdminGetUserCommand({
+        UserPoolId: tenantConfig.userPoolId,
+        Username: input.email,
+      }),
+    );
+
+    return {
+      cognitoSub: this.attribute(user.UserAttributes, 'sub') ?? input.email,
+      userPoolId: tenantConfig.userPoolId,
+      email: this.attribute(user.UserAttributes, 'email') ?? input.email,
+      fullName: this.attribute(user.UserAttributes, 'name') ?? undefined,
+    };
   }
 
-  async loginCustomer(_: {
+  async loginCustomer(input: {
     tenantId: string;
     email: string;
     password: string;
   }): Promise<CompletedAuthChallenge> {
-    throw new NotImplementedException('Cognito customer login is not wired yet');
+    const tenantConfig = await this.requireTenantConfig(input.tenantId);
+    const response = await this.cognitoAdminService.getClient().send(
+      new InitiateAuthCommand({
+        AuthFlow: 'USER_PASSWORD_AUTH',
+        ClientId: tenantConfig.customerClientId,
+        AuthParameters: {
+          USERNAME: input.email,
+          PASSWORD: input.password,
+        },
+      }),
+    );
+
+    return this.buildCompletedChallenge({
+      authenticationResult: response.AuthenticationResult,
+      actorType: 'customer',
+      tenantId: input.tenantId,
+    });
   }
 
-  async refreshSession(_: {
+  async refreshSession(input: {
     sessionId: string;
     refreshToken: string;
+    userPoolId: string;
+    appClientId: string;
+    actorType: 'platform_admin' | 'tenant_admin' | 'customer';
   }): Promise<{ accessToken: string; refreshToken?: string }> {
-    throw new NotImplementedException('Cognito session refresh is not wired yet');
+    const response = await this.cognitoAdminService.getClient().send(
+      new InitiateAuthCommand({
+        AuthFlow: 'REFRESH_TOKEN_AUTH',
+        ClientId: input.appClientId,
+        AuthParameters: {
+          REFRESH_TOKEN: input.refreshToken,
+        },
+      }),
+    );
+
+    const authResult = response.AuthenticationResult;
+    if (!authResult?.AccessToken) {
+      throw new UnauthorizedException('Cognito refresh did not return an access token');
+    }
+
+    return {
+      accessToken: authResult.AccessToken,
+      refreshToken: authResult.RefreshToken,
+    };
   }
 
-  async requestPasswordReset(_: {
+  async requestPasswordReset(input: {
     tenantId: string;
     email: string;
   }): Promise<PasswordResetRequestResult> {
-    throw new NotImplementedException('Cognito password reset request is not wired yet');
+    const tenantConfig = await this.requireTenantConfig(input.tenantId);
+    await this.cognitoAdminService.getClient().send(
+      new ForgotPasswordCommand({
+        ClientId: tenantConfig.customerClientId,
+        Username: input.email,
+      }),
+    );
+
+    return {
+      status: 'reset_requested',
+    };
   }
 
-  async resetPassword(_: {
+  async resetPassword(input: {
     tenantId: string;
     email: string;
     code: string;
     newPassword: string;
   }): Promise<{ status: 'password_reset' }> {
-    throw new NotImplementedException('Cognito password reset completion is not wired yet');
+    const tenantConfig = await this.requireTenantConfig(input.tenantId);
+    await this.cognitoAdminService.getClient().send(
+      new ConfirmForgotPasswordCommand({
+        ClientId: tenantConfig.customerClientId,
+        Username: input.email,
+        ConfirmationCode: input.code,
+        Password: input.newPassword,
+      }),
+    );
+
+    return { status: 'password_reset' };
   }
 
-  async requestEmailOtp(_: { tenantId: string; email: string }): Promise<OtpRequestResult> {
-    throw new NotImplementedException('Cognito email OTP request is not wired yet');
+  async requestEmailOtp(input: { tenantId: string; email: string }): Promise<OtpRequestResult> {
+    const tenantConfig = await this.requireTenantConfig(input.tenantId);
+    const response = await this.cognitoAdminService.getClient().send(
+      new InitiateAuthCommand({
+        AuthFlow: 'CUSTOM_AUTH',
+        ClientId: tenantConfig.customerClientId,
+        AuthParameters: {
+          USERNAME: input.email,
+        },
+      }),
+    );
+
+    if (!response.Session) {
+      throw new UnauthorizedException('Cognito OTP flow did not issue a challenge session');
+    }
+
+    await this.cacheService.client.set(
+      this.otpSessionKey(input.tenantId, input.email),
+      JSON.stringify({
+        session: response.Session,
+        appClientId: tenantConfig.customerClientId,
+      }),
+      'EX',
+      this.authConfig.authChallengeSessionTtlSeconds,
+    );
+
+    return {
+      status: 'otp_sent',
+    };
   }
 
-  async completeEmailOtp(_: {
+  async completeEmailOtp(input: {
     tenantId: string;
     email: string;
     code: string;
@@ -85,6 +291,137 @@ export class CognitoAuthGateway {
     ipAddress?: string;
     userAgent?: string;
   }): Promise<CompletedAuthChallenge> {
-    throw new NotImplementedException('Cognito email OTP completion is not wired yet');
+    const tenantConfig = await this.requireTenantConfig(input.tenantId);
+    const rawSession = await this.cacheService.client.get(this.otpSessionKey(input.tenantId, input.email));
+    if (!rawSession) {
+      throw new UnauthorizedException('OTP challenge session expired');
+    }
+
+    const otpSession = JSON.parse(rawSession) as { session: string; appClientId: string };
+    const response = await this.cognitoAdminService.getClient().send(
+      new RespondToAuthChallengeCommand({
+        ChallengeName: 'CUSTOM_CHALLENGE',
+        ClientId: otpSession.appClientId,
+        Session: otpSession.session,
+        ChallengeResponses: {
+          USERNAME: input.email,
+          ANSWER: input.code,
+        },
+      }),
+    );
+
+    await this.cacheService.client.del(this.otpSessionKey(input.tenantId, input.email));
+
+    return this.buildCompletedChallenge({
+      authenticationResult: response.AuthenticationResult,
+      actorType: 'customer',
+      tenantId: input.tenantId,
+      userPoolIdOverride: tenantConfig.userPoolId,
+      appClientIdOverride: tenantConfig.customerClientId,
+    });
+  }
+
+  private async requireTenantConfig(tenantId: string) {
+    const tenantConfig = await this.tenantCognitoConfigRepository.findByTenantId(tenantId);
+    if (!tenantConfig) {
+      throw new UnauthorizedException(`No Cognito tenant configuration found for tenant ${tenantId}`);
+    }
+
+    return tenantConfig;
+  }
+
+  private buildCompletedChallenge(input: {
+    authenticationResult: AuthenticationResultType | undefined;
+    actorType: 'platform_admin' | 'tenant_admin' | 'customer';
+    tenantId?: string;
+    userPoolIdOverride?: string;
+    appClientIdOverride?: string;
+  }): CompletedAuthChallenge {
+    const authResult = input.authenticationResult;
+    if (!authResult?.AccessToken) {
+      throw new UnauthorizedException('Cognito authentication did not return an access token');
+    }
+
+    const accessClaims = this.decodeJwt(authResult.AccessToken);
+    const idClaims = authResult.IdToken ? this.decodeJwt(authResult.IdToken) : {};
+
+    return {
+      actorType: input.actorType,
+      cognitoSub: String(idClaims.sub ?? accessClaims.sub ?? ''),
+      userPoolId:
+        input.userPoolIdOverride ??
+        this.extractUserPoolId(String(accessClaims.iss ?? idClaims.iss ?? '')),
+      appClientId: input.appClientIdOverride ?? String(accessClaims.client_id ?? ''),
+      groups: this.asArray(accessClaims['cognito:groups'] ?? idClaims['cognito:groups']),
+      email: String(idClaims.email ?? ''),
+      tenantId: input.tenantId,
+      accessToken: authResult.AccessToken,
+      refreshToken: authResult.RefreshToken,
+      originJti: String(accessClaims.origin_jti ?? idClaims.origin_jti ?? this.fallbackOriginJti(authResult.AccessToken)),
+    };
+  }
+
+  private userAttributes(attributes: Array<[string, string | undefined]>) {
+    return attributes
+      .filter(([, value]) => typeof value === 'string' && value.length > 0)
+      .map(([Name, Value]) => ({ Name, Value })) satisfies AttributeType[];
+  }
+
+  private attribute(attributes: AttributeType[] | undefined, name: string) {
+    return attributes?.find((attribute) => attribute.Name === name)?.Value;
+  }
+
+  private decodeJwt(token: string) {
+    const [, payload = ''] = token.split('.');
+    return JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as Record<string, unknown>;
+  }
+
+  private asArray(value: unknown) {
+    if (Array.isArray(value)) {
+      return value.map(String);
+    }
+
+    if (typeof value === 'string' && value.length > 0) {
+      return [value];
+    }
+
+    return [];
+  }
+
+  private extractUserPoolId(issuer: string) {
+    return issuer.split('/').at(-1) ?? issuer;
+  }
+
+  private fallbackOriginJti(accessToken: string) {
+    return createHash('sha256').update(accessToken).digest('hex');
+  }
+
+  private encodeChallenge(challenge: AdminChallengePayload) {
+    const payload = Buffer.from(JSON.stringify(challenge)).toString('base64url');
+    const signature = createHmac('sha256', this.env.SESSION_SIGNING_SECRET)
+      .update(payload)
+      .digest('base64url');
+    return `${payload}.${signature}`;
+  }
+
+  private decodeChallenge(raw: string): AdminChallengePayload {
+    const [payload, signature] = raw.split('.');
+    if (!payload || !signature) {
+      throw new UnauthorizedException('Invalid admin challenge token');
+    }
+
+    const expected = createHmac('sha256', this.env.SESSION_SIGNING_SECRET)
+      .update(payload)
+      .digest('base64url');
+    if (expected !== signature) {
+      throw new UnauthorizedException('Invalid admin challenge signature');
+    }
+
+    return JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as AdminChallengePayload;
+  }
+
+  private otpSessionKey(tenantId: string, email: string) {
+    const fingerprint = createHash('sha256').update(`${tenantId}:${email.toLowerCase()}`).digest('hex');
+    return `auth:otp-session:${fingerprint}`;
   }
 }

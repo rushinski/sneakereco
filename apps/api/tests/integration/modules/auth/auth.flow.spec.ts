@@ -1,5 +1,6 @@
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
+import { createHmac } from 'node:crypto';
 
 import { AuthModule } from '../../../../src/modules/auth/auth.module';
 import { AdminUsersRepository } from '../../../../src/modules/auth/shared/admin-users.repository';
@@ -40,6 +41,7 @@ describe('Auth flows', () => {
       PLATFORM_FROM_EMAIL: 'noreply@sneakereco.com',
       PLATFORM_FROM_NAME: 'SneakerEco',
       PLATFORM_ADMIN_EMAIL: 'admin@sneakereco.com',
+      OPS_API_TOKEN: 'ops-token-test-1234',
     });
   });
 
@@ -89,6 +91,18 @@ describe('Auth flows', () => {
       cognitoGateway,
       adminUsersRepository: app.get(AdminUsersRepository),
       customerUsersRepository: app.get(CustomerUsersRepository),
+    };
+  }
+
+  function principalHeaders(principal: Record<string, string | string[]>) {
+    const payload = Buffer.from(JSON.stringify(principal)).toString('base64url');
+    const signature = createHmac('sha256', String(process.env.SESSION_SIGNING_SECRET))
+      .update(payload)
+      .digest('base64url');
+
+    return {
+      'x-auth-principal': payload,
+      'x-auth-principal-signature': signature,
     };
   }
 
@@ -189,46 +203,78 @@ describe('Auth flows', () => {
       },
     });
     const principal = challengeResponse.json().principal;
-    const headerPrincipal = Buffer.from(
-      JSON.stringify({
-        sub: principal.cognitoSub,
-        iss: principal.userPoolId,
-        client_id: principal.appClientId,
-        'custom:admin_type': principal.adminType,
-        'custom:tenant_id': principal.tenantId,
-        'custom:session_id': principal.sessionId,
-        'custom:session_version': principal.sessionVersion,
-        'cognito:groups': principal.groups,
-        iat: principal.issuedAt,
-      }),
-    ).toString('base64url');
+    const headerPrincipal = {
+      sub: principal.cognitoSub,
+      iss: principal.userPoolId,
+      client_id: principal.appClientId,
+      'custom:admin_type': principal.adminType,
+      'custom:tenant_id': principal.tenantId,
+      'custom:session_id': principal.sessionId,
+      'custom:session_version': principal.sessionVersion,
+      'cognito:groups': principal.groups,
+      iat: principal.issuedAt,
+    };
 
     const meBeforeLogout = await app.inject({
       method: 'GET',
       url: '/auth/session-control/me',
-      headers: {
-        'x-auth-principal': headerPrincipal,
-      },
+      headers: principalHeaders(headerPrincipal),
     });
     expect(meBeforeLogout.statusCode).toBe(200);
 
     const logoutAll = await app.inject({
       method: 'POST',
       url: '/auth/session-control/logout-all',
-      headers: {
-        'x-auth-principal': headerPrincipal,
-      },
+      headers: principalHeaders(headerPrincipal),
     });
     expect(logoutAll.statusCode).toBe(201);
 
     const meAfterLogout = await app.inject({
       method: 'GET',
       url: '/auth/session-control/me',
-      headers: {
-        'x-auth-principal': headerPrincipal,
-      },
+      headers: principalHeaders(headerPrincipal),
     });
     expect(meAfterLogout.statusCode).toBe(401);
+    await app.close();
+  });
+
+  it('rejects a forged actor type even when session id and version are valid', async () => {
+    const { app, adminUsersRepository } = await createApp();
+    await adminUsersRepository.create({
+      email: 'owner@heatkings.com',
+      fullName: 'Heat Kings Owner',
+      cognitoSub: 'admin-sub',
+      adminType: 'tenant_scoped_admin',
+      status: 'pending_setup',
+    });
+
+    const challengeResponse = await app.inject({
+      method: 'POST',
+      url: '/auth/mfa/challenge',
+      payload: {
+        challengeSessionToken: 'challenge-session-token',
+        code: '123456',
+        deviceId: 'device-1',
+      },
+    });
+    const principal = challengeResponse.json().principal;
+
+    const forgedMe = await app.inject({
+      method: 'GET',
+      url: '/auth/session-control/me',
+      headers: principalHeaders({
+        sub: principal.cognitoSub,
+        iss: principal.userPoolId,
+        client_id: principal.appClientId,
+        'custom:admin_type': 'platform_admin',
+        'custom:session_id': principal.sessionId,
+        'custom:session_version': principal.sessionVersion,
+        'cognito:groups': ['platform_admin'],
+        iat: principal.issuedAt,
+      }),
+    });
+
+    expect(forgedMe.statusCode).toBe(401);
     await app.close();
   });
 });

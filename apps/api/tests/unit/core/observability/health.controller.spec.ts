@@ -34,9 +34,16 @@ describe('HealthController', () => {
           gauges: {},
         }),
       } as never,
+      {
+        hasValidOpsToken: jest.fn().mockReturnValue(true),
+      } as never,
     );
 
-    await expect(controller.getHealth()).resolves.toEqual({
+    expect(controller.getHealth()).toEqual({
+      status: 'ok',
+    });
+
+    await expect(controller.getReadiness('ops-token-test-1234')).resolves.toEqual({
       status: 'ok',
       checks: {
         database: 'ok',

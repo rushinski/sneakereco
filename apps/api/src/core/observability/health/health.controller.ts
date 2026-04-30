@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Headers, UnauthorizedException } from '@nestjs/common';
 
 import { CacheService } from '../../cache/cache.service';
 import { DatabaseService } from '../../database/database.service';
@@ -7,6 +7,7 @@ import { OutboxRepository } from '../../events/outbox.repository';
 import { MetricsService } from '../metrics/metrics.service';
 import { QueueService } from '../../queue/queue.service';
 import { WorkerHeartbeatService } from './worker-heartbeat.service';
+import { SecurityService } from '../../security/security.service';
 
 @Controller('health')
 export class HealthController {
@@ -18,10 +19,22 @@ export class HealthController {
       private readonly outboxRepository: OutboxRepository,
       private readonly sentEmailRepository: SentEmailRepository,
       private readonly metricsService: MetricsService,
+      private readonly securityService: SecurityService,
     ) {}
 
   @Get()
-  async getHealth() {
+  getHealth() {
+    return {
+      status: 'ok',
+    };
+  }
+
+  @Get('ready')
+  async getReadiness(@Headers('x-ops-token') opsToken?: string) {
+    if (!this.securityService.hasValidOpsToken(opsToken)) {
+      throw new UnauthorizedException('Missing or invalid ops token');
+    }
+
     await this.databaseService.appPool.query('select 1');
     const cacheStatus = await this.cacheService.ping();
     const queueStatus = await this.queueService.ping();
@@ -48,10 +61,5 @@ export class HealthController {
       },
       metrics: this.metricsService.snapshot(),
     };
-
-    @Get('ready')
-    async getReadiness() {
-      return this.getHealth();
-    }
   }
 }

@@ -72,4 +72,8 @@ export class SecurityService {
       },
     };
   }
+  
+  hasValidOpsToken(value: string | undefined) {
+    return value === this.env.OPS_API_TOKEN;
+  }
 }

@@ -1,19 +1,19 @@
-import { Global, Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { Global, Module, forwardRef } from '@nestjs/common';
 
+import { CacheModule } from '../cache/cache.module';
+import { ConfigModule } from '../config/config.module';
+import { ObservabilityModule } from '../observability/observability.module';
 import { AuthRateLimitGuard } from './auth-rate-limit.guard';
 import { SecurityService } from './security.service';
 
 @Global()
 @Module({
+  imports: [ConfigModule, CacheModule, forwardRef(() => ObservabilityModule)],
   providers: [
     SecurityService,
     AuthRateLimitGuard,
-    {
-      provide: APP_GUARD,
-      useExisting: AuthRateLimitGuard,
-    },
+    
   ],
-  exports: [SecurityService],
+  exports: [SecurityService, AuthRateLimitGuard],
 })
 export class SecurityModule {}

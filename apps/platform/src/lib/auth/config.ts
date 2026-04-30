@@ -5,7 +5,12 @@ export const apiBaseUrl =
   process.env.API_BASE_URL ??
   'https://api.sneakereco.test';
 
-export const sessionSigningSecret =
-  process.env.SESSION_SIGNING_SECRET ?? 'development-session-signing-secret-0000';
+const signingSecret = process.env.SESSION_SIGNING_SECRET;
+
+if (!signingSecret) {
+  throw new Error('SESSION_SIGNING_SECRET is required for platform BFF auth cookies');
+}
+
+export const sessionSigningSecret = signingSecret;
 
 export const adminRefreshTtlSeconds = Number(process.env.ADMIN_REFRESH_TOKEN_TTL_SECONDS ?? 86_400);

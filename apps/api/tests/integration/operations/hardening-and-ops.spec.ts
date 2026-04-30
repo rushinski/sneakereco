@@ -1,5 +1,6 @@
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
+import { createHmac } from 'node:crypto';
 
 import { CacheService } from '../../../src/core/cache/cache.service';
 import { DatabaseService } from '../../../src/core/database/database.service';
@@ -47,6 +48,7 @@ describe('Hardening and operations', () => {
       PLATFORM_FROM_NAME: 'SneakerEco',
       PLATFORM_ADMIN_EMAIL: 'admin@sneakereco.com',
       SWAGGER_ENABLED: 'false',
+      OPS_API_TOKEN: 'ops-token-test-1234',
     });
   });
 
@@ -86,8 +88,16 @@ describe('Hardening and operations', () => {
     };
   }
 
-  function principalHeader(principal: Record<string, string | string[]>) {
-    return Buffer.from(JSON.stringify(principal)).toString('base64url');
+  function principalHeaders(principal: Record<string, string | string[]>) {
+    const payload = Buffer.from(JSON.stringify(principal)).toString('base64url');
+    const signature = createHmac('sha256', String(process.env.SESSION_SIGNING_SECRET))
+      .update(payload)
+      .digest('base64url');
+
+    return {
+      'x-auth-principal': payload,
+      'x-auth-principal-signature': signature,
+    };
   }
 
   it('enforces auth route rate limits on repeated admin login attempts', async () => {
@@ -158,7 +168,7 @@ describe('Hardening and operations', () => {
     });
     await outboxRepository.markFailed('evt_failed_delivery', 'smtp_offline');
 
-    const authHeader = principalHeader({
+    const authHeader = principalHeaders({
       sub: 'platform-admin-sub',
       iss: 'pool-1',
       client_id: 'platform-client',
@@ -171,9 +181,7 @@ describe('Hardening and operations', () => {
     const auditEvents = await app.inject({
       method: 'GET',
       url: '/audit/events?eventName=auth.admin.login.failed',
-      headers: {
-        'x-auth-principal': authHeader,
-      },
+      headers: authHeader,
     });
     expect(auditEvents.statusCode).toBe(200);
     expect(auditEvents.json()[0]).toMatchObject({
@@ -183,9 +191,7 @@ describe('Hardening and operations', () => {
     const deadLetters = await app.inject({
       method: 'GET',
       url: '/audit/dead-letters',
-      headers: {
-        'x-auth-principal': authHeader,
-      },
+      headers: authHeader,
     });
     expect(deadLetters.statusCode).toBe(200);
     expect(deadLetters.json()[0]).toMatchObject({
@@ -196,9 +202,7 @@ describe('Hardening and operations', () => {
     const replay = await app.inject({
       method: 'POST',
       url: '/audit/dead-letters/evt_failed_delivery/replay',
-      headers: {
-        'x-auth-principal': authHeader,
-      },
+      headers: authHeader,
     });
     expect(replay.statusCode).toBe(201);
     expect(replay.json()).toMatchObject({
@@ -211,7 +215,23 @@ describe('Hardening and operations', () => {
       url: '/health',
     });
     expect(health.statusCode).toBe(200);
-    expect(health.json()).toMatchObject({
+    expect(health.json()).toEqual({ status: 'ok' });
+
+    const readinessUnauthorized = await app.inject({
+      method: 'GET',
+      url: '/health/ready',
+    });
+    expect(readinessUnauthorized.statusCode).toBe(401);
+
+    const readiness = await app.inject({
+      method: 'GET',
+      url: '/health/ready',
+      headers: {
+        'x-ops-token': 'ops-token-test-1234',
+      },
+    });
+    expect(readiness.statusCode).toBe(200);
+    expect(readiness.json()).toMatchObject({
       status: 'ok',
       backlogs: {
         outboxPending: 1,
@@ -222,8 +242,17 @@ describe('Hardening and operations', () => {
       method: 'GET',
       url: '/metrics',
     });
-    expect(metrics.statusCode).toBe(200);
-    expect(metrics.json()).toMatchObject({
+    expect(metrics.statusCode).toBe(401);
+
+    const metricsAuthorized = await app.inject({
+      method: 'GET',
+      url: '/metrics',
+      headers: {
+        'x-ops-token': 'ops-token-test-1234',
+      },
+    });
+    expect(metricsAuthorized.statusCode).toBe(200);
+    expect(metricsAuthorized.json()).toMatchObject({
       counters: {
         'auth.failures': expect.any(Number),
         'auth.suspicious_signals': expect.any(Number),

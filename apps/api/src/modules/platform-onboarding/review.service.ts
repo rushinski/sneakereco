@@ -63,6 +63,21 @@ export class ReviewService {
       reviewedByAdminUserId: input.reviewedByAdminUserId,
     });
 
+    await this.outboxDispatcherService.enqueue({
+      id: `evt_${applicationId}_denied_email`,
+      name: 'tenant.application.denied_email.requested',
+      aggregateType: 'tenant_application',
+      aggregateId: applicationId,
+      occurredAt: new Date().toISOString(),
+      payload: {
+        applicationId,
+        requestedByName: application.requestedByName,
+        requestedByEmail: application.requestedByEmail,
+        businessName: application.businessName,
+        denialReason: input.denialReason,
+      },
+    });
+
     return updated;
   }
 }

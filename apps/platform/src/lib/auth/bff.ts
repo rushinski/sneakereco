@@ -3,7 +3,8 @@ import { NextResponse } from 'next/server';
 
 import { apiBaseUrl } from './config';
 import { clearSessionCookie, readSessionCookie, writeSessionCookie } from './cookies';
-import type { AuthPrincipal, BffAuthResponse, BffSession } from './types';
+import { principalHeaders } from './principal-codec';
+import type { BffAuthResponse, BffSession } from './types';
 
 async function parseJson(response: Response) {
   const text = await response.text();
@@ -41,23 +42,6 @@ export async function proxyJson<TResponse>(
     status: response.status,
     payload: (await parseJson(response)) as TResponse | Record<string, unknown> | null,
   };
-}
-
-export function principalHeader(principal: AuthPrincipal) {
-  const claims: Record<string, string | string[]> = {
-    sub: principal.cognitoSub,
-    iss: principal.userPoolId,
-    client_id: principal.appClientId,
-    'cognito:groups': principal.groups,
-    'custom:session_id': principal.sessionId,
-    'custom:session_version': principal.sessionVersion,
-  };
-
-  if (principal.adminType) {
-    claims['custom:admin_type'] = principal.adminType;
-  }
-
-  return Buffer.from(JSON.stringify(claims)).toString('base64url');
 }
 
 export async function handleAuthCompletion(request: NextRequest, body: Record<string, unknown>) {
@@ -133,13 +117,11 @@ export async function handleSessionAction(request: NextRequest, path: 'auth/sess
 
   const result = await proxyJson<Record<string, unknown>>(path, {
     method: path.endsWith('/me') ? 'GET' : 'POST',
-    headers: {
-      'x-auth-principal': principalHeader(session.principal),
-    },
+    headers: principalHeaders(session.principal),
   });
 
   const response = NextResponse.json(result.payload ?? {}, { status: result.status });
-  if (path !== 'auth/session-control/me') {
+  if (path !== 'auth/session-control/me' || result.status === 401) {
     clearSessionCookie(response);
   }
   return response;

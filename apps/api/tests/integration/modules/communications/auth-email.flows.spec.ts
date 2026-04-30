@@ -1,5 +1,6 @@
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
+import { createHmac } from 'node:crypto';
 
 import { EventsModule } from '../../../../src/core/events/events.module';
 import { OutboxDispatcherService } from '../../../../src/core/events/outbox-dispatcher.service';
@@ -55,6 +56,7 @@ describe('Auth email flows', () => {
       PLATFORM_FROM_EMAIL: 'noreply@sneakereco.com',
       PLATFORM_FROM_NAME: 'SneakerEco',
       PLATFORM_ADMIN_EMAIL: 'admin@sneakereco.com',
+      OPS_API_TOKEN: 'ops-token-test-1234',
     });
   });
 
@@ -90,8 +92,16 @@ describe('Auth email flows', () => {
     };
   }
 
-  function principalHeader(principal: Record<string, string | string[]>) {
-    return Buffer.from(JSON.stringify(principal)).toString('base64url');
+  function principalHeaders(principal: Record<string, string | string[]>) {
+    const payload = Buffer.from(JSON.stringify(principal)).toString('base64url');
+    const signature = createHmac('sha256', String(process.env.SESSION_SIGNING_SECRET))
+      .update(payload)
+      .digest('base64url');
+
+    return {
+      'x-auth-principal': payload,
+      'x-auth-principal-signature': signature,
+    };
   }
 
   it('previews the published auth email family with verification fixture data', async () => {
@@ -211,18 +221,16 @@ describe('Auth email flows', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/communications/auth-emails/test-send',
-      headers: {
-        'x-auth-principal': principalHeader({
-          sub: 'tenant-admin-sub',
-          iss: 'pool-1',
-          client_id: 'tenant-client',
-          'cognito:groups': ['tenant_admin'],
-          'custom:admin_type': 'tenant_admin',
-          'custom:tenant_id': tenant.id,
-          'custom:session_id': session.id,
-          'custom:session_version': '1',
-        }),
-      },
+      headers: principalHeaders({
+        sub: 'tenant-admin-sub',
+        iss: 'pool-1',
+        client_id: 'tenant-client',
+        'cognito:groups': ['tenant_admin'],
+        'custom:admin_type': 'tenant_admin',
+        'custom:tenant_id': tenant.id,
+        'custom:session_id': session.id,
+        'custom:session_version': '1',
+      }),
       payload: {
         tenantId: tenant.id,
         toEmail: 'preview@heatkings.com',
@@ -252,7 +260,7 @@ describe('Auth email flows', () => {
     await app.close();
   });
 
-  it('drains tenant setup invitation email events through the email worker', async () => {
+  it('drains tenant setup invitation email events through the email worker using the tenant fallback admin URL', async () => {
     const {
       app,
       tenantRepository,
@@ -265,19 +273,19 @@ describe('Auth email flows', () => {
     } = await createApp();
 
     const tenant = await tenantRepository.create({
-      name: 'Heat Kings',
-      slug: 'heat-kings',
-      email: 'owner@heatkings.com',
+      name: 'Rare Soles',
+      slug: 'rare-soles',
+      email: 'owner@raresoles.com',
       status: 'setup_pending',
     });
     await tenantBusinessProfileRepository.create({
       tenantId: tenant.id,
-      businessName: 'Heat Kings',
-      contactEmail: 'support@heatkings.com',
+      businessName: 'Rare Soles',
+      contactEmail: 'support@raresoles.com',
     });
     await tenantDomainConfigRepository.create({
       tenantId: tenant.id,
-      subdomain: 'heat-kings.sneakereco.com',
+      subdomain: 'rare-soles.sneakereco.com',
       storefrontReadinessState: 'not_configured',
       adminReadinessState: 'not_configured',
     });
@@ -290,7 +298,7 @@ describe('Auth email flows', () => {
       occurredAt: new Date().toISOString(),
       payload: {
         tenantId: tenant.id,
-        email: 'owner@heatkings.com',
+        email: 'owner@raresoles.com',
         invitationToken: 'setup_token',
       },
     });
@@ -300,12 +308,15 @@ describe('Auth email flows', () => {
 
     const latest = await sentEmailRepository.latest();
     expect(latest).toMatchObject({
-      toEmail: 'owner@heatkings.com',
-      subject: 'Finish setting up your Heat Kings admin account',
+      toEmail: 'owner@raresoles.com',
+      subject: 'Finish setting up your Rare Soles admin account',
       sender: {
-        fromEmail: 'auth@heat-kings.sneakereco.com',
+        fromEmail: 'auth@rare-soles.sneakereco.com',
       },
     });
+    expect(latest?.html).toContain(
+      'https://rare-soles.sneakereco.com/admin/setup?token=setup_token',
+    );
 
     const pending = await outboxRepository.listPending();
     expect(pending.find((event) => event.id === 'evt_setup_email')).toBeUndefined();

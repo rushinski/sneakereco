@@ -14,7 +14,7 @@ import { TenantApplicationsRepository } from './tenant-applications.repository';
 import { TenantSetupInvitationsRepository } from './tenant-setup-invitations.repository';
 
 @Module({
-  imports: [AuthModule, forwardRef(() => TenantsModule), EventsModule, ObservabilityModule],
+  imports: [forwardRef(() => AuthModule), forwardRef(() => TenantsModule), EventsModule, ObservabilityModule],
   controllers: [ApplicationSubmissionController, ReviewController, SetupSessionController],
   providers: [
     ApplicationSubmissionService,

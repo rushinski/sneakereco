@@ -3,8 +3,9 @@ import { NextResponse } from 'next/server';
 
 import { apiBaseUrl } from './config';
 import { clearSessionCookie, readSessionCookie, writeSessionCookie } from './cookies';
+import { principalHeaders } from './principal-codec';
 import { resolveTenantContext } from './tenant';
-import type { ApiErrorPayload, AuthPrincipal, BffAuthResponse, BffSession } from './types';
+import type { ApiErrorPayload, BffAuthResponse, BffSession } from './types';
 
 async function parseJson(response: Response) {
   const text = await response.text();
@@ -39,27 +40,6 @@ export async function proxyJson<TResponse>(
 
   const payload = (await parseJson(response)) as TResponse | ApiErrorPayload | null;
   return { ok: response.ok, status: response.status, payload };
-}
-
-export function principalHeader(principal: AuthPrincipal) {
-  const claims: Record<string, string | string[]> = {
-    sub: principal.cognitoSub,
-    iss: principal.userPoolId,
-    client_id: principal.appClientId,
-    'cognito:groups': principal.groups,
-    'custom:session_id': principal.sessionId,
-    'custom:session_version': principal.sessionVersion,
-  };
-
-  if (principal.adminType) {
-    claims['custom:admin_type'] = principal.adminType;
-  }
-
-  if (principal.tenantId) {
-    claims['custom:tenant_id'] = principal.tenantId;
-  }
-
-  return Buffer.from(JSON.stringify(claims)).toString('base64url');
 }
 
 export function jsonError(status: number, payload?: ApiErrorPayload | unknown) {
@@ -155,13 +135,11 @@ export async function handleSessionAction(request: NextRequest, path: 'auth/sess
 
   const result = await proxyJson<Record<string, unknown>>(path, {
     method: path.endsWith('/me') ? 'GET' : 'POST',
-    headers: {
-      'x-auth-principal': principalHeader(session.principal),
-    },
+    headers: principalHeaders(session.principal),
   });
 
   const response = NextResponse.json(result.payload ?? {}, { status: result.status });
-  if (path !== 'auth/session-control/me') {
+  if (path !== 'auth/session-control/me' || result.status === 401) {
     clearSessionCookie(response);
   }
 

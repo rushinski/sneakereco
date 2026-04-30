@@ -8,6 +8,7 @@ import { AuthModule } from '../../../../src/modules/auth/auth.module';
 import { PlatformOnboardingModule } from '../../../../src/modules/platform-onboarding/platform-onboarding.module';
 import { TenantApplicationsRepository } from '../../../../src/modules/platform-onboarding/tenant-applications.repository';
 import { TenantSetupInvitationsRepository } from '../../../../src/modules/platform-onboarding/tenant-setup-invitations.repository';
+import { CommunicationsModule } from '../../../../src/modules/communications/communications.module';
 import { TenantsModule } from '../../../../src/modules/tenants/tenants.module';
 import { AdminTenantRelationshipsRepository } from '../../../../src/modules/tenants/admin-tenant-relationships.repository';
 import { TenantBusinessProfileRepository } from '../../../../src/modules/tenants/tenant-business-profile.repository';
@@ -15,7 +16,10 @@ import { TenantCognitoConfigRepository } from '../../../../src/modules/tenants/t
 import { TenantDomainConfigRepository } from '../../../../src/modules/tenants/tenant-domain-config.repository';
 import { TenantProvisioningGateway } from '../../../../src/modules/tenants/tenant-provisioning.gateway';
 import { TenantRepository } from '../../../../src/modules/tenants/tenant.repository';
+import { SentEmailRepository } from '../../../../src/core/email/sent-email.repository';
+import { EmailWorker } from '../../../../src/workers/email/email.worker';
 import { TenantProvisioningWorkerService } from '../../../../src/workers/tenant-provisioning/tenant-provisioning.worker.service';
+import { WebBuilderModule } from '../../../../src/modules/web-builder/web-builder.module';
 
 describe('Platform onboarding flows', () => {
   beforeAll(() => {
@@ -48,9 +52,12 @@ describe('Platform onboarding flows', () => {
       CSRF_SECRET: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
       SESSION_SIGNING_SECRET: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
       MAIL_TRANSPORT: 'smtp',
+      SMTP_HOST: 'localhost',
+      SMTP_PORT: '1025',
       PLATFORM_FROM_EMAIL: 'noreply@sneakereco.com',
       PLATFORM_FROM_NAME: 'SneakerEco',
       PLATFORM_ADMIN_EMAIL: 'admin@sneakereco.com',
+      OPS_API_TOKEN: 'ops-token-test-1234',
     });
   });
 
@@ -76,7 +83,15 @@ describe('Platform onboarding flows', () => {
     };
 
     const moduleRef = await Test.createTestingModule({
-      imports: [ObservabilityModule, EventsModule, AuthModule, TenantsModule, PlatformOnboardingModule],
+      imports: [
+        ObservabilityModule,
+        EventsModule,
+        AuthModule,
+        TenantsModule,
+        WebBuilderModule,
+        CommunicationsModule,
+        PlatformOnboardingModule,
+      ],
     })
       .overrideProvider(TenantProvisioningGateway)
       .useValue(gateway)
@@ -97,6 +112,8 @@ describe('Platform onboarding flows', () => {
       adminTenantRelationshipsRepository: app.get(AdminTenantRelationshipsRepository),
       setupInvitationsRepository: app.get(TenantSetupInvitationsRepository),
       outboxDispatcherService: app.get(OutboxDispatcherService),
+      sentEmailRepository: app.get(SentEmailRepository),
+      emailWorker: app.get(EmailWorker),
       worker: app.get(TenantProvisioningWorkerService),
     };
   }
@@ -175,7 +192,8 @@ describe('Platform onboarding flows', () => {
   });
 
   it('handles the deny path without queuing provisioning work', async () => {
-    const { app, applicationsRepository, outboxDispatcherService } = await createApp();
+    const { app, applicationsRepository, outboxDispatcherService, sentEmailRepository, emailWorker } =
+      await createApp();
 
     const submitResponse = await app.inject({
       method: 'POST',
@@ -186,6 +204,7 @@ describe('Platform onboarding flows', () => {
         businessName: 'Denied Shop',
       },
     });
+
     const application = submitResponse.json();
 
     const denyResponse = await app.inject({
@@ -203,7 +222,60 @@ describe('Platform onboarding flows', () => {
       status: 'denied',
       denialReason: 'Not a fit',
     });
+
+    await emailWorker.drain();
+
+    const sentEmails = await sentEmailRepository.list();
+    expect(sentEmails).toHaveLength(3);
+    expect(sentEmails[0]).toMatchObject({
+      toEmail: 'denied@example.com',
+      subject: 'We received your SneakerEco application',
+    });
+    expect(sentEmails[1]).toMatchObject({
+      toEmail: 'admin@sneakereco.com',
+      subject: 'New SneakerEco tenant application request',
+    });
+    expect(sentEmails[2]).toMatchObject({
+      toEmail: 'denied@example.com',
+      subject: 'Your SneakerEco application was not approved',
+    });
     expect((await outboxDispatcherService.listPending()).length).toBe(0);
+    await app.close();
+  });
+
+  it('queues submission notification emails for the requester and platform admin', async () => {
+    const { app, outboxDispatcherService, sentEmailRepository, emailWorker } = await createApp();
+
+    const submitResponse = await app.inject({
+      method: 'POST',
+      url: '/platform/onboarding/applications',
+      payload: {
+        requestedByName: 'Request Owner',
+        requestedByEmail: 'request@example.com',
+        businessName: 'Request Shop',
+        instagramHandle: '@requestshop',
+      },
+    });
+    expect(submitResponse.statusCode).toBe(201);
+
+    const pendingEvents = await outboxDispatcherService.listPending();
+    expect(
+      pendingEvents.filter((event) => event.name === 'tenant.application.submission_email.requested'),
+    ).toHaveLength(1);
+
+    await emailWorker.drain();
+
+    const sentEmails = await sentEmailRepository.list();
+    expect(sentEmails).toHaveLength(2);
+    expect(sentEmails[0]).toMatchObject({
+      toEmail: 'request@example.com',
+      subject: 'We received your SneakerEco application',
+    });
+    expect(sentEmails[1]).toMatchObject({
+      toEmail: 'admin@sneakereco.com',
+      subject: 'New SneakerEco tenant application request',
+    });
+
     await app.close();
   });
 

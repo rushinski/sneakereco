@@ -10,12 +10,25 @@ import { AuthEmailController } from './auth-email.controller';
 import { AuthEmailFixturesRepository } from './auth-email-fixtures.repository';
 import { AuthEmailService } from './auth-email.service';
 import { EmailAuditService } from './email-audit.service';
+import { PlatformOnboardingEmailService } from './platform-onboarding-email.service';
 import { EmailWorker } from '../../workers/email/email.worker';
 
 @Module({
   imports: [EmailModule, EventsModule, AuditModule, AuthModule, TenantsModule, WebBuilderModule],
   controllers: [AuthEmailController],
-  providers: [AuthEmailFixturesRepository, AuthEmailService, EmailAuditService, EmailWorker],
-  exports: [AuthEmailService, AuthEmailFixturesRepository, EmailAuditService, EmailWorker],
+  providers: [
+    AuthEmailFixturesRepository,
+    AuthEmailService,
+    EmailAuditService,
+    PlatformOnboardingEmailService,
+    EmailWorker,
+  ],
+  exports: [
+    AuthEmailService,
+    AuthEmailFixturesRepository,
+    EmailAuditService,
+    PlatformOnboardingEmailService,
+    EmailWorker,
+  ],
 })
 export class CommunicationsModule {}

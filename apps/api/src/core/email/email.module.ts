@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { CacheModule } from '../cache/cache.module';
 import { TenantsModule } from '../../modules/tenants/tenants.module';
 import { ObservabilityModule } from '../observability/observability.module';
 import { EmailRendererService } from './email-renderer.service';
@@ -9,7 +10,7 @@ import { SenderIdentityService } from './sender-identity.service';
 import { SentEmailRepository } from './sent-email.repository';
 
 @Module({
-  imports: [ObservabilityModule, TenantsModule],
+  imports: [CacheModule, ObservabilityModule, TenantsModule],
   providers: [
     EmailTemplateRegistryService,
     EmailRendererService,

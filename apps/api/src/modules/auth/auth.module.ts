@@ -1,7 +1,9 @@
 import { Module, forwardRef } from '@nestjs/common';
 
 import { AuditModule } from '../audit/audit.module';
+import { CognitoModule } from '../../core/cognito/cognito.module';
 import { ObservabilityModule } from '../../core/observability/observability.module';
+import { TenantsModule } from '../tenants/tenants.module';
 import { AdminLoginController } from './admin-login/admin-login.controller';
 import { AdminLoginService } from './admin-login/admin-login.service';
 import { ConfirmEmailController } from './confirm-email/confirm-email.controller';
@@ -33,7 +35,12 @@ import { SessionIssuerService } from './shared/session-issuer.service';
 import { SuspiciousAuthTelemetryService } from './shared/suspicious-auth-telemetry.service';
 
 @Module({
-  imports: [ObservabilityModule, forwardRef(() => AuditModule)],
+  imports: [
+    ObservabilityModule,
+    CognitoModule,
+    forwardRef(() => AuditModule),
+    forwardRef(() => TenantsModule),
+  ],
   controllers: [
     AdminLoginController,
     MfaChallengeController,

@@ -11,6 +11,7 @@ import { EmailDraftsRepository } from '../web-builder/email-drafts.repository';
 import { ReleaseSetsRepository } from '../web-builder/release-sets.repository';
 import { AuthEmailFixturesRepository } from './auth-email-fixtures.repository';
 import { EmailAuditService } from './email-audit.service';
+import { TenantDomainConfigRepository } from '../tenants/tenant-domain-config.repository';
 
 @Injectable()
 export class AuthEmailService {
@@ -20,6 +21,7 @@ export class AuthEmailService {
     private readonly releaseSetsRepository: ReleaseSetsRepository,
     private readonly emailDraftsRepository: EmailDraftsRepository,
     private readonly tenantBusinessProfileRepository: TenantBusinessProfileRepository,
+    private readonly tenantDomainConfigRepository: TenantDomainConfigRepository,
     private readonly senderIdentityService: SenderIdentityService,
     private readonly emailRendererService: EmailRendererService,
     private readonly mailTransportService: MailTransportService,
@@ -114,7 +116,7 @@ export class AuthEmailService {
       stateKey: 'setup_invitation',
       fixtureOverride: {
         ...preview,
-        ctaHref: `https://heatkings.sneakereco.com/admin/setup?token=${input.invitationToken}`,
+        ctaHref: await this.resolveTenantSetupUrl(input.tenantId, input.invitationToken),
       },
     });
 
@@ -203,5 +205,19 @@ export class AuthEmailService {
     }
 
     return first.key;
+  }
+
+  private async resolveTenantSetupUrl(tenantId: string, invitationToken: string) {
+    const domainConfig = await this.tenantDomainConfigRepository.findByTenantId(tenantId);
+
+    if (domainConfig?.adminDomain && domainConfig.adminReadinessState === 'ready') {
+      return `https://${domainConfig.adminDomain}/setup?token=${invitationToken}`;
+    }
+
+    if (domainConfig?.subdomain) {
+      return `https://${domainConfig.subdomain}/admin/setup?token=${invitationToken}`;
+    }
+
+    return `${process.env.PLATFORM_DASHBOARD_URL ?? 'https://dashboard.sneakereco.test'}/tenants/setup?token=${invitationToken}`;
   }
 }

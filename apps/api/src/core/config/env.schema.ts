@@ -6,6 +6,7 @@ export const envSchema = z.object({
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   REQUEST_ID_HEADER: z.string().default('x-request-id'),
   CORRELATION_ID_HEADER: z.string().default('x-correlation-id'),
+  OPS_API_TOKEN: z.string().min(16),
 
   BASE_DOMAIN: z.string().min(1),
   API_BASE_URL: z.string().url(),

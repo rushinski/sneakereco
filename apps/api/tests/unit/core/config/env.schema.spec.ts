@@ -30,6 +30,7 @@ describe('envSchema', () => {
       PLATFORM_FROM_EMAIL: 'noreply@sneakereco.com',
       PLATFORM_FROM_NAME: 'SneakerEco',
       PLATFORM_ADMIN_EMAIL: 'admin@sneakereco.com',
+      OPS_API_TOKEN: 'ops-token-test-value',
     });
 
     expect(result.success).toBe(false);
@@ -73,6 +74,7 @@ describe('envSchema', () => {
       PLATFORM_FROM_EMAIL: 'noreply@sneakereco.com',
       PLATFORM_FROM_NAME: 'SneakerEco',
       PLATFORM_ADMIN_EMAIL: 'admin@sneakereco.com',
+      OPS_API_TOKEN: 'ops-token-test-value',
     });
 
     expect(result.COGNITO_ADMIN_USER_POOL_ID).toBe('us-east-1_test');

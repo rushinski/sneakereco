@@ -23,7 +23,12 @@ export class RefreshService {
       throw new UnauthorizedException('Session is not active');
     }
 
-    const refreshed = await this.cognitoAuthGateway.refreshSession(input);
+    const refreshed = await this.cognitoAuthGateway.refreshSession({
+      ...input,
+      userPoolId: session.userPoolId,
+      appClientId: session.appClientId,
+      actorType: session.actorType,
+    });
     await this.authSessionRepository.touchRefresh(session.id);
     this.authAuditService.record('auth.refresh.completed', {
       sessionId: session.id,

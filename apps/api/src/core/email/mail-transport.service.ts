@@ -18,15 +18,6 @@ export class MailTransportService {
     const env = envSchema.parse(process.env);
     const transport = env.MAIL_TRANSPORT;
 
-    const persisted = await this.sentEmailRepository.create({
-      ...input,
-      transport,
-    });
-
-    if (env.NODE_ENV === 'test') {
-      return persisted;
-    }
-
     if (transport === 'smtp') {
       const transporter = createTransport({
         host: env.SMTP_HOST,
@@ -62,6 +53,11 @@ export class MailTransportService {
         }),
       );
     }
+
+    const persisted = await this.sentEmailRepository.recordDelivery({
+      ...input,
+      transport,
+    });
 
     this.logger.log('Auth email delivered', {
       eventName: 'auth.email.sent',

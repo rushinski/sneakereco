@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
+import { CacheService } from '../cache/cache.service';
 import { MetricsService } from '../observability/metrics/metrics.service';
 import { AUTH_RATE_LIMIT_PROFILE } from '../../modules/auth/shared/auth-rate-limit.decorator';
 import { SecurityService } from './security.service';
@@ -21,11 +22,12 @@ export class AuthRateLimitGuard implements CanActivate {
 
   constructor(
     private readonly reflector: Reflector,
+    private readonly cacheService: CacheService,
     private readonly securityService: SecurityService,
     private readonly metricsService: MetricsService,
   ) {}
 
-  canActivate(context: ExecutionContext) {
+  async canActivate(context: ExecutionContext) {
     const profile = this.reflector.getAllAndOverride<string>(AUTH_RATE_LIMIT_PROFILE, [
       context.getHandler(),
       context.getClass(),
@@ -47,23 +49,46 @@ export class AuthRateLimitGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<{ ip?: string; headers: Record<string, string | undefined> }>();
     const key = `${profile}:${request.ip ?? request.headers['x-forwarded-for'] ?? 'unknown'}`;
     const now = Date.now();
-    const current = this.records.get(key);
+    if (process.env.NODE_ENV === 'test') {
+      const current = this.records.get(key);
 
-    if (!current || current.resetAt <= now) {
-      this.records.set(key, {
-        count: 1,
-        resetAt: now + profileConfig.ttlSeconds * 1000,
-      });
+      if (!current || current.resetAt <= now) {
+        this.records.set(key, {
+          count: 1,
+          resetAt: now + profileConfig.ttlSeconds * 1000,
+        });
+        return true;
+      }
+
+      if (current.count >= profileConfig.limit) {
+        this.metricsService.increment('security.rate_limit.triggered');
+        throw new HttpException(`Rate limit exceeded for profile ${profile}`, 429);
+      }
+
+      current.count += 1;
+      this.records.set(key, current);
       return true;
     }
 
-    if (current.count >= profileConfig.limit) {
+    const redisKey = `rate-limit:${key}`;
+    const multi = this.cacheService.client.multi();
+    multi.incr(redisKey);
+    multi.ttl(redisKey);
+    const result = await multi.exec();
+    const countTuple = result?.[0];
+    const ttlTuple = result?.[1];
+    const count = Number(countTuple?.[1] ?? 0);
+    const ttl = Number(ttlTuple?.[1] ?? -1);
+
+    if (ttl < 0) {
+      await this.cacheService.client.expire(redisKey, profileConfig.ttlSeconds);
+    }
+
+    if (count > profileConfig.limit) {
       this.metricsService.increment('security.rate_limit.triggered');
       throw new HttpException(`Rate limit exceeded for profile ${profile}`, 429);
     }
 
-    current.count += 1;
-    this.records.set(key, current);
     return true;
   }
 }
