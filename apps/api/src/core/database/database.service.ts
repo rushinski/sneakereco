@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 
@@ -6,7 +6,7 @@ import type { Env } from '../config';
 import { ENVIRONMENT } from '../config/config.module';
 
 @Injectable()
-export class DatabaseService {
+export class DatabaseService implements OnModuleDestroy {
   readonly systemPool: Pool;
   readonly appPool: Pool;
   readonly db: ReturnType<typeof drizzle>;
@@ -23,5 +23,9 @@ export class DatabaseService {
       max: env.DATABASE_POOL_MAX,
     });
     this.db = drizzle(this.appPool);
+  }
+
+  async onModuleDestroy() {
+    await Promise.all([this.appPool.end(), this.systemPool.end()]);
   }
 }

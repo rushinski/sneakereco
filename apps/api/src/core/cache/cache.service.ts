@@ -1,11 +1,11 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
 import Redis from 'ioredis';
 
 import type { Env } from '../config';
 import { ENVIRONMENT } from '../config/config.module';
 
 @Injectable()
-export class CacheService {
+export class CacheService implements OnModuleDestroy {
   readonly client: Redis;
 
   constructor(@Inject(ENVIRONMENT) env: Env) {
@@ -13,5 +13,13 @@ export class CacheService {
       keyPrefix: `${env.QUEUE_PREFIX}:cache:`,
       lazyConnect: true,
     });
+  }
+
+  async ping() {
+    return this.client.ping();
+  }
+
+  async onModuleDestroy() {
+    await this.client.quit();
   }
 }

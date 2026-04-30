@@ -6,24 +6,28 @@ import fastifyHelmet from '@fastify/helmet';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { randomUUID } from 'node:crypto';
 
-import { AppModule } from './app.module';
-import { getDomainConfig, envSchema } from './core/config';
+import { HttpAppModule } from './http-app.module';
+import { envSchema } from './core/config';
+import { LoggerService } from './core/observability/logging/logger.service';
+import { RequestContextService } from './core/observability/logging/request-context.service';
+import { SecurityService } from './core/security/security.service';
 
 async function bootstrap() {
   const env = envSchema.parse(process.env);
-  const domainConfig = getDomainConfig(process.env);
 
   const app = await NestFactory.create<NestFastifyApplication>(
-    AppModule,
+    HttpAppModule,
     new FastifyAdapter({ logger: false }),
   );
+  const securityService = app.get(SecurityService);
+  const requestContextService = app.get(RequestContextService);
+  const logger = app.get(LoggerService);
 
-  await app.register(fastifyHelmet);
+  app.useLogger(logger);
+
+  await app.register(fastifyHelmet, securityService.getHelmetOptions());
   await app.register(fastifyCookie);
-  await app.register(fastifyCors, {
-    origin: [domainConfig.platformUrl, domainConfig.platformDashboardUrl, ...domainConfig.staticAllowedOrigins],
-    credentials: true,
-  });
+  await app.register(fastifyCors, securityService.getCorsOptions());
 
   const fastify = app.getHttpAdapter().getInstance();
   fastify.addHook('onRequest', async (request, reply) => {
@@ -31,6 +35,11 @@ async function bootstrap() {
     const correlationIdHeader = env.CORRELATION_ID_HEADER;
     const requestId = request.headers[requestIdHeader] ?? randomUUID();
     const correlationId = request.headers[correlationIdHeader] ?? requestId;
+
+    requestContextService.enter({
+      requestId: String(requestId),
+      correlationId: String(correlationId),
+    });
 
     request.headers[requestIdHeader] = String(requestId);
     request.headers[correlationIdHeader] = String(correlationId);
@@ -47,6 +56,13 @@ async function bootstrap() {
   }
 
   await app.listen({ port: env.PORT, host: '0.0.0.0' });
+  logger.log('HTTP runtime started', {
+    eventName: 'runtime.http.started',
+    metadata: {
+      port: env.PORT,
+      swaggerEnabled: env.SWAGGER_ENABLED,
+    },
+  });
 }
 
 void bootstrap();

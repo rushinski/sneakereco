@@ -3,6 +3,7 @@ import { Controller, Get } from '@nestjs/common';
 import { CacheService } from '../../cache/cache.service';
 import { DatabaseService } from '../../database/database.service';
 import { QueueService } from '../../queue/queue.service';
+import { WorkerHeartbeatService } from './worker-heartbeat.service';
 
 @Controller('health')
 export class HealthController {
@@ -10,13 +11,14 @@ export class HealthController {
       private readonly databaseService: DatabaseService,
       private readonly cacheService: CacheService,
       private readonly queueService: QueueService,
+      private readonly workerHeartbeatService: WorkerHeartbeatService,
     ) {}
 
   @Get()
   async getHealth() {
     await this.databaseService.appPool.query('select 1');
-    const cacheStatus = await this.cacheService.client.ping();
-    const queueStatus = await this.queueService.client.ping();
+    const cacheStatus = await this.cacheService.ping();
+    const queueStatus = await this.queueService.ping();
 
     return {
       status: 'ok',
@@ -24,6 +26,7 @@ export class HealthController {
         database: 'ok',
         cache: cacheStatus,
         queue: queueStatus,
+        worker: await this.workerHeartbeatService.getStatus(),
       },
     };
   }
