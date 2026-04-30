@@ -10,4 +10,8 @@ export class OutboxDispatcherService {
   async enqueue(event: DomainEvent) {
     return this.outboxRepository.persist(event);
   }
+
+  async listPending() {
+    return this.outboxRepository.listPending();
+  }
 }

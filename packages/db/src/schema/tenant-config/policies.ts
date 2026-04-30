@@ -5,16 +5,8 @@ import { currentTenantScope, tenantAdminScope } from '../shared/rls';
 
 import { tenantDomainConfig } from './tenant-domain-config';
 import { tenantEmailConfig } from './tenant-email-config';
-import { tenantOnboarding } from './tenant-onboarding';
 import { tenantSeoConfig } from './tenant-seo-config';
 import { tenantThemeConfig } from './tenant-theme-config';
-
-export const tenantOnboardingAdminManagePolicy = pgPolicy('tenant_onboarding_admin_manage', {
-  for: 'all',
-  to: sneakerecoAppRole,
-  using: tenantAdminScope(tenantOnboarding.tenantId),
-  withCheck: tenantAdminScope(tenantOnboarding.tenantId),
-}).link(tenantOnboarding);
 
 export const tenantSeoConfigPublicReadPolicy = pgPolicy('tenant_seo_config_public_read', {
   for: 'select',

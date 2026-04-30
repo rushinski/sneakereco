@@ -1,0 +1,299 @@
+import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
+import { Test } from '@nestjs/testing';
+
+import { EventsModule } from '../../../../src/core/events/events.module';
+import { OutboxDispatcherService } from '../../../../src/core/events/outbox-dispatcher.service';
+import { ObservabilityModule } from '../../../../src/core/observability/observability.module';
+import { AuthModule } from '../../../../src/modules/auth/auth.module';
+import { PlatformOnboardingModule } from '../../../../src/modules/platform-onboarding/platform-onboarding.module';
+import { TenantApplicationsRepository } from '../../../../src/modules/platform-onboarding/tenant-applications.repository';
+import { TenantSetupInvitationsRepository } from '../../../../src/modules/platform-onboarding/tenant-setup-invitations.repository';
+import { TenantsModule } from '../../../../src/modules/tenants/tenants.module';
+import { AdminTenantRelationshipsRepository } from '../../../../src/modules/tenants/admin-tenant-relationships.repository';
+import { TenantBusinessProfileRepository } from '../../../../src/modules/tenants/tenant-business-profile.repository';
+import { TenantCognitoConfigRepository } from '../../../../src/modules/tenants/tenant-cognito-config.repository';
+import { TenantDomainConfigRepository } from '../../../../src/modules/tenants/tenant-domain-config.repository';
+import { TenantProvisioningGateway } from '../../../../src/modules/tenants/tenant-provisioning.gateway';
+import { TenantRepository } from '../../../../src/modules/tenants/tenant.repository';
+import { TenantProvisioningWorkerService } from '../../../../src/workers/tenant-provisioning/tenant-provisioning.worker.service';
+
+describe('Platform onboarding flows', () => {
+  beforeAll(() => {
+    Object.assign(process.env, {
+      NODE_ENV: 'test',
+      PORT: '3000',
+      LOG_LEVEL: 'debug',
+      REQUEST_ID_HEADER: 'x-request-id',
+      CORRELATION_ID_HEADER: 'x-correlation-id',
+      BASE_DOMAIN: 'sneakereco.test',
+      API_BASE_URL: 'http://127.0.0.1:3000',
+      PLATFORM_URL: 'https://sneakereco.test',
+      PLATFORM_DASHBOARD_URL: 'https://dashboard.sneakereco.test',
+      DATABASE_URL: 'postgresql://app:pass@localhost:5432/db',
+      DATABASE_SYSTEM_URL: 'postgresql://sys:pass@localhost:5432/db',
+      DATABASE_POOL_MIN: '2',
+      DATABASE_POOL_MAX: '20',
+      VALKEY_URL: 'redis://localhost:6379',
+      QUEUE_PREFIX: 'sneakereco',
+      AWS_REGION: 'us-east-1',
+      AWS_ACCESS_KEY_ID: 'local',
+      AWS_SECRET_ACCESS_KEY: 'local',
+      COGNITO_ADMIN_USER_POOL_ID: 'pool-1',
+      COGNITO_PLATFORM_ADMIN_CLIENT_ID: 'platform-client',
+      COGNITO_TENANT_ADMIN_CLIENT_ID: 'tenant-client',
+      ACCESS_TOKEN_TTL_SECONDS: '1800',
+      ADMIN_REFRESH_TOKEN_TTL_SECONDS: '86400',
+      CUSTOMER_REFRESH_TOKEN_TTL_SECONDS: '2592000',
+      AUTH_CHALLENGE_SESSION_TTL_SECONDS: '600',
+      CSRF_SECRET: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      SESSION_SIGNING_SECRET: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+      MAIL_TRANSPORT: 'smtp',
+      PLATFORM_FROM_EMAIL: 'noreply@sneakereco.com',
+      PLATFORM_FROM_NAME: 'SneakerEco',
+      PLATFORM_ADMIN_EMAIL: 'admin@sneakereco.com',
+    });
+  });
+
+  async function createApp(options?: { failProvisioning?: boolean }) {
+    const gateway = {
+      createCustomerPoolAndClient: jest.fn().mockImplementation(async ({ tenantId, slug }) => {
+        if (options?.failProvisioning) {
+          throw new Error('customer_pool_failed');
+        }
+
+        return {
+          userPoolId: `pool_${tenantId}`,
+          userPoolArn: `arn:aws:cognito-idp:us-east-1:local:userpool/pool_${tenantId}`,
+          userPoolName: `${slug}-customers`,
+          customerClientId: `client_${tenantId}`,
+          customerClientName: `${slug}-customers-web`,
+          region: 'us-east-1',
+        };
+      }),
+      createTenantAdminIdentity: jest.fn().mockResolvedValue({
+        cognitoSub: 'tenant-admin-sub',
+      }),
+    };
+
+    const moduleRef = await Test.createTestingModule({
+      imports: [ObservabilityModule, EventsModule, AuthModule, TenantsModule, PlatformOnboardingModule],
+    })
+      .overrideProvider(TenantProvisioningGateway)
+      .useValue(gateway)
+      .compile();
+
+    const app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
+    await app.init();
+    await app.getHttpAdapter().getInstance().ready();
+
+    return {
+      app,
+      gateway,
+      applicationsRepository: app.get(TenantApplicationsRepository),
+      tenantRepository: app.get(TenantRepository),
+      businessProfilesRepository: app.get(TenantBusinessProfileRepository),
+      domainConfigRepository: app.get(TenantDomainConfigRepository),
+      cognitoConfigRepository: app.get(TenantCognitoConfigRepository),
+      adminTenantRelationshipsRepository: app.get(AdminTenantRelationshipsRepository),
+      setupInvitationsRepository: app.get(TenantSetupInvitationsRepository),
+      outboxDispatcherService: app.get(OutboxDispatcherService),
+      worker: app.get(TenantProvisioningWorkerService),
+    };
+  }
+
+  it('submits an application, approves it, and provisions the tenant asynchronously', async () => {
+    const {
+      app,
+      applicationsRepository,
+      tenantRepository,
+      businessProfilesRepository,
+      domainConfigRepository,
+      cognitoConfigRepository,
+      adminTenantRelationshipsRepository,
+      setupInvitationsRepository,
+      outboxDispatcherService,
+      worker,
+    } = await createApp();
+
+    const submitResponse = await app.inject({
+      method: 'POST',
+      url: '/platform/onboarding/applications',
+      payload: {
+        requestedByName: 'Heat Kings Owner',
+        requestedByEmail: 'owner@heatkings.com',
+        businessName: 'Heat Kings',
+        instagramHandle: '@heatkings',
+      },
+    });
+    expect(submitResponse.statusCode).toBe(201);
+    const application = submitResponse.json();
+
+    const approveResponse = await app.inject({
+      method: 'POST',
+      url: `/platform/onboarding/applications/${application.id}/approve`,
+      payload: {
+        reviewedByAdminUserId: 'adm_platform_owner',
+      },
+    });
+    expect(approveResponse.statusCode).toBe(201);
+
+    await worker.drain();
+
+    const approvedApplication = await applicationsRepository.findById(application.id);
+    expect(approvedApplication?.status).toBe('approved');
+    expect(approvedApplication?.approvedTenantId).toMatch(/^tnt_/);
+
+    const tenant = await tenantRepository.findById(String(approvedApplication?.approvedTenantId));
+    expect(tenant?.status).toBe('setup_pending');
+    expect(tenant?.slug).toBe('heat-kings');
+
+    expect(await businessProfilesRepository.findByTenantId(String(tenant?.id))).toMatchObject({
+      businessName: 'Heat Kings',
+      contactEmail: 'owner@heatkings.com',
+    });
+    expect(await domainConfigRepository.findByTenantId(String(tenant?.id))).toMatchObject({
+      subdomain: 'heat-kings.sneakereco.com',
+      storefrontReadinessState: 'not_configured',
+      adminReadinessState: 'not_configured',
+    });
+    expect(await cognitoConfigRepository.findByTenantId(String(tenant?.id))).toMatchObject({
+      provisioningStatus: 'ready',
+      userPoolName: 'heat-kings-customers',
+    });
+    expect(await adminTenantRelationshipsRepository.findActiveByTenantId(String(tenant?.id))).toMatchObject({
+      relationshipType: 'tenant_admin',
+      status: 'active',
+    });
+    expect(await setupInvitationsRepository.findByTenantId(String(tenant?.id))).toMatchObject({
+      status: 'issued',
+    });
+
+    const pendingEvents = await outboxDispatcherService.listPending();
+    expect(pendingEvents.find((event) => event.name === 'tenant.setup.email.requested')).toBeDefined();
+
+    await app.close();
+  });
+
+  it('handles the deny path without queuing provisioning work', async () => {
+    const { app, applicationsRepository, outboxDispatcherService } = await createApp();
+
+    const submitResponse = await app.inject({
+      method: 'POST',
+      url: '/platform/onboarding/applications',
+      payload: {
+        requestedByName: 'Denied Owner',
+        requestedByEmail: 'denied@example.com',
+        businessName: 'Denied Shop',
+      },
+    });
+    const application = submitResponse.json();
+
+    const denyResponse = await app.inject({
+      method: 'POST',
+      url: `/platform/onboarding/applications/${application.id}/deny`,
+      payload: {
+        reviewedByAdminUserId: 'adm_platform_owner',
+        denialReason: 'Not a fit',
+      },
+    });
+    expect(denyResponse.statusCode).toBe(201);
+
+    const deniedApplication = await applicationsRepository.findById(application.id);
+    expect(deniedApplication).toMatchObject({
+      status: 'denied',
+      denialReason: 'Not a fit',
+    });
+    expect((await outboxDispatcherService.listPending()).length).toBe(0);
+    await app.close();
+  });
+
+  it('marks the tenant as provisioning_failed when provisioning work throws', async () => {
+    const { app, applicationsRepository, tenantRepository, worker } = await createApp({
+      failProvisioning: true,
+    });
+
+    const submitResponse = await app.inject({
+      method: 'POST',
+      url: '/platform/onboarding/applications',
+      payload: {
+        requestedByName: 'Broken Owner',
+        requestedByEmail: 'broken@example.com',
+        businessName: 'Broken Shop',
+      },
+    });
+    const application = submitResponse.json();
+
+    await app.inject({
+      method: 'POST',
+      url: `/platform/onboarding/applications/${application.id}/approve`,
+      payload: {
+        reviewedByAdminUserId: 'adm_platform_owner',
+      },
+    });
+
+    await worker.drain();
+
+    const approvedApplication = await applicationsRepository.findById(application.id);
+    const tenant = await tenantRepository.findById(String(approvedApplication?.approvedTenantId));
+    expect(tenant).toMatchObject({
+      status: 'provisioning_failed',
+      provisioningFailureReason: 'customer_pool_failed',
+    });
+    await app.close();
+  });
+
+  it('consumes an issued setup invitation after successful provisioning', async () => {
+    const { app, applicationsRepository, outboxDispatcherService, worker } = await createApp();
+
+    const submitResponse = await app.inject({
+      method: 'POST',
+      url: '/platform/onboarding/applications',
+      payload: {
+        requestedByName: 'Invite Owner',
+        requestedByEmail: 'invite@example.com',
+        businessName: 'Invite Shop',
+      },
+    });
+    const application = submitResponse.json();
+
+    await app.inject({
+      method: 'POST',
+      url: `/platform/onboarding/applications/${application.id}/approve`,
+      payload: {
+        reviewedByAdminUserId: 'adm_platform_owner',
+      },
+    });
+    await worker.drain();
+
+    const approvedApplication = await applicationsRepository.findById(application.id);
+    expect(approvedApplication?.approvedTenantId).toMatch(/^tnt_/);
+
+    const invitationEvent = (await outboxDispatcherService.listPending()).find(
+      (event) => event.name === 'tenant.setup.email.requested',
+    );
+    expect(invitationEvent).toBeDefined();
+
+    const consumeResponse = await app.inject({
+      method: 'POST',
+      url: '/platform/onboarding/setup-invitations/consume',
+      payload: {
+        token: String(invitationEvent?.payload.invitationToken),
+      },
+    });
+    expect(consumeResponse.statusCode).toBe(201);
+    expect(consumeResponse.json()).toMatchObject({
+      status: 'consumed',
+      tenantId: approvedApplication?.approvedTenantId,
+    });
+
+    const consumeAgainResponse = await app.inject({
+      method: 'POST',
+      url: '/platform/onboarding/setup-invitations/consume',
+      payload: {
+        token: String(invitationEvent?.payload.invitationToken),
+      },
+    });
+    expect(consumeAgainResponse.statusCode).toBe(401);
+    await app.close();
+  });
+});

@@ -72,6 +72,7 @@ import { SessionIssuerService } from './shared/session-issuer.service';
     AuthPrincipalNormalizerService,
     SessionEnforcementService,
     CognitoAuthGateway,
+    AuthAuditService,
   ],
 })
 export class AuthModule {}

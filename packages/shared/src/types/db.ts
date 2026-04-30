@@ -39,10 +39,10 @@ import type {
   tagBrands,
   tagModels,
   tenantDomainConfig,
+  tenantCognitoConfig,
   tenantEmailConfig,
   tenantApplications,
   tenantBusinessProfiles,
-  tenantOnboarding,
   tenantReleaseHistory,
   tenantReleaseSets,
   tenantSeoConfig,
@@ -88,8 +88,8 @@ export type NewAuthSessionLineageRevocation = InferInsertModel<
 >;
 
 // --- Tenant Config ---
-export type TenantOnboarding = InferSelectModel<typeof tenantOnboarding>;
-export type NewTenantOnboarding = InferInsertModel<typeof tenantOnboarding>;
+export type TenantCognitoConfig = InferSelectModel<typeof tenantCognitoConfig>;
+export type NewTenantCognitoConfig = InferInsertModel<typeof tenantCognitoConfig>;
 
 export type TenantDomainConfig = InferSelectModel<typeof tenantDomainConfig>;
 export type NewTenantDomainConfig = InferInsertModel<typeof tenantDomainConfig>;
