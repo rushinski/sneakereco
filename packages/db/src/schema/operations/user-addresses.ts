@@ -3,22 +3,22 @@ import { boolean, check, index, pgTable, text } from 'drizzle-orm/pg-core';
 
 import { countryColumn, createdAtColumn, updatedAtColumn } from '../shared/columns';
 import { tenants } from '../identity/tenants';
-import { users } from '../identity/users';
+import { customerUsers } from '../identity/customer-users';
 
 export const userAddressTypeValues = ['shipping', 'billing'] as const;
 
 export type UserAddressType = (typeof userAddressTypeValues)[number];
 
-export const userAddresses = pgTable(
-  'user_addresses',
+export const customerAddresses = pgTable(
+  'customer_addresses',
   {
     id: text('id').primaryKey(),
     tenantId: text('tenant_id')
       .notNull()
       .references(() => tenants.id, { onDelete: 'cascade' }),
-    userId: text('user_id')
+    customerUserId: text('customer_user_id')
       .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
+      .references(() => customerUsers.id, { onDelete: 'cascade' }),
     addressType: text('address_type', { enum: userAddressTypeValues }).notNull(),
     fullName: text('full_name'),
     phone: text('phone'),
@@ -33,8 +33,8 @@ export const userAddresses = pgTable(
     updatedAt: updatedAtColumn(),
   },
   (table) => [
-    index('idx_user_addresses_user').on(table.userId),
-    index('idx_user_addresses_tenant').on(table.tenantId, table.userId),
+    index('idx_customer_addresses_customer').on(table.customerUserId),
+    index('idx_customer_addresses_tenant').on(table.tenantId, table.customerUserId),
     check('user_addresses_type_check', sql`${table.addressType} in ('shipping', 'billing')`),
   ],
 );

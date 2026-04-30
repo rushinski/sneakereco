@@ -10,10 +10,15 @@
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 import type {
   authSessionLineageRevocations,
+  authSessions,
   authSubjectRevocations,
+  adminTenantRelationships,
+  adminUsers,
   auditEvents,
   chargebackEvidence,
   contactMessages,
+  customerAddresses,
+  customerUsers,
   emailAuditLog,
   emailSubscribers,
   featuredItems,
@@ -35,27 +40,49 @@ import type {
   tagModels,
   tenantDomainConfig,
   tenantEmailConfig,
+  tenantApplications,
+  tenantBusinessProfiles,
   tenantMembers,
   tenantOnboarding,
+  tenantReleaseHistory,
+  tenantReleaseSets,
   tenantSeoConfig,
+  tenantSetupInvitations,
   tenantShippingConfig,
   tenantTaxSettings,
   tenantThemeConfig,
   tenants,
-  userAddresses,
   users,
   webhookEvents,
 } from '@sneakereco/db';
 
 // --- Identity ---
-export type Tenant = InferSelectModel<typeof tenants>;
-export type NewTenant = InferInsertModel<typeof tenants>;
-
 export type User = InferSelectModel<typeof users>;
 export type NewUser = InferInsertModel<typeof users>;
 
 export type TenantMember = InferSelectModel<typeof tenantMembers>;
 export type NewTenantMember = InferInsertModel<typeof tenantMembers>;
+
+export type AdminUser = InferSelectModel<typeof adminUsers>;
+export type NewAdminUser = InferInsertModel<typeof adminUsers>;
+
+export type CustomerUser = InferSelectModel<typeof customerUsers>;
+export type NewCustomerUser = InferInsertModel<typeof customerUsers>;
+
+export type AdminTenantRelationship = InferSelectModel<typeof adminTenantRelationships>;
+export type NewAdminTenantRelationship = InferInsertModel<typeof adminTenantRelationships>;
+
+export type AuthSession = InferSelectModel<typeof authSessions>;
+export type NewAuthSession = InferInsertModel<typeof authSessions>;
+
+export type TenantApplication = InferSelectModel<typeof tenantApplications>;
+export type NewTenantApplication = InferInsertModel<typeof tenantApplications>;
+
+export type TenantSetupInvitation = InferSelectModel<typeof tenantSetupInvitations>;
+export type NewTenantSetupInvitation = InferInsertModel<typeof tenantSetupInvitations>;
+
+export type TenantBusinessProfile = InferSelectModel<typeof tenantBusinessProfiles>;
+export type NewTenantBusinessProfile = InferInsertModel<typeof tenantBusinessProfiles>;
 
 export type AuthSubjectRevocation = InferSelectModel<typeof authSubjectRevocations>;
 export type NewAuthSubjectRevocation = InferInsertModel<typeof authSubjectRevocations>;
@@ -80,6 +107,12 @@ export type NewTenantSeoConfig = InferInsertModel<typeof tenantSeoConfig>;
 
 export type TenantEmailConfig = InferSelectModel<typeof tenantEmailConfig>;
 export type NewTenantEmailConfig = InferInsertModel<typeof tenantEmailConfig>;
+
+export type TenantReleaseSet = InferSelectModel<typeof tenantReleaseSets>;
+export type NewTenantReleaseSet = InferInsertModel<typeof tenantReleaseSets>;
+
+export type TenantReleaseHistory = InferSelectModel<typeof tenantReleaseHistory>;
+export type NewTenantReleaseHistory = InferInsertModel<typeof tenantReleaseHistory>;
 
 // --- Catalog ---
 export type Product = InferSelectModel<typeof products>;
@@ -132,8 +165,8 @@ export type NewWebhookEvent = InferInsertModel<typeof webhookEvents>;
 export type ChargebackEvidence = InferSelectModel<typeof chargebackEvidence>;
 export type NewChargebackEvidence = InferInsertModel<typeof chargebackEvidence>;
 
-export type UserAddress = InferSelectModel<typeof userAddresses>;
-export type NewUserAddress = InferInsertModel<typeof userAddresses>;
+export type CustomerAddress = InferSelectModel<typeof customerAddresses>;
+export type NewCustomerAddress = InferInsertModel<typeof customerAddresses>;
 
 export type FeaturedItem = InferSelectModel<typeof featuredItems>;
 export type NewFeaturedItem = InferInsertModel<typeof featuredItems>;

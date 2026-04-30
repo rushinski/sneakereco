@@ -2,7 +2,7 @@ import { index, jsonb, pgTable, text } from 'drizzle-orm/pg-core';
 
 import { createdAtColumn } from '../shared/columns';
 import { tenants } from '../identity/tenants';
-import { users } from '../identity/users';
+import { customerUsers } from '../identity/customer-users';
 
 export const contactMessages = pgTable(
   'contact_messages',
@@ -11,8 +11,9 @@ export const contactMessages = pgTable(
     tenantId: text('tenant_id')
       .notNull()
       .references(() => tenants.id, { onDelete: 'cascade' }),
-    userId: text('user_id').references(() => users.id, { onDelete: 'set null' }),
-    name: text('name'),
+    customerUserId: text('customer_user_id').references(() => customerUsers.id, {
+      onDelete: 'set null',
+    }),    name: text('name'),
     email: text('email').notNull(),
     subject: text('subject'),
     message: text('message').notNull(),

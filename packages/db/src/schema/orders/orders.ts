@@ -3,7 +3,8 @@ import { check, index, integer, pgTable, text, uniqueIndex, varchar } from 'driz
 
 import { createdAtColumn, timestamptz, updatedAtColumn } from '../shared/columns';
 import { tenants } from '../identity/tenants';
-import { users } from '../identity/users';
+import { adminUsers } from '../identity/admin-users';
+import { customerUsers } from '../identity/customer-users';
 
 export const orderStatusValues = [
   'pending',
@@ -45,7 +46,9 @@ export const orders = pgTable(
     tenantId: text('tenant_id')
       .notNull()
       .references(() => tenants.id, { onDelete: 'restrict' }),
-    userId: text('user_id').references(() => users.id, { onDelete: 'set null' }),
+    customerUserId: text('customer_user_id').references(() => customerUsers.id, {
+      onDelete: 'set null',
+    }),
     guestEmail: text('guest_email'),
     subtotalCents: integer('subtotal_cents').notNull(),
     shippingCents: integer('shipping_cents').notNull(),
@@ -70,9 +73,12 @@ export const orders = pgTable(
     actualShippingCostCents: integer('actual_shipping_cost_cents'),
     labelUrl: text('label_url'),
     labelCreatedAt: timestamptz('label_created_at'),
-    labelCreatedBy: text('label_created_by').references(() => users.id, {
+    labelCreatedByAdminUserId: text('label_created_by_admin_user_id').references(
+      () => adminUsers.id,
+      {
       onDelete: 'set null',
-    }),
+      },
+    ),
     pickupLocationId: text('pickup_location_id'),
     pickupInstructions: text('pickup_instructions'),
     customerState: varchar('customer_state', { length: 2 }),
@@ -99,9 +105,9 @@ export const orders = pgTable(
       table.fulfillmentStatus,
       table.createdAt.desc(),
     ),
-    index('idx_orders_user')
-      .on(table.userId, table.createdAt.desc())
-      .where(sql`${table.userId} is not null`),
+    index('idx_orders_customer_user')
+      .on(table.customerUserId, table.createdAt.desc())
+      .where(sql`${table.customerUserId} is not null`),
     index('idx_orders_cart_hash')
       .on(table.cartHash)
       .where(sql`${table.cartHash} is not null`),
@@ -133,7 +139,7 @@ export const orders = pgTable(
       'orders_customer_identity_check',
       sql`(
         ${table.status} in ('pending', 'canceled', 'failed', 'blocked', 'review')
-        or ${table.userId} is not null
+        or ${table.customerUserId} is not null
         or ${table.guestEmail} is not null
       )`,
     ),

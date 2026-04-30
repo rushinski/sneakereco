@@ -24,15 +24,15 @@ export const ordersAdminAllPolicy = pgPolicy('orders_admin_all', {
 export const ordersCustomerSelectPolicy = pgPolicy('orders_customer_select', {
   for: 'select',
   to: sneakerecoAppRole,
-  using: sql`${currentTenantScope(orders.tenantId)} and ${orders.userId} = ${currentUserId}`,
+  using: sql`${currentTenantScope(orders.tenantId)} and ${orders.customerUserId} = ${currentUserId}`,
 }).link(orders);
 
 export const ordersCustomerInsertPolicy = pgPolicy('orders_customer_insert', {
   for: 'insert',
   to: sneakerecoAppRole,
   withCheck: sql`${currentTenantScope(orders.tenantId)} and (
-    ${orders.userId} = ${currentUserId}
-    or ${orders.userId} is null
+    ${orders.customerUserId} = ${currentUserId}
+    or ${orders.customerUserId} is null
   )`,
 }).link(orders);
 
@@ -51,7 +51,7 @@ export const orderLineItemsCustomerReadPolicy = pgPolicy('order_line_items_custo
       from ${orders}
       where ${orders.id} = ${orderLineItems.orderId}
         and ${orders.tenantId} = ${currentTenantId}
-        and ${orders.userId} = ${currentUserId}
+        and ${orders.customerUserId} = ${currentUserId}
     )`,
 }).link(orderLineItems);
 
@@ -70,7 +70,7 @@ export const orderAddressesCustomerReadPolicy = pgPolicy('order_addresses_custom
       from ${orders}
       where ${orders.id} = ${orderAddresses.orderId}
         and ${orders.tenantId} = ${currentTenantId}
-        and ${orders.userId} = ${currentUserId}
+        and ${orders.customerUserId} = ${currentUserId}
     )`,
 }).link(orderAddresses);
 

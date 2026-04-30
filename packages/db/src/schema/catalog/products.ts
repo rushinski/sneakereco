@@ -3,7 +3,7 @@ import { boolean, check, index, integer, pgTable, text, uniqueIndex } from 'driz
 
 import { createdAtColumn, timestamptz, updatedAtColumn } from '../shared/columns';
 import { tenants } from '../identity/tenants';
-import { users } from '../identity/users';
+import { adminUsers } from '../identity/admin-users';
 
 export const productCategoryValues = [
   'sneakers',
@@ -36,7 +36,7 @@ export const products = pgTable(
     isActive: boolean('is_active').notNull().default(true),
     isOutOfStock: boolean('is_out_of_stock').notNull().default(false),
     goLiveAt: timestamptz('go_live_at').notNull().defaultNow(),
-    createdBy: text('created_by').references(() => users.id, {
+    createdByAdminUserId: text('created_by_admin_user_id').references(() => adminUsers.id, {
       onDelete: 'set null',
     }),
     createdAt: createdAtColumn(),

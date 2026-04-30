@@ -12,6 +12,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "test:unit": "pnpm build && node --test test/id.test.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "clean": "fm -rf dist",

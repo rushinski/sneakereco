@@ -3,7 +3,7 @@ import { index, integer, pgTable, text, uniqueIndex } from 'drizzle-orm/pg-core'
 import { createdAtColumn, updatedAtColumn } from '../shared/columns';
 import { products } from '../catalog/products';
 import { tenants } from '../identity/tenants';
-import { users } from '../identity/users';
+import { adminUsers } from '../identity/admin-users';
 
 export const featuredItems = pgTable(
   'featured_items',
@@ -16,7 +16,7 @@ export const featuredItems = pgTable(
       .notNull()
       .references(() => products.id, { onDelete: 'cascade' }),
     sortOrder: integer('sort_order').notNull().default(0),
-    createdBy: text('created_by').references(() => users.id, {
+    createdByAdminUserId: text('created_by_admin_user_id').references(() => adminUsers.id, {
       onDelete: 'set null',
     }),
     createdAt: createdAtColumn(),

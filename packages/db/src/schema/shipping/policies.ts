@@ -27,7 +27,7 @@ export const shippingTrackingCustomerReadPolicy = pgPolicy('shipping_tracking_cu
       from ${orders}
       where ${orders.id} = ${shippingTrackingEvents.orderId}
         and ${orders.tenantId} = ${currentTenantId}
-        and ${orders.userId} = ${currentUserId}
+        and ${orders.customerUserId} = ${currentUserId}
     )`,
 }).link(shippingTrackingEvents);
 

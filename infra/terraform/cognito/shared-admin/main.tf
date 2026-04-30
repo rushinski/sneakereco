@@ -39,6 +39,9 @@ resource "aws_cognito_user_pool_client" "platform_admin" {
     "ALLOW_REFRESH_TOKEN_AUTH",
   ]
 
+  prevent_user_existence_errors = "ENABLED"
+  enable_propagate_additional_user_context_data = false
+
   token_validity_units {
     access_token  = "minutes"
     id_token      = "minutes"
@@ -46,8 +49,8 @@ resource "aws_cognito_user_pool_client" "platform_admin" {
   }
 }
 
-resource "aws_cognito_user_pool_client" "store_admin" {
-  name                    = "store-admin"
+resource "aws_cognito_user_pool_client" "tenant_admin" {
+  name                    = "tenant-admin"
   user_pool_id            = aws_cognito_user_pool.shared_admin.id
   access_token_validity   = 30
   id_token_validity       = 30
@@ -59,6 +62,9 @@ resource "aws_cognito_user_pool_client" "store_admin" {
     "ALLOW_USER_PASSWORD_AUTH",
     "ALLOW_REFRESH_TOKEN_AUTH",
   ]
+
+  prevent_user_existence_errors = "ENABLED"
+  enable_propagate_additional_user_context_data = false
 
   token_validity_units {
     access_token  = "minutes"
@@ -73,8 +79,8 @@ resource "aws_cognito_user_group" "platform_admin" {
   description  = "Platform administrators with full system access"
 }
 
-resource "aws_cognito_user_group" "store_admin" {
-  name         = var.store_admin_group_name
+resource "aws_cognito_user_group" "tenant_admin" {
+  name         = var.tenant_admin_group_name
   user_pool_id = aws_cognito_user_pool.shared_admin.id
-  description  = "Store administrators with tenant-scoped access"
+  description  = "Tenant administrators with tenant-scoped access"
 }

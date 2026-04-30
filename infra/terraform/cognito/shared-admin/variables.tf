@@ -9,8 +9,8 @@ variable "platform_admin_group_name" {
   default     = "platform-admin"
 }
 
-variable "store_admin_group_name" {
-  description = "Cognito group name for store administrators"
+variable "tenant_admin_group_name" {
+  description = "Cognito group name for tenant administrators"
   type        = string
-  default     = "store-admin"
+  default     = "tenant-admin"
 }

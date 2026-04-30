@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { generateId, getEntityType } from './id.ts';
+import { generateId, getEntityType } from '../dist/utils/id.js';
 
 test('generateId uses new admin and customer identity prefixes', () => {
-  const adminId = generateId('adminUser' as never);
-  const customerId = generateId('customerUser' as never);
-  const sessionId = generateId('authSession' as never);
+  const adminId = generateId('adminUser');
+  const customerId = generateId('customerUser');
+  const sessionId = generateId('authSession');
 
   assert.match(adminId, /^adm_[0-9A-HJKMNP-TV-Z]{26}$/);
   assert.match(customerId, /^cus_[0-9A-HJKMNP-TV-Z]{26}$/);

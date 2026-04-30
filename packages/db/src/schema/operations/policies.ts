@@ -6,20 +6,20 @@ import { currentTenantScope, tenantAdminScope, tenantUserScope } from '../shared
 import { auditEvents } from './audit-events';
 import { chargebackEvidence } from './chargeback-evidence';
 import { featuredItems } from './featured-items';
-import { userAddresses } from './user-addresses';
+import { customerAddresses } from './user-addresses';
 
-export const userAddressesCustomerManagePolicy = pgPolicy('user_addresses_customer_manage', {
+export const customerAddressesCustomerManagePolicy = pgPolicy('customer_addresses_customer_manage', {
   for: 'all',
   to: sneakerecoAppRole,
-  using: tenantUserScope(userAddresses.tenantId, userAddresses.userId),
-  withCheck: tenantUserScope(userAddresses.tenantId, userAddresses.userId),
-}).link(userAddresses);
+  using: tenantUserScope(customerAddresses.tenantId, customerAddresses.customerUserId),
+  withCheck: tenantUserScope(customerAddresses.tenantId, customerAddresses.customerUserId),
+}).link(customerAddresses);
 
-export const userAddressesAdminReadPolicy = pgPolicy('user_addresses_admin_read', {
+export const customerAddressesAdminReadPolicy = pgPolicy('customer_addresses_admin_read', {
   for: 'select',
   to: sneakerecoAppRole,
-  using: tenantAdminScope(userAddresses.tenantId),
-}).link(userAddresses);
+  using: tenantAdminScope(customerAddresses.tenantId),
+}).link(customerAddresses);
 
 export const auditEventsAdminReadPolicy = pgPolicy('audit_events_admin_read', {
   for: 'select',
