@@ -19,7 +19,7 @@ describe('SecurityService', () => {
     });
   });
 
-  it('builds CSRF and rate-limit scaffolding without feature-specific rules', () => {
+  it('builds CSRF and route-class rate-limit scaffolding', () => {
     expect(service.getCsrfConfig()).toEqual({
       secret: 'a'.repeat(32),
       cookieName: '__Host-sneakereco.csrf',
@@ -30,6 +30,20 @@ describe('SecurityService', () => {
       global: {
         ttlSeconds: 60,
         limit: 100,
+      },
+      profiles: {
+        'admin-login': { ttlSeconds: 60, limit: 5 },
+        'customer-login': { ttlSeconds: 60, limit: 10 },
+        'customer-register': { ttlSeconds: 300, limit: 5 },
+        'confirm-email': { ttlSeconds: 300, limit: 10 },
+        'forgot-password': { ttlSeconds: 300, limit: 5 },
+        'reset-password': { ttlSeconds: 300, limit: 10 },
+        'otp-request': { ttlSeconds: 300, limit: 5 },
+        'otp-complete': { ttlSeconds: 300, limit: 10 },
+        'mfa-challenge': { ttlSeconds: 300, limit: 10 },
+        refresh: { ttlSeconds: 60, limit: 30 },
+        'onboarding-application': { ttlSeconds: 300, limit: 5 },
+        'setup-invitation-consume': { ttlSeconds: 300, limit: 10 },
       },
     });
   });

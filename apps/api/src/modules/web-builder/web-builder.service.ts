@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 
+import { AuditService } from '../audit/audit.service';
 import { CapabilityContractValidatorService } from './capability-contract-validator.service';
 import { DesignFamilyRegistryRepository } from './design-family-registry.repository';
 import { EmailDraftsRepository } from './email-drafts.repository';
@@ -22,6 +23,7 @@ export class WebBuilderService {
     private readonly releaseSetValidatorService: ReleaseSetValidatorService,
     private readonly releaseSetsRepository: ReleaseSetsRepository,
     private readonly releaseHistoryRepository: ReleaseHistoryRepository,
+    private readonly auditService: AuditService,
   ) {}
 
   async saveThemeDraft(input: { tenantId: string; designFamilyId: string; tokens: Record<string, unknown> }) {
@@ -110,6 +112,16 @@ export class WebBuilderService {
       actorAdminUserId: input.actorAdminUserId,
       summary: `Scheduled for ${input.scheduledFor}`,
     });
+    await this.auditService.record({
+      eventName: 'web_builder.release_set.scheduled',
+      tenantId: releaseSet.tenantId,
+      actorType: input.actorAdminUserId ? 'tenant_admin' : undefined,
+      actorId: input.actorAdminUserId,
+      metadata: {
+        releaseSetId: releaseSet.id,
+        scheduledFor: input.scheduledFor,
+      },
+    });
     return updated;
   }
 
@@ -134,6 +146,15 @@ export class WebBuilderService {
       eventType: 'published',
       actorAdminUserId: input.actorAdminUserId,
       summary: 'Published release set',
+    });
+    await this.auditService.record({
+      eventName: 'web_builder.release_set.published',
+      tenantId: releaseSet.tenantId,
+      actorType: input.actorAdminUserId ? 'tenant_admin' : undefined,
+      actorId: input.actorAdminUserId,
+      metadata: {
+        releaseSetId: releaseSet.id,
+      },
     });
     return updated;
   }
@@ -163,6 +184,16 @@ export class WebBuilderService {
       eventType: 'rolled_back',
       actorAdminUserId: input.actorAdminUserId,
       summary: `Rolled back to ${target.id}`,
+    });
+    await this.auditService.record({
+      eventName: 'web_builder.release_set.rolled_back',
+      tenantId: input.tenantId,
+      actorType: input.actorAdminUserId ? 'tenant_admin' : undefined,
+      actorId: input.actorAdminUserId,
+      metadata: {
+        rollbackReleaseSetId: rollback.id,
+        targetReleaseSetId: target.id,
+      },
     });
     return published;
   }

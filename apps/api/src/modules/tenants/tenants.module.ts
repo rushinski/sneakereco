@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 
 import { EventsModule } from '../../core/events/events.module';
 import { ObservabilityModule } from '../../core/observability/observability.module';
+import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
 import { PlatformOnboardingModule } from '../platform-onboarding/platform-onboarding.module';
 import { AdminTenantRelationshipsRepository } from './admin-tenant-relationships.repository';
@@ -14,7 +15,7 @@ import { TenantRepository } from './tenant.repository';
 import { TenantProvisioningWorkerService } from '../../workers/tenant-provisioning/tenant-provisioning.worker.service';
 
 @Module({
-  imports: [AuthModule, EventsModule, ObservabilityModule, forwardRef(() => PlatformOnboardingModule)],
+  imports: [AuthModule, AuditModule, EventsModule, ObservabilityModule, forwardRef(() => PlatformOnboardingModule)],
   providers: [
     TenantRepository,
     TenantBusinessProfileRepository,

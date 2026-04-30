@@ -3,6 +3,8 @@ import { randomBytes } from 'node:crypto';
 
 import { OutboxDispatcherService } from '../../core/events/outbox-dispatcher.service';
 import { LoggerService } from '../../core/observability/logging/logger.service';
+import { MetricsService } from '../../core/observability/metrics/metrics.service';
+import { AuditService } from '../audit/audit.service';
 import { AdminUsersRepository } from '../auth/shared/admin-users.repository';
 import { TenantSetupInvitationsRepository } from '../platform-onboarding/tenant-setup-invitations.repository';
 import { TenantApplicationsRepository } from '../platform-onboarding/tenant-applications.repository';
@@ -27,6 +29,8 @@ export class TenantProvisioningService {
     private readonly tenantProvisioningGateway: TenantProvisioningGateway,
     private readonly outboxDispatcherService: OutboxDispatcherService,
     private readonly logger: LoggerService,
+    private readonly metricsService: MetricsService,
+    private readonly auditService: AuditService,
   ) {}
 
   async processApprovedApplication(applicationId: string) {
@@ -50,6 +54,13 @@ export class TenantProvisioningService {
     }
 
     try {
+      await this.auditService.record({
+        eventName: 'tenant.provisioning.started',
+        tenantId: tenant.id,
+        metadata: {
+          applicationId: application.id,
+        },
+      });
       await this.tenantBusinessProfileRepository.create({
         tenantId: tenant.id,
         businessName: application.businessName,
@@ -130,6 +141,14 @@ export class TenantProvisioningService {
           applicationId: application.id,
         },
       });
+      this.metricsService.increment('tenant.provisioning.success');
+      await this.auditService.record({
+        eventName: 'tenant.provisioning.completed',
+        tenantId: tenant.id,
+        metadata: {
+          applicationId: application.id,
+        },
+      });
 
       return {
         tenantId: tenant.id,
@@ -142,6 +161,15 @@ export class TenantProvisioningService {
         provisioningFailureReason: error instanceof Error ? error.message : 'unknown_error',
       });
       this.logger.error('Tenant provisioning failed', undefined, {
+        eventName: 'tenant.provisioning.failed',
+        tenantId: tenant.id,
+        metadata: {
+          applicationId: application.id,
+          error: error instanceof Error ? error.message : 'unknown_error',
+        },
+      });
+      this.metricsService.increment('tenant.provisioning.failed');
+      await this.auditService.record({
         eventName: 'tenant.provisioning.failed',
         tenantId: tenant.id,
         metadata: {

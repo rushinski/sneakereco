@@ -1,5 +1,6 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 
+import { AuditModule } from '../audit/audit.module';
 import { ObservabilityModule } from '../../core/observability/observability.module';
 import { AdminLoginController } from './admin-login/admin-login.controller';
 import { AdminLoginService } from './admin-login/admin-login.service';
@@ -29,9 +30,10 @@ import { CognitoAuthGateway } from './shared/cognito-auth.gateway';
 import { CustomerUsersRepository } from './shared/customer-users.repository';
 import { SessionEnforcementService } from './shared/session-enforcement.service';
 import { SessionIssuerService } from './shared/session-issuer.service';
+import { SuspiciousAuthTelemetryService } from './shared/suspicious-auth-telemetry.service';
 
 @Module({
-  imports: [ObservabilityModule],
+  imports: [ObservabilityModule, forwardRef(() => AuditModule)],
   controllers: [
     AdminLoginController,
     MfaChallengeController,
@@ -62,6 +64,7 @@ import { SessionIssuerService } from './shared/session-issuer.service';
     SessionIssuerService,
     AuthPrincipalGuard,
     AuthAuditService,
+    SuspiciousAuthTelemetryService,
     CognitoAuthGateway,
   ],
   exports: [
@@ -73,6 +76,8 @@ import { SessionIssuerService } from './shared/session-issuer.service';
     SessionEnforcementService,
     CognitoAuthGateway,
     AuthAuditService,
+    AuthPrincipalGuard,
+    SuspiciousAuthTelemetryService,
   ],
 })
 export class AuthModule {}

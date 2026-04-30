@@ -19,6 +19,10 @@ export class OutboxRepository {
     return [...this.events.values()].filter((event) => event.status === 'pending');
   }
 
+  async listFailed() {
+    return [...this.events.values()].filter((event) => event.status === 'failed');
+  }
+
   async markDispatched(id: string) {
     const event = this.events.get(id);
     if (!event) {
@@ -38,6 +42,18 @@ export class OutboxRepository {
 
     event.status = 'failed';
     event.failureReason = failureReason;
+    this.events.set(id, event);
+    return event;
+  }
+
+  async requeueFailed(id: string) {
+    const event = this.events.get(id);
+    if (!event || event.status !== 'failed') {
+      return null;
+    }
+
+    event.status = 'pending';
+    delete event.failureReason;
     this.events.set(id, event);
     return event;
   }

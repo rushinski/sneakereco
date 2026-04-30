@@ -3,6 +3,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { AuthAuditService } from '../shared/auth-audit.service';
 import { AuthSessionRepository } from '../shared/auth-session.repository';
 import { CognitoAuthGateway } from '../shared/cognito-auth.gateway';
+import { SuspiciousAuthTelemetryService } from '../shared/suspicious-auth-telemetry.service';
 
 @Injectable()
 export class RefreshService {
@@ -10,11 +11,15 @@ export class RefreshService {
     private readonly authSessionRepository: AuthSessionRepository,
     private readonly cognitoAuthGateway: CognitoAuthGateway,
     private readonly authAuditService: AuthAuditService,
+    private readonly suspiciousAuthTelemetryService: SuspiciousAuthTelemetryService,
   ) {}
 
   async refresh(input: { sessionId: string; refreshToken: string }) {
     const session = await this.authSessionRepository.findById(input.sessionId);
     if (!session || session.status !== 'active') {
+      this.suspiciousAuthTelemetryService.record('refresh_rejected_inactive_session', {
+        sessionId: input.sessionId,
+      });
       throw new UnauthorizedException('Session is not active');
     }
 

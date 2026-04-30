@@ -20,6 +20,20 @@ describe('HealthController', () => {
           lastHeartbeatAt: '2026-04-28T12:00:00.000Z',
         }),
       } as never,
+      {
+        listPending: jest.fn().mockResolvedValue([]),
+        listFailed: jest.fn().mockResolvedValue([]),
+      } as never,
+      {
+        list: jest.fn().mockResolvedValue([]),
+      } as never,
+      {
+        setGauge: jest.fn(),
+        snapshot: jest.fn().mockReturnValue({
+          counters: {},
+          gauges: {},
+        }),
+      } as never,
     );
 
     await expect(controller.getHealth()).resolves.toEqual({
@@ -32,6 +46,15 @@ describe('HealthController', () => {
           status: 'ok',
           lastHeartbeatAt: '2026-04-28T12:00:00.000Z',
         },
+      },
+      backlogs: {
+        outboxPending: 0,
+        outboxFailed: 0,
+        sentEmails: 0,
+      },
+      metrics: {
+        counters: {},
+        gauges: {},
       },
     });
   });
