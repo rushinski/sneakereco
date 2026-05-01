@@ -10,6 +10,7 @@ import { HttpAppModule } from './http-app.module';
 import { envSchema } from './core/config';
 import { LoggerService } from './core/observability/logging/logger.service';
 import { RequestContextService } from './core/observability/logging/request-context.service';
+import { createCorsOriginValidator } from './core/security/cors-origin-policy';
 import { SecurityService } from './core/security/security.service';
 import { TenantDomainConfigRepository } from './modules/tenants/tenant-domain-config.repository';
 
@@ -31,27 +32,7 @@ async function bootstrap() {
   await app.register(fastifyCookie);
   await app.register(fastifyCors, {
     ...securityService.getCorsOptions(),
-    origin: async (origin: string | undefined) => {
-      if (!origin) {
-        return true;
-      }
-
-      if (securityService.isKnownPlatformOrigin(origin)) {
-        return true;
-      }
-
-      try {
-        const parsed = new URL(origin);
-        if (securityService.isBaseDomainHost(parsed.hostname)) {
-          return true;
-        }
-
-        const tenantDomainConfig = await tenantDomainConfigRepository.findByOriginHost(parsed.hostname);
-        return tenantDomainConfig !== null;
-      } catch {
-        return false;
-      }
-    },
+    origin: createCorsOriginValidator(securityService, tenantDomainConfigRepository),
   });
 
   const fastify = app.getHttpAdapter().getInstance();

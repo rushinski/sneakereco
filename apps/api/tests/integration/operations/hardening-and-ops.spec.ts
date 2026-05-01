@@ -11,6 +11,7 @@ import { WorkerHeartbeatService } from '../../../src/core/observability/health/w
 import { AuthSessionRepository } from '../../../src/modules/auth/shared/auth-session.repository';
 import { OutboxDispatcherService } from '../../../src/core/events/outbox-dispatcher.service';
 import { OutboxRepository } from '../../../src/core/events/outbox.repository';
+import { createCorsOriginValidator } from '../../../src/core/security/cors-origin-policy';
 import { SecurityService } from '../../../src/core/security/security.service';
 import { TenantDomainConfigRepository } from '../../../src/modules/tenants/tenant-domain-config.repository';
 
@@ -85,26 +86,7 @@ describe('Hardening and operations', () => {
 
     await app.register(fastifyCors, {
       ...securityService.getCorsOptions(),
-      origin: async (origin: string | undefined) => {
-        if (!origin) {
-          return true;
-        }
-
-        if (securityService.isKnownPlatformOrigin(origin)) {
-          return true;
-        }
-
-        try {
-          const parsed = new URL(origin);
-          if (securityService.isBaseDomainHost(parsed.hostname)) {
-            return true;
-          }
-
-          return (await tenantDomainConfigRepository.findByOriginHost(parsed.hostname)) !== null;
-        } catch {
-          return false;
-        }
-      },
+      origin: createCorsOriginValidator(securityService, tenantDomainConfigRepository),
     });
 
     await app.init();
@@ -319,6 +301,16 @@ describe('Hardening and operations', () => {
     expect(managedSubdomainResponse.statusCode).toBe(200);
     expect(managedSubdomainResponse.headers['access-control-allow-origin']).toBe('https://managed.sneakereco.test');
 
+    const insecureManagedSubdomainResponse = await app.inject({
+      method: 'GET',
+      url: '/health',
+      headers: {
+        origin: 'http://managed.sneakereco.test',
+      },
+    });
+    expect(insecureManagedSubdomainResponse.statusCode).toBe(200);
+    expect(insecureManagedSubdomainResponse.headers['access-control-allow-origin']).toBeUndefined();
+
     await tenantDomainConfigRepository.create({
       tenantId: 'tnt_demo',
       subdomain: 'demo.sneakereco.test',
@@ -343,6 +335,16 @@ describe('Hardening and operations', () => {
     });
     expect(customDomainResponse.statusCode).toBe(200);
     expect(customDomainResponse.headers['access-control-allow-origin']).toBe('https://heatkings.com');
+
+    const insecureCustomDomainResponse = await app.inject({
+      method: 'GET',
+      url: '/health',
+      headers: {
+        origin: 'http://heatkings.com',
+      },
+    });
+    expect(insecureCustomDomainResponse.statusCode).toBe(200);
+    expect(insecureCustomDomainResponse.headers['access-control-allow-origin']).toBeUndefined();
 
     const pendingCustomDomainResponse = await app.inject({
       method: 'GET',
