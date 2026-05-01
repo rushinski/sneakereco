@@ -11,6 +11,7 @@ import { envSchema } from './core/config';
 import { LoggerService } from './core/observability/logging/logger.service';
 import { RequestContextService } from './core/observability/logging/request-context.service';
 import { SecurityService } from './core/security/security.service';
+import { TenantDomainConfigRepository } from './modules/tenants/tenant-domain-config.repository';
 
 async function bootstrap() {
   const env = envSchema.parse(process.env);
@@ -22,6 +23,7 @@ async function bootstrap() {
   const securityService = app.get(SecurityService);
   const requestContextService = app.get(RequestContextService);
   const logger = app.get(LoggerService);
+  const tenantDomainConfigRepository = app.get(TenantDomainConfigRepository);
 
   app.useLogger(logger);
 
@@ -29,22 +31,25 @@ async function bootstrap() {
   await app.register(fastifyCookie);
   await app.register(fastifyCors, {
     ...securityService.getCorsOptions(),
-    origin: (origin, callback) => {
+    origin: async (origin: string | undefined) => {
       if (!origin) {
-        callback(null, true);
-        return;
+        return true;
       }
 
       if (securityService.isKnownPlatformOrigin(origin)) {
-        callback(null, true);
-        return;
+        return true;
       }
 
       try {
         const parsed = new URL(origin);
-        callback(null, securityService.isBaseDomainHost(parsed.hostname));
+        if (securityService.isBaseDomainHost(parsed.hostname)) {
+          return true;
+        }
+
+        const tenantDomainConfig = await tenantDomainConfigRepository.findByOriginHost(parsed.hostname);
+        return tenantDomainConfig !== null;
       } catch {
-        callback(null, false);
+        return false;
       }
     },
   });
