@@ -8,6 +8,13 @@
 
 **Tech Stack:** pnpm workspace, NestJS, Fastify, Jest, TypeScript, Next.js
 
+**Task 1 Ownership Note:**
+- `auth` owns: principals, session-control, user repositories, auth audit, Cognito gateway
+- `platform-onboarding` owns: application submission, review, setup session, invitations, applications repository
+- `tenants` owns: tenant lifecycle, provisioning, domain, Cognito config, business profile, admin relationships
+- `communications` owns: auth email, onboarding email, email audit, email fixture persistence
+- `frontend auth support` owns: auth shell/forms/setup UI, BFF/session helpers, boundary codecs, tenant context helpers
+
 ---
 
 ## File Structure
