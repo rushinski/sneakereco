@@ -117,8 +117,7 @@
 
 **Files:**
 - Modify: `docs/superpowers/plans/2026-05-01-vertical-slice-refactor.md`
-- Test: `apps/api/tests/unit/core/security/cors-origin-policy.spec.ts`
-- Test: `apps/api/tests/integration/operations/hardening-and-ops.spec.ts`
+- Test: full Stage 1 verification matrix in `.worktrees/vertical-slice-refactor`
 
 - [x] **Step 1: Re-run the Stage 1 verification matrix before any refactor move**
 
@@ -141,23 +140,21 @@ All commands exit 0 before any file moves begin.
 Recorded 2026-05-01 in `.worktrees/vertical-slice-refactor`:
 
 ```text
+Verified branch head before refactor moves: e246885
 pnpm --filter @sneakereco/api typecheck                PASS
 pnpm --filter @sneakereco/web typecheck                PASS
 pnpm --filter @sneakereco/platform typecheck           PASS
 pnpm --filter @sneakereco/api test:unit                PASS (11 suites, 23 tests)
 pnpm --filter @sneakereco/api test:integration         PASS (5 suites, 17 tests)
+Build-smoke status inherited from the merged jacob-dev baseline verified before this worktree was created.
 ```
 
 - [x] **Step 2: Add a short ownership note at the top of this plan before implementation starts**
 
-Record this module map in the work log or implementation notes:
+Canonical ownership map is recorded at the top of this plan:
 
 ```text
-auth owns: principals, session-control, user repositories, auth audit, Cognito gateway
-platform-onboarding owns: application submission, review, setup session, invitations, applications repository
-tenants owns: tenant lifecycle, provisioning, domain, Cognito config, business profile, admin relationships
-communications owns: auth email, onboarding email, email audit, email fixture persistence
-frontend auth support owns: auth shell/forms/setup UI, BFF/session helpers, boundary codecs, tenant context helpers
+See the `Task 1 Ownership Note` block near the top of this document.
 ```
 
 - [x] **Step 3: Commit the baseline checkpoint**
