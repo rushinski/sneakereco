@@ -1,6 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 
+import type { DomainConfig } from '../../core/config';
+import { DOMAIN_CONFIG } from '../../core/config/config.module';
 import { OutboxDispatcherService } from '../../core/events/outbox-dispatcher.service';
 import { LoggerService } from '../../core/observability/logging/logger.service';
 import { MetricsService } from '../../core/observability/metrics/metrics.service';
@@ -28,6 +30,7 @@ export class TenantProvisioningService {
     private readonly tenantApplicationsRepository: TenantApplicationsRepository,
     private readonly tenantProvisioningGateway: TenantProvisioningGateway,
     private readonly outboxDispatcherService: OutboxDispatcherService,
+    @Inject(DOMAIN_CONFIG) private readonly domainConfig: DomainConfig,
     private readonly logger: LoggerService,
     private readonly metricsService: MetricsService,
     private readonly auditService: AuditService,
@@ -69,7 +72,7 @@ export class TenantProvisioningService {
       });
       await this.tenantDomainConfigRepository.create({
         tenantId: tenant.id,
-        subdomain: `${slug}.sneakereco.com`,
+        subdomain: `${slug}.${this.domainConfig.baseDomain}`,
         storefrontReadinessState: 'not_configured',
         adminReadinessState: 'not_configured',
       });

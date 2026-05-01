@@ -195,7 +195,7 @@ describe('Platform onboarding flows', () => {
       contactEmail: 'owner@heatkings.com',
     });
     expect(await domainConfigRepository.findByTenantId(String(tenant?.id))).toMatchObject({
-      subdomain: 'heat-kings.sneakereco.com',
+      subdomain: 'heat-kings.sneakereco.test',
       storefrontReadinessState: 'not_configured',
       adminReadinessState: 'not_configured',
     });

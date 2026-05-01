@@ -11,7 +11,6 @@ import { envSchema } from './core/config';
 import { LoggerService } from './core/observability/logging/logger.service';
 import { RequestContextService } from './core/observability/logging/request-context.service';
 import { SecurityService } from './core/security/security.service';
-import { TenantDomainConfigRepository } from './modules/tenants/tenant-domain-config.repository';
 
 async function bootstrap() {
   const env = envSchema.parse(process.env);
@@ -23,7 +22,6 @@ async function bootstrap() {
   const securityService = app.get(SecurityService);
   const requestContextService = app.get(RequestContextService);
   const logger = app.get(LoggerService);
-  const tenantDomainConfigRepository = app.get(TenantDomainConfigRepository);
 
   app.useLogger(logger);
 
@@ -44,10 +42,7 @@ async function bootstrap() {
 
       try {
         const parsed = new URL(origin);
-        void tenantDomainConfigRepository
-          .findByOriginHost(parsed.hostname)
-          .then((tenantOrigin: unknown) => callback(null, Boolean(tenantOrigin)))
-          .catch(() => callback(null, false));
+        callback(null, securityService.isBaseDomainHost(parsed.hostname));
       } catch {
         callback(null, false);
       }
