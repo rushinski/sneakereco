@@ -6,22 +6,22 @@ import { OutboxDispatcherService } from '../../../../src/core/events/outbox-disp
 import { ObservabilityModule } from '../../../../src/core/observability/observability.module';
 import { AuthModule } from '../../../../src/modules/auth/auth.module';
 import { PlatformOnboardingModule } from '../../../../src/modules/platform-onboarding/platform-onboarding.module';
-import { TenantApplicationsRepository } from '../../../../src/modules/platform-onboarding/tenant-applications.repository';
-import { TenantSetupInvitationsRepository } from '../../../../src/modules/platform-onboarding/tenant-setup-invitations.repository';
+import { TenantApplicationsRepository } from '../../../../src/modules/platform-onboarding/applications/tenant-applications.repository';
+import { TenantSetupInvitationsRepository } from '../../../../src/modules/platform-onboarding/invitations/tenant-setup-invitations.repository';
 import { CommunicationsModule } from '../../../../src/modules/communications/communications.module';
 import { TenantsModule } from '../../../../src/modules/tenants/tenants.module';
-import { AdminTenantRelationshipsRepository } from '../../../../src/modules/tenants/admin-tenant-relationships.repository';
-import { TenantBusinessProfileRepository } from '../../../../src/modules/tenants/tenant-business-profile.repository';
-import { TenantCognitoConfigRepository } from '../../../../src/modules/tenants/tenant-cognito-config.repository';
-import { TenantDomainConfigRepository } from '../../../../src/modules/tenants/tenant-domain-config.repository';
-import { TenantProvisioningGateway } from '../../../../src/modules/tenants/tenant-provisioning.gateway';
-import { TenantRepository } from '../../../../src/modules/tenants/tenant.repository';
+import { AdminTenantRelationshipsRepository } from '../../../../src/modules/tenants/tenant-admin-relationships/admin-tenant-relationships.repository';
+import { TenantBusinessProfileRepository } from '../../../../src/modules/tenants/tenant-business-profile/tenant-business-profile.repository';
+import { TenantCognitoConfigRepository } from '../../../../src/modules/tenants/tenant-cognito/tenant-cognito-config.repository';
+import { TenantDomainConfigRepository } from '../../../../src/modules/tenants/tenant-domain/tenant-domain-config.repository';
+import { TenantProvisioningGateway } from '../../../../src/modules/tenants/tenant-provisioning/tenant-provisioning.gateway';
+import { TenantRepository } from '../../../../src/modules/tenants/tenant-lifecycle/tenant.repository';
 import { SentEmailRepository } from '../../../../src/core/email/sent-email.repository';
 import { EmailWorker } from '../../../../src/workers/email/email.worker';
 import { TenantProvisioningWorkerService } from '../../../../src/workers/tenant-provisioning/tenant-provisioning.worker.service';
 import { WebBuilderModule } from '../../../../src/modules/web-builder/web-builder.module';
-import { CognitoAuthGateway } from '../../../../src/modules/auth/shared/cognito-auth.gateway';
-import { AdminUsersRepository } from '../../../../src/modules/auth/shared/admin-users.repository';
+import { CognitoAuthGateway } from '../../../../src/modules/auth/gateways/cognito-auth.gateway';
+import { AdminUsersRepository } from '../../../../src/modules/auth/admin-users/admin-users.repository';
 
 describe('Platform onboarding flows', () => {
   beforeAll(() => {

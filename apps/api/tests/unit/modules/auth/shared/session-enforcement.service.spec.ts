@@ -1,9 +1,9 @@
 import { UnauthorizedException } from '@nestjs/common';
 
-import { AuthSessionRepository } from '../../../../../src/modules/auth/shared/auth-session.repository';
-import { AuthSubjectRevocationsRepository } from '../../../../../src/modules/auth/shared/auth-subject-revocations.repository';
-import { SessionEnforcementService } from '../../../../../src/modules/auth/shared/session-enforcement.service';
-import { SuspiciousAuthTelemetryService } from '../../../../../src/modules/auth/shared/suspicious-auth-telemetry.service';
+import { AuthSessionRepository } from '../../../../../src/modules/auth/session-control/auth-session.repository';
+import { AuthSubjectRevocationsRepository } from '../../../../../src/modules/auth/session-control/auth-subject-revocations.repository';
+import { SessionEnforcementService } from '../../../../../src/modules/auth/session-control/session-enforcement.service';
+import { SuspiciousAuthTelemetryService } from '../../../../../src/modules/auth/audit/suspicious-auth-telemetry.service';
 
 describe('SessionEnforcementService', () => {
   it('accepts an active session with a matching version', async () => {

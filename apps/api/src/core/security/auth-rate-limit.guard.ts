@@ -8,7 +8,7 @@ import { Reflector } from '@nestjs/core';
 
 import { CacheService } from '../cache/cache.service';
 import { MetricsService } from '../observability/metrics/metrics.service';
-import { AUTH_RATE_LIMIT_PROFILE } from '../../modules/auth/shared/auth-rate-limit.decorator';
+import { AUTH_RATE_LIMIT_PROFILE } from '../../modules/auth/principals/auth-rate-limit.decorator';
 import { SecurityService } from './security.service';
 
 interface RateLimitState {

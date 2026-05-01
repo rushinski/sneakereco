@@ -12,7 +12,7 @@ import { LoggerService } from './core/observability/logging/logger.service';
 import { RequestContextService } from './core/observability/logging/request-context.service';
 import { createCorsOriginValidator } from './core/security/cors-origin-policy';
 import { SecurityService } from './core/security/security.service';
-import { TenantDomainConfigRepository } from './modules/tenants/tenant-domain-config.repository';
+import { TenantDomainConfigRepository } from './modules/tenants/tenant-domain/tenant-domain-config.repository';
 
 async function bootstrap() {
   const env = envSchema.parse(process.env);

@@ -8,6 +8,13 @@
 
 **Tech Stack:** pnpm workspace, NestJS, Fastify, Jest, TypeScript, Next.js
 
+**Task 1 Ownership Note:**
+- `auth` owns: principals, session-control, user repositories, auth audit, Cognito gateway
+- `platform-onboarding` owns: application submission, review, setup session, invitations, applications repository
+- `tenants` owns: tenant lifecycle, provisioning, domain, Cognito config, business profile, admin relationships
+- `communications` owns: auth email, onboarding email, email audit, email fixture persistence
+- `frontend auth support` owns: auth shell/forms/setup UI, BFF/session helpers, boundary codecs, tenant context helpers
+
 ---
 
 ## File Structure
@@ -110,10 +117,9 @@
 
 **Files:**
 - Modify: `docs/superpowers/plans/2026-05-01-vertical-slice-refactor.md`
-- Test: `apps/api/tests/unit/core/security/cors-origin-policy.spec.ts`
-- Test: `apps/api/tests/integration/operations/hardening-and-ops.spec.ts`
+- Test: full Stage 1 verification matrix in `.worktrees/vertical-slice-refactor`
 
-- [ ] **Step 1: Re-run the Stage 1 verification matrix before any refactor move**
+- [x] **Step 1: Re-run the Stage 1 verification matrix before any refactor move**
 
 Run:
 
@@ -131,22 +137,36 @@ Expected:
 All commands exit 0 before any file moves begin.
 ```
 
-- [ ] **Step 2: Add a short ownership note at the top of this plan before implementation starts**
-
-Record this module map in the work log or implementation notes:
+Recorded 2026-05-01 in `.worktrees/vertical-slice-refactor`:
 
 ```text
-auth owns: principals, session-control, user repositories, auth audit, Cognito gateway
-platform-onboarding owns: application submission, review, setup session, invitations, applications repository
-tenants owns: tenant lifecycle, provisioning, domain, Cognito config, business profile, admin relationships
-communications owns: auth email, onboarding email, email audit, email fixture persistence
-frontend auth support owns: auth shell/forms/setup UI, BFF/session helpers, boundary codecs, tenant context helpers
+Verified branch head before refactor moves: e246885
+pnpm --filter @sneakereco/api typecheck                PASS
+pnpm --filter @sneakereco/web typecheck                PASS
+pnpm --filter @sneakereco/platform typecheck           PASS
+pnpm --filter @sneakereco/api test:unit                PASS (11 suites, 23 tests)
+pnpm --filter @sneakereco/api test:integration         PASS (5 suites, 17 tests)
+Build-smoke status inherited from the merged jacob-dev baseline verified before this worktree was created.
 ```
 
-- [ ] **Step 3: Commit the baseline checkpoint**
+- [x] **Step 2: Add a short ownership note at the top of this plan before implementation starts**
+
+Canonical ownership map is recorded at the top of this plan:
+
+```text
+See the `Task 1 Ownership Note` block near the top of this document.
+```
+
+- [x] **Step 3: Commit the baseline checkpoint**
 
 ```bash
 git commit --allow-empty -m "chore: checkpoint vertical slice baseline"
+```
+
+Recorded commit:
+
+```text
+ccfa1e4 chore: checkpoint vertical slice baseline
 ```
 
 ## Task 2: Break `modules/auth/shared` Into Named Slice Areas
@@ -160,7 +180,7 @@ git commit --allow-empty -m "chore: checkpoint vertical slice baseline"
 - Test: `apps/api/tests/unit/modules/auth/shared/session-enforcement.service.spec.ts`
 - Test: `apps/api/tests/integration/modules/auth/auth.flow.spec.ts`
 
-- [ ] **Step 1: Move principal, session, gateway, and audit files into explicit subdirectories**
+- [x] **Step 1: Move principal, session, gateway, and audit files into explicit subdirectories**
 
 Target structure:
 
@@ -185,7 +205,7 @@ apps/api/src/modules/auth/
   auth.module.ts
 ```
 
-- [ ] **Step 2: Update all imports that currently reach into `auth/shared`**
+- [x] **Step 2: Update all imports that currently reach into `auth/shared`**
 
 Expected import direction after the move:
 
@@ -197,7 +217,7 @@ import { AdminUsersRepository } from '../auth/admin-users/admin-users.repository
 import { AuthSessionRepository } from '../auth/session-control/auth-session.repository';
 ```
 
-- [ ] **Step 3: Narrow `AuthModule` exports to explicit slice surfaces**
+- [x] **Step 3: Narrow `AuthModule` exports to explicit slice surfaces**
 
 Expected shape:
 
@@ -217,7 +237,7 @@ exports: [
 ]
 ```
 
-- [ ] **Step 4: Run focused auth tests**
+- [x] **Step 4: Run focused auth tests**
 
 Run:
 
@@ -234,7 +254,7 @@ Expected:
 All focused auth tests and API typecheck pass after the shared-folder breakup.
 ```
 
-- [ ] **Step 5: Commit the auth slice refactor**
+- [x] **Step 5: Commit the auth slice refactor**
 
 ```bash
 git add apps/api/src/modules/auth apps/api/src/modules/audit/audit.controller.ts apps/api/src/core/security/auth-rate-limit.guard.ts
@@ -250,7 +270,7 @@ git commit -m "refactor: slice auth shared responsibilities"
 - Modify: `apps/api/src/modules/platform-onboarding/platform-onboarding.module.ts`
 - Test: `apps/api/tests/integration/modules/platform-onboarding/platform-onboarding.flows.spec.ts`
 
-- [ ] **Step 1: Create slice directories and move the onboarding use-case files into them**
+- [x] **Step 1: Create slice directories and move the onboarding use-case files into them**
 
 Target structure:
 
@@ -264,7 +284,7 @@ apps/api/src/modules/platform-onboarding/
   platform-onboarding.module.ts
 ```
 
-- [ ] **Step 2: Update internal onboarding imports so repositories are explicit**
+- [x] **Step 2: Update internal onboarding imports so repositories are explicit**
 
 Expected direction:
 
@@ -273,11 +293,11 @@ import { TenantApplicationsRepository } from '../applications/tenant-application
 import { TenantSetupInvitationsRepository } from '../invitations/tenant-setup-invitations.repository';
 ```
 
-- [ ] **Step 3: Keep cross-module interaction at service boundaries only**
+- [x] **Step 3: Keep cross-module interaction at service boundaries only**
 
 Do not introduce imports from onboarding slices directly into tenant repository classes or auth repository classes. Keep orchestration inside the onboarding services and tenant provisioning gateway/service.
 
-- [ ] **Step 4: Run onboarding verification**
+- [x] **Step 4: Run onboarding verification**
 
 Run:
 
@@ -286,11 +306,17 @@ pnpm --filter @sneakereco/api test:integration -- tests/integration/modules/plat
 pnpm --filter @sneakereco/api typecheck
 ```
 
-- [ ] **Step 5: Commit the onboarding slice refactor**
+- [x] **Step 5: Commit the onboarding slice refactor**
 
 ```bash
 git add apps/api/src/modules/platform-onboarding
 git commit -m "refactor: slice platform onboarding module"
+```
+
+Recorded commit:
+
+```text
+ad8788d refactor: slice platform onboarding module
 ```
 
 ## Task 4: Slice `tenants` And Remove Flat Repository Sprawl
@@ -302,7 +328,7 @@ git commit -m "refactor: slice platform onboarding module"
 - Test: `apps/api/tests/integration/modules/platform-onboarding/platform-onboarding.flows.spec.ts`
 - Test: `apps/api/tests/integration/operations/hardening-and-ops.spec.ts`
 
-- [ ] **Step 1: Move tenant persistence and provisioning files into named slices**
+- [x] **Step 1: Move tenant persistence and provisioning files into named slices**
 
 Target structure:
 
@@ -317,7 +343,7 @@ apps/api/src/modules/tenants/
   tenants.module.ts
 ```
 
-- [ ] **Step 2: Keep `TenantProvisioningGateway` and `TenantProvisioningService` together in `tenant-provisioning/`**
+- [x] **Step 2: Keep `TenantProvisioningGateway` and `TenantProvisioningService` together in `tenant-provisioning/`**
 
 Expected pairing:
 
@@ -327,11 +353,11 @@ tenant-provisioning/
   tenant-provisioning.service.ts
 ```
 
-- [ ] **Step 3: Update `TenantsModule` provider wiring to the new slice paths**
+- [x] **Step 3: Update `TenantsModule` provider wiring to the new slice paths**
 
 The provider list should remain behaviorally equivalent, but imports should clearly show which slice owns each class.
 
-- [ ] **Step 4: Run the tenant-dependent integration coverage**
+- [x] **Step 4: Run the tenant-dependent integration coverage**
 
 Run:
 
@@ -341,11 +367,17 @@ pnpm --filter @sneakereco/api test:integration -- tests/integration/operations/h
 pnpm --filter @sneakereco/api typecheck
 ```
 
-- [ ] **Step 5: Commit the tenant slice refactor**
+- [x] **Step 5: Commit the tenant slice refactor**
 
 ```bash
 git add apps/api/src/modules/tenants
 git commit -m "refactor: slice tenants module"
+```
+
+Recorded commit:
+
+```text
+1a10106 refactor: slice tenants module
 ```
 
 ## Task 5: Slice `communications` By Email Use Case
@@ -357,7 +389,7 @@ git commit -m "refactor: slice tenants module"
 - Modify: `apps/api/src/modules/communications/communications.module.ts`
 - Test: `apps/api/tests/integration/modules/communications/auth-email.flows.spec.ts`
 
-- [ ] **Step 1: Create the communications slice directories and move the files**
+- [x] **Step 1: Create the communications slice directories and move the files**
 
 Target structure:
 
@@ -369,7 +401,7 @@ apps/api/src/modules/communications/
   communications.module.ts
 ```
 
-- [ ] **Step 2: Update module wiring and imports**
+- [x] **Step 2: Update module wiring and imports**
 
 Expected import direction:
 
@@ -381,7 +413,7 @@ import { PlatformOnboardingEmailService } from './onboarding-email/platform-onbo
 import { EmailAuditService } from './email-audit/email-audit.service';
 ```
 
-- [ ] **Step 3: Run communications verification**
+- [x] **Step 3: Run communications verification**
 
 Run:
 
@@ -390,11 +422,17 @@ pnpm --filter @sneakereco/api test:integration -- tests/integration/modules/comm
 pnpm --filter @sneakereco/api typecheck
 ```
 
-- [ ] **Step 4: Commit the communications slice refactor**
+- [x] **Step 4: Commit the communications slice refactor**
 
 ```bash
 git add apps/api/src/modules/communications
 git commit -m "refactor: slice communications module"
+```
+
+Recorded commit:
+
+```text
+5c42674 refactor: slice communications module
 ```
 
 ## Task 6: Clean Up Frontend Auth-Support Boundaries
@@ -408,7 +446,7 @@ git commit -m "refactor: slice communications module"
 - Test: `pnpm --filter @sneakereco/web build`
 - Test: `pnpm --filter @sneakereco/platform build`
 
-- [ ] **Step 1: Split web auth components into explicit `shell`, `forms`, and `admin-setup` groupings**
+- [x] **Step 1: Split web auth components into explicit `shell`, `forms`, and `admin-setup` groupings**
 
 Target direction:
 
@@ -420,7 +458,7 @@ apps/web/src/components/auth/
   web-design-studio.tsx
 ```
 
-- [ ] **Step 2: Group auth lib files by responsibility in both Next.js apps**
+- [x] **Step 2: Group auth lib files by responsibility in both Next.js apps**
 
 Target direction:
 
@@ -437,11 +475,11 @@ apps/platform/src/lib/auth/
   types.ts
 ```
 
-- [ ] **Step 3: Preserve route handler imports while clarifying ownership**
+- [x] **Step 3: Preserve route handler imports while clarifying ownership**
 
 `bff.ts`, `cookies.ts`, `csrf.ts`, `client-session.ts`, and `principal-codec.ts` should remain under the auth boundary, but the directory structure should distinguish browser/session concerns from HTTP boundary helpers.
 
-- [ ] **Step 4: Run frontend verification**
+- [x] **Step 4: Run frontend verification**
 
 Run:
 
@@ -452,11 +490,17 @@ $env:SESSION_SIGNING_SECRET='bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'; pnpm --filter @s
 $env:SESSION_SIGNING_SECRET='bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'; pnpm --filter @sneakereco/platform build
 ```
 
-- [ ] **Step 5: Commit the frontend boundary cleanup**
+- [x] **Step 5: Commit the frontend boundary cleanup**
 
 ```bash
 git add apps/web/src/components/auth apps/web/src/lib/auth apps/platform/src/lib/auth
 git commit -m "refactor: clarify frontend auth boundaries"
+```
+
+Recorded commit:
+
+```text
+9ca8f5d refactor: clarify frontend auth boundaries
 ```
 
 ## Task 7: Full Regression Verification And Cleanup
@@ -465,7 +509,7 @@ git commit -m "refactor: clarify frontend auth boundaries"
 - Modify: any broken imports discovered during full verification
 - Test: entire Stage 1 verification matrix on the refactored branch
 
-- [ ] **Step 1: Run the full post-refactor verification matrix**
+- [x] **Step 1: Run the full post-refactor verification matrix**
 
 Run:
 
@@ -480,7 +524,7 @@ $env:SESSION_SIGNING_SECRET='bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'; pnpm --filter @s
 $env:SESSION_SIGNING_SECRET='bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'; pnpm --filter @sneakereco/platform build
 ```
 
-- [ ] **Step 2: Fix only structural regressions surfaced by verification**
+- [x] **Step 2: Fix only structural regressions surfaced by verification**
 
 Allowed fixes:
 
@@ -498,7 +542,21 @@ Not allowed:
 - security redesign beyond structural cleanup
 ```
 
-- [ ] **Step 3: Commit the final verification cleanup**
+- [x] **Step 3: Commit the final verification cleanup**
+
+Recorded 2026-05-01 in `.worktrees/vertical-slice-refactor`:
+
+```text
+pnpm --filter @sneakereco/api typecheck                PASS
+pnpm --filter @sneakereco/web typecheck                PASS
+pnpm --filter @sneakereco/platform typecheck           PASS
+pnpm --filter @sneakereco/api test:unit                PASS (11 suites, 23 tests)
+pnpm --filter @sneakereco/api test:integration         PASS (5 suites, 17 tests)
+SESSION_SIGNING_SECRET=... pnpm --filter @sneakereco/api build        PASS
+SESSION_SIGNING_SECRET=... pnpm --filter @sneakereco/web build        PASS
+SESSION_SIGNING_SECRET=... pnpm --filter @sneakereco/platform build   PASS
+No additional structural regression fixes were required after the final sweep.
+```
 
 ```bash
 git add apps/api apps/web apps/platform

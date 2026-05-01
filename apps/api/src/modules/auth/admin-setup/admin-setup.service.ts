@@ -1,12 +1,12 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 
-import { SetupSessionService } from '../../platform-onboarding/setup-session.service';
-import { AdminTenantRelationshipsRepository } from '../../tenants/admin-tenant-relationships.repository';
-import { TenantRepository } from '../../tenants/tenant.repository';
-import { AuthAuditService } from '../shared/auth-audit.service';
-import { AdminUsersRepository } from '../shared/admin-users.repository';
-import { CognitoAuthGateway } from '../shared/cognito-auth.gateway';
-import { SessionIssuerService } from '../shared/session-issuer.service';
+import { SetupSessionService } from '../../platform-onboarding/setup-session/setup-session.service';
+import { AdminTenantRelationshipsRepository } from '../../tenants/tenant-admin-relationships/admin-tenant-relationships.repository';
+import { TenantRepository } from '../../tenants/tenant-lifecycle/tenant.repository';
+import { AuthAuditService } from '../audit/auth-audit.service';
+import { AdminUsersRepository } from '../admin-users/admin-users.repository';
+import { CognitoAuthGateway } from '../gateways/cognito-auth.gateway';
+import { SessionIssuerService } from '../session-control/session-issuer.service';
 
 @Injectable()
 export class AdminSetupService {

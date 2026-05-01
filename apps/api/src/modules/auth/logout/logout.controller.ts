@@ -1,8 +1,8 @@
 import { Controller, Get, Post, UseGuards } from '@nestjs/common';
 
-import { CurrentPrincipal } from '../shared/current-principal.decorator';
-import { AuthPrincipalGuard } from '../shared/auth-principal.guard';
-import type { AuthPrincipal } from '../shared/auth.types';
+import { CurrentPrincipal } from '../principals/current-principal.decorator';
+import { AuthPrincipalGuard } from '../principals/auth-principal.guard';
+import type { AuthPrincipal } from '../principals/auth.types';
 import { LogoutService } from './logout.service';
 
 @Controller('auth/session-control')

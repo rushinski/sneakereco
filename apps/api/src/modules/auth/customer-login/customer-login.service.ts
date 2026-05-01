@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 
-import { AuthAuditService } from '../shared/auth-audit.service';
-import { CognitoAuthGateway } from '../shared/cognito-auth.gateway';
-import { SessionIssuerService } from '../shared/session-issuer.service';
+import { AuthAuditService } from '../audit/auth-audit.service';
+import { CognitoAuthGateway } from '../gateways/cognito-auth.gateway';
+import { SessionIssuerService } from '../session-control/session-issuer.service';
 
 @Injectable()
 export class CustomerLoginService {

@@ -1,9 +1,9 @@
 import { Controller, Get, Post, Query, UseGuards, Param, ForbiddenException } from '@nestjs/common';
 
 import { OutboxRepository } from '../../core/events/outbox.repository';
-import { CurrentPrincipal } from '../auth/shared/current-principal.decorator';
-import { AuthPrincipalGuard } from '../auth/shared/auth-principal.guard';
-import type { AuthPrincipal } from '../auth/shared/auth.types';
+import { CurrentPrincipal } from '../auth/principals/current-principal.decorator';
+import { AuthPrincipalGuard } from '../auth/principals/auth-principal.guard';
+import type { AuthPrincipal } from '../auth/principals/auth.types';
 import { AuditService } from './audit.service';
 
 @Controller('audit')

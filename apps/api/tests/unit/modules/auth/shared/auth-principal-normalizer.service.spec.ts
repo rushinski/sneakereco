@@ -1,6 +1,6 @@
 import { UnauthorizedException } from '@nestjs/common';
 
-import { AuthPrincipalNormalizerService } from '../../../../../src/modules/auth/shared/auth-principal-normalizer.service';
+import { AuthPrincipalNormalizerService } from '../../../../../src/modules/auth/principals/auth-principal-normalizer.service';
 
 describe('AuthPrincipalNormalizerService', () => {
   const service = new AuthPrincipalNormalizerService();

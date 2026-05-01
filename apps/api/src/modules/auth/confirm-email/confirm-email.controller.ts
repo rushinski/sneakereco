@@ -1,6 +1,6 @@
 import { Body, Controller, Post } from '@nestjs/common';
 
-import { AuthRateLimit } from '../shared/auth-rate-limit.decorator';
+import { AuthRateLimit } from '../principals/auth-rate-limit.decorator';
 import type { ConfirmEmailDto } from './confirm-email.dto';
 import { ConfirmEmailService } from './confirm-email.service';
 

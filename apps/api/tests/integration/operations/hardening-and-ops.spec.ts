@@ -8,12 +8,12 @@ import { DatabaseService } from '../../../src/core/database/database.service';
 import { HttpAppModule } from '../../../src/http-app.module';
 import { QueueService } from '../../../src/core/queue/queue.service';
 import { WorkerHeartbeatService } from '../../../src/core/observability/health/worker-heartbeat.service';
-import { AuthSessionRepository } from '../../../src/modules/auth/shared/auth-session.repository';
+import { AuthSessionRepository } from '../../../src/modules/auth/session-control/auth-session.repository';
 import { OutboxDispatcherService } from '../../../src/core/events/outbox-dispatcher.service';
 import { OutboxRepository } from '../../../src/core/events/outbox.repository';
 import { createCorsOriginValidator } from '../../../src/core/security/cors-origin-policy';
 import { SecurityService } from '../../../src/core/security/security.service';
-import { TenantDomainConfigRepository } from '../../../src/modules/tenants/tenant-domain-config.repository';
+import { TenantDomainConfigRepository } from '../../../src/modules/tenants/tenant-domain/tenant-domain-config.repository';
 
 describe('Hardening and operations', () => {
   beforeAll(() => {
