@@ -389,7 +389,7 @@ Recorded commit:
 - Modify: `apps/api/src/modules/communications/communications.module.ts`
 - Test: `apps/api/tests/integration/modules/communications/auth-email.flows.spec.ts`
 
-- [ ] **Step 1: Create the communications slice directories and move the files**
+- [x] **Step 1: Create the communications slice directories and move the files**
 
 Target structure:
 
@@ -401,7 +401,7 @@ apps/api/src/modules/communications/
   communications.module.ts
 ```
 
-- [ ] **Step 2: Update module wiring and imports**
+- [x] **Step 2: Update module wiring and imports**
 
 Expected import direction:
 
@@ -413,7 +413,7 @@ import { PlatformOnboardingEmailService } from './onboarding-email/platform-onbo
 import { EmailAuditService } from './email-audit/email-audit.service';
 ```
 
-- [ ] **Step 3: Run communications verification**
+- [x] **Step 3: Run communications verification**
 
 Run:
 
@@ -422,11 +422,17 @@ pnpm --filter @sneakereco/api test:integration -- tests/integration/modules/comm
 pnpm --filter @sneakereco/api typecheck
 ```
 
-- [ ] **Step 4: Commit the communications slice refactor**
+- [x] **Step 4: Commit the communications slice refactor**
 
 ```bash
 git add apps/api/src/modules/communications
 git commit -m "refactor: slice communications module"
+```
+
+Recorded commit:
+
+```text
+5c42674 refactor: slice communications module
 ```
 
 ## Task 6: Clean Up Frontend Auth-Support Boundaries
