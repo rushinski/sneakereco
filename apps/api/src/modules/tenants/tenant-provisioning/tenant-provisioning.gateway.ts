@@ -5,8 +5,8 @@ import {
 } from '@aws-sdk/client-cognito-identity-provider';
 import { Injectable } from '@nestjs/common';
 
-import { CognitoAdminService } from '../../core/cognito/cognito-admin.service';
-import { CognitoTenantFactoryService } from '../../core/cognito/cognito-tenant-factory.service';
+import { CognitoAdminService } from '../../../core/cognito/cognito-admin.service';
+import { CognitoTenantFactoryService } from '../../../core/cognito/cognito-tenant-factory.service';
 
 export interface TenantCustomerIdentityProvisioningResult {
   userPoolId: string;

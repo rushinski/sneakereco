@@ -3,9 +3,9 @@ import { Injectable } from '@nestjs/common';
 import { generateId } from '@sneakereco/shared';
 
 import { LoggerService } from '../observability/logging/logger.service';
-import { TenantBusinessProfileRepository } from '../../modules/tenants/tenant-business-profile.repository';
-import { TenantDomainConfigRepository } from '../../modules/tenants/tenant-domain-config.repository';
-import { TenantRepository } from '../../modules/tenants/tenant.repository';
+import { TenantBusinessProfileRepository } from '../../modules/tenants/tenant-business-profile/tenant-business-profile.repository';
+import { TenantDomainConfigRepository } from '../../modules/tenants/tenant-domain/tenant-domain-config.repository';
+import { TenantRepository } from '../../modules/tenants/tenant-lifecycle/tenant.repository';
 import type { ResolvedSenderIdentity } from './email.types';
 
 @Injectable()

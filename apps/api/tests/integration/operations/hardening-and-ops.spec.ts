@@ -13,7 +13,7 @@ import { OutboxDispatcherService } from '../../../src/core/events/outbox-dispatc
 import { OutboxRepository } from '../../../src/core/events/outbox.repository';
 import { createCorsOriginValidator } from '../../../src/core/security/cors-origin-policy';
 import { SecurityService } from '../../../src/core/security/security.service';
-import { TenantDomainConfigRepository } from '../../../src/modules/tenants/tenant-domain-config.repository';
+import { TenantDomainConfigRepository } from '../../../src/modules/tenants/tenant-domain/tenant-domain-config.repository';
 
 describe('Hardening and operations', () => {
   beforeAll(() => {

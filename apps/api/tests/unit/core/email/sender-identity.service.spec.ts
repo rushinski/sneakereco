@@ -2,9 +2,9 @@ import { Test } from '@nestjs/testing';
 
 import { LoggerService } from '../../../../src/core/observability/logging/logger.service';
 import { SenderIdentityService } from '../../../../src/core/email/sender-identity.service';
-import { TenantBusinessProfileRepository } from '../../../../src/modules/tenants/tenant-business-profile.repository';
-import { TenantDomainConfigRepository } from '../../../../src/modules/tenants/tenant-domain-config.repository';
-import { TenantRepository } from '../../../../src/modules/tenants/tenant.repository';
+import { TenantBusinessProfileRepository } from '../../../../src/modules/tenants/tenant-business-profile/tenant-business-profile.repository';
+import { TenantDomainConfigRepository } from '../../../../src/modules/tenants/tenant-domain/tenant-domain-config.repository';
+import { TenantRepository } from '../../../../src/modules/tenants/tenant-lifecycle/tenant.repository';
 
 describe('SenderIdentityService', () => {
   async function createService() {

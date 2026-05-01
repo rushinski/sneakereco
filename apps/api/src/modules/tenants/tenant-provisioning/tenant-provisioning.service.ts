@@ -1,21 +1,21 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 
-import type { DomainConfig } from '../../core/config';
-import { DOMAIN_CONFIG } from '../../core/config/config.module';
-import { OutboxDispatcherService } from '../../core/events/outbox-dispatcher.service';
-import { LoggerService } from '../../core/observability/logging/logger.service';
-import { MetricsService } from '../../core/observability/metrics/metrics.service';
-import { AuditService } from '../audit/audit.service';
-import { AdminUsersRepository } from '../auth/admin-users/admin-users.repository';
-import { TenantApplicationsRepository } from '../platform-onboarding/applications/tenant-applications.repository';
-import { TenantSetupInvitationsRepository } from '../platform-onboarding/invitations/tenant-setup-invitations.repository';
-import { AdminTenantRelationshipsRepository } from './admin-tenant-relationships.repository';
-import { TenantBusinessProfileRepository } from './tenant-business-profile.repository';
-import { TenantCognitoConfigRepository } from './tenant-cognito-config.repository';
-import { TenantDomainConfigRepository } from './tenant-domain-config.repository';
+import type { DomainConfig } from '../../../core/config';
+import { DOMAIN_CONFIG } from '../../../core/config/config.module';
+import { OutboxDispatcherService } from '../../../core/events/outbox-dispatcher.service';
+import { LoggerService } from '../../../core/observability/logging/logger.service';
+import { MetricsService } from '../../../core/observability/metrics/metrics.service';
+import { AuditService } from '../../audit/audit.service';
+import { AdminUsersRepository } from '../../auth/admin-users/admin-users.repository';
+import { TenantApplicationsRepository } from '../../platform-onboarding/applications/tenant-applications.repository';
+import { TenantSetupInvitationsRepository } from '../../platform-onboarding/invitations/tenant-setup-invitations.repository';
+import { AdminTenantRelationshipsRepository } from '../tenant-admin-relationships/admin-tenant-relationships.repository';
+import { TenantBusinessProfileRepository } from '../tenant-business-profile/tenant-business-profile.repository';
+import { TenantCognitoConfigRepository } from '../tenant-cognito/tenant-cognito-config.repository';
+import { TenantDomainConfigRepository } from '../tenant-domain/tenant-domain-config.repository';
+import { TenantRepository } from '../tenant-lifecycle/tenant.repository';
 import { TenantProvisioningGateway } from './tenant-provisioning.gateway';
-import { TenantRepository } from './tenant.repository';
 
 @Injectable()
 export class TenantProvisioningService {

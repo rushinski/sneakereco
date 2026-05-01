@@ -10,9 +10,9 @@ import { ObservabilityModule } from '../../../../src/core/observability/observab
 import { AuthModule } from '../../../../src/modules/auth/auth.module';
 import { AuthSessionRepository } from '../../../../src/modules/auth/session-control/auth-session.repository';
 import { CommunicationsModule } from '../../../../src/modules/communications/communications.module';
-import { TenantBusinessProfileRepository } from '../../../../src/modules/tenants/tenant-business-profile.repository';
-import { TenantDomainConfigRepository } from '../../../../src/modules/tenants/tenant-domain-config.repository';
-import { TenantRepository } from '../../../../src/modules/tenants/tenant.repository';
+import { TenantBusinessProfileRepository } from '../../../../src/modules/tenants/tenant-business-profile/tenant-business-profile.repository';
+import { TenantDomainConfigRepository } from '../../../../src/modules/tenants/tenant-domain/tenant-domain-config.repository';
+import { TenantRepository } from '../../../../src/modules/tenants/tenant-lifecycle/tenant.repository';
 import { WebBuilderModule } from '../../../../src/modules/web-builder/web-builder.module';
 import { DesignFamilyRegistryRepository } from '../../../../src/modules/web-builder/design-family-registry.repository';
 import { EmailDraftsRepository } from '../../../../src/modules/web-builder/email-drafts.repository';

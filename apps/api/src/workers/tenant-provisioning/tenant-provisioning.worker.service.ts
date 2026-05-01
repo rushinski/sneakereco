@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { OutboxDispatcherService } from '../../core/events/outbox-dispatcher.service';
 import { OutboxRepository } from '../../core/events/outbox.repository';
-import { TenantProvisioningService } from '../../modules/tenants/tenant-provisioning.service';
+import { TenantProvisioningService } from '../../modules/tenants/tenant-provisioning/tenant-provisioning.service';
 
 @Injectable()
 export class TenantProvisioningWorkerService {
