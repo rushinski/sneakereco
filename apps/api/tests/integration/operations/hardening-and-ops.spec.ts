@@ -299,14 +299,6 @@ describe('Hardening and operations', () => {
   it('admits only allowed platform and tenant origins for CORS', async () => {
     const { app, tenantDomainConfigRepository } = await createApp();
 
-    await tenantDomainConfigRepository.create({
-      tenantId: 'tnt_demo',
-      subdomain: 'demo.sneakereco.test',
-      storefrontCustomDomain: 'heatkings.com',
-      storefrontReadinessState: 'ready',
-      adminReadinessState: 'not_configured',
-    });
-
     const platformResponse = await app.inject({
       method: 'GET',
       url: '/health',
@@ -327,6 +319,21 @@ describe('Hardening and operations', () => {
     expect(managedSubdomainResponse.statusCode).toBe(200);
     expect(managedSubdomainResponse.headers['access-control-allow-origin']).toBe('https://managed.sneakereco.test');
 
+    await tenantDomainConfigRepository.create({
+      tenantId: 'tnt_demo',
+      subdomain: 'demo.sneakereco.test',
+      storefrontCustomDomain: 'heatkings.com',
+      storefrontReadinessState: 'ready',
+      adminReadinessState: 'not_configured',
+    });
+    await tenantDomainConfigRepository.create({
+      tenantId: 'tnt_pending',
+      subdomain: 'pending.sneakereco.test',
+      storefrontCustomDomain: 'pending-heatkings.com',
+      storefrontReadinessState: 'pending_dns',
+      adminReadinessState: 'not_configured',
+    });
+
     const customDomainResponse = await app.inject({
       method: 'GET',
       url: '/health',
@@ -336,6 +343,16 @@ describe('Hardening and operations', () => {
     });
     expect(customDomainResponse.statusCode).toBe(200);
     expect(customDomainResponse.headers['access-control-allow-origin']).toBe('https://heatkings.com');
+
+    const pendingCustomDomainResponse = await app.inject({
+      method: 'GET',
+      url: '/health',
+      headers: {
+        origin: 'https://pending-heatkings.com',
+      },
+    });
+    expect(pendingCustomDomainResponse.statusCode).toBe(200);
+    expect(pendingCustomDomainResponse.headers['access-control-allow-origin']).toBeUndefined();
 
     const unknownDomainResponse = await app.inject({
       method: 'GET',
