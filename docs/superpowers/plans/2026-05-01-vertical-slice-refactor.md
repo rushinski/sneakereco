@@ -180,7 +180,7 @@ ccfa1e4 chore: checkpoint vertical slice baseline
 - Test: `apps/api/tests/unit/modules/auth/shared/session-enforcement.service.spec.ts`
 - Test: `apps/api/tests/integration/modules/auth/auth.flow.spec.ts`
 
-- [ ] **Step 1: Move principal, session, gateway, and audit files into explicit subdirectories**
+- [x] **Step 1: Move principal, session, gateway, and audit files into explicit subdirectories**
 
 Target structure:
 
@@ -205,7 +205,7 @@ apps/api/src/modules/auth/
   auth.module.ts
 ```
 
-- [ ] **Step 2: Update all imports that currently reach into `auth/shared`**
+- [x] **Step 2: Update all imports that currently reach into `auth/shared`**
 
 Expected import direction after the move:
 
@@ -217,7 +217,7 @@ import { AdminUsersRepository } from '../auth/admin-users/admin-users.repository
 import { AuthSessionRepository } from '../auth/session-control/auth-session.repository';
 ```
 
-- [ ] **Step 3: Narrow `AuthModule` exports to explicit slice surfaces**
+- [x] **Step 3: Narrow `AuthModule` exports to explicit slice surfaces**
 
 Expected shape:
 
@@ -237,7 +237,7 @@ exports: [
 ]
 ```
 
-- [ ] **Step 4: Run focused auth tests**
+- [x] **Step 4: Run focused auth tests**
 
 Run:
 
@@ -254,7 +254,7 @@ Expected:
 All focused auth tests and API typecheck pass after the shared-folder breakup.
 ```
 
-- [ ] **Step 5: Commit the auth slice refactor**
+- [x] **Step 5: Commit the auth slice refactor**
 
 ```bash
 git add apps/api/src/modules/auth apps/api/src/modules/audit/audit.controller.ts apps/api/src/core/security/auth-rate-limit.guard.ts
@@ -270,7 +270,7 @@ git commit -m "refactor: slice auth shared responsibilities"
 - Modify: `apps/api/src/modules/platform-onboarding/platform-onboarding.module.ts`
 - Test: `apps/api/tests/integration/modules/platform-onboarding/platform-onboarding.flows.spec.ts`
 
-- [ ] **Step 1: Create slice directories and move the onboarding use-case files into them**
+- [x] **Step 1: Create slice directories and move the onboarding use-case files into them**
 
 Target structure:
 
@@ -284,7 +284,7 @@ apps/api/src/modules/platform-onboarding/
   platform-onboarding.module.ts
 ```
 
-- [ ] **Step 2: Update internal onboarding imports so repositories are explicit**
+- [x] **Step 2: Update internal onboarding imports so repositories are explicit**
 
 Expected direction:
 
@@ -293,11 +293,11 @@ import { TenantApplicationsRepository } from '../applications/tenant-application
 import { TenantSetupInvitationsRepository } from '../invitations/tenant-setup-invitations.repository';
 ```
 
-- [ ] **Step 3: Keep cross-module interaction at service boundaries only**
+- [x] **Step 3: Keep cross-module interaction at service boundaries only**
 
 Do not introduce imports from onboarding slices directly into tenant repository classes or auth repository classes. Keep orchestration inside the onboarding services and tenant provisioning gateway/service.
 
-- [ ] **Step 4: Run onboarding verification**
+- [x] **Step 4: Run onboarding verification**
 
 Run:
 
@@ -306,11 +306,17 @@ pnpm --filter @sneakereco/api test:integration -- tests/integration/modules/plat
 pnpm --filter @sneakereco/api typecheck
 ```
 
-- [ ] **Step 5: Commit the onboarding slice refactor**
+- [x] **Step 5: Commit the onboarding slice refactor**
 
 ```bash
 git add apps/api/src/modules/platform-onboarding
 git commit -m "refactor: slice platform onboarding module"
+```
+
+Recorded commit:
+
+```text
+ad8788d refactor: slice platform onboarding module
 ```
 
 ## Task 4: Slice `tenants` And Remove Flat Repository Sprawl
