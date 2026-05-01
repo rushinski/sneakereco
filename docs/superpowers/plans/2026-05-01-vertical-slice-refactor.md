@@ -328,7 +328,7 @@ ad8788d refactor: slice platform onboarding module
 - Test: `apps/api/tests/integration/modules/platform-onboarding/platform-onboarding.flows.spec.ts`
 - Test: `apps/api/tests/integration/operations/hardening-and-ops.spec.ts`
 
-- [ ] **Step 1: Move tenant persistence and provisioning files into named slices**
+- [x] **Step 1: Move tenant persistence and provisioning files into named slices**
 
 Target structure:
 
@@ -343,7 +343,7 @@ apps/api/src/modules/tenants/
   tenants.module.ts
 ```
 
-- [ ] **Step 2: Keep `TenantProvisioningGateway` and `TenantProvisioningService` together in `tenant-provisioning/`**
+- [x] **Step 2: Keep `TenantProvisioningGateway` and `TenantProvisioningService` together in `tenant-provisioning/`**
 
 Expected pairing:
 
@@ -353,11 +353,11 @@ tenant-provisioning/
   tenant-provisioning.service.ts
 ```
 
-- [ ] **Step 3: Update `TenantsModule` provider wiring to the new slice paths**
+- [x] **Step 3: Update `TenantsModule` provider wiring to the new slice paths**
 
 The provider list should remain behaviorally equivalent, but imports should clearly show which slice owns each class.
 
-- [ ] **Step 4: Run the tenant-dependent integration coverage**
+- [x] **Step 4: Run the tenant-dependent integration coverage**
 
 Run:
 
@@ -367,11 +367,17 @@ pnpm --filter @sneakereco/api test:integration -- tests/integration/operations/h
 pnpm --filter @sneakereco/api typecheck
 ```
 
-- [ ] **Step 5: Commit the tenant slice refactor**
+- [x] **Step 5: Commit the tenant slice refactor**
 
 ```bash
 git add apps/api/src/modules/tenants
 git commit -m "refactor: slice tenants module"
+```
+
+Recorded commit:
+
+```text
+1a10106 refactor: slice tenants module
 ```
 
 ## Task 5: Slice `communications` By Email Use Case
