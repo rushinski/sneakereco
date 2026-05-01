@@ -509,7 +509,7 @@ Recorded commit:
 - Modify: any broken imports discovered during full verification
 - Test: entire Stage 1 verification matrix on the refactored branch
 
-- [ ] **Step 1: Run the full post-refactor verification matrix**
+- [x] **Step 1: Run the full post-refactor verification matrix**
 
 Run:
 
@@ -524,7 +524,7 @@ $env:SESSION_SIGNING_SECRET='bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'; pnpm --filter @s
 $env:SESSION_SIGNING_SECRET='bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'; pnpm --filter @sneakereco/platform build
 ```
 
-- [ ] **Step 2: Fix only structural regressions surfaced by verification**
+- [x] **Step 2: Fix only structural regressions surfaced by verification**
 
 Allowed fixes:
 
@@ -542,7 +542,21 @@ Not allowed:
 - security redesign beyond structural cleanup
 ```
 
-- [ ] **Step 3: Commit the final verification cleanup**
+- [x] **Step 3: Commit the final verification cleanup**
+
+Recorded 2026-05-01 in `.worktrees/vertical-slice-refactor`:
+
+```text
+pnpm --filter @sneakereco/api typecheck                PASS
+pnpm --filter @sneakereco/web typecheck                PASS
+pnpm --filter @sneakereco/platform typecheck           PASS
+pnpm --filter @sneakereco/api test:unit                PASS (11 suites, 23 tests)
+pnpm --filter @sneakereco/api test:integration         PASS (5 suites, 17 tests)
+SESSION_SIGNING_SECRET=... pnpm --filter @sneakereco/api build        PASS
+SESSION_SIGNING_SECRET=... pnpm --filter @sneakereco/web build        PASS
+SESSION_SIGNING_SECRET=... pnpm --filter @sneakereco/platform build   PASS
+No additional structural regression fixes were required after the final sweep.
+```
 
 ```bash
 git add apps/api apps/web apps/platform
