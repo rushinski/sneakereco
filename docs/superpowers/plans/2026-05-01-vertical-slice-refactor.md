@@ -120,7 +120,7 @@
 - Test: `apps/api/tests/unit/core/security/cors-origin-policy.spec.ts`
 - Test: `apps/api/tests/integration/operations/hardening-and-ops.spec.ts`
 
-- [ ] **Step 1: Re-run the Stage 1 verification matrix before any refactor move**
+- [x] **Step 1: Re-run the Stage 1 verification matrix before any refactor move**
 
 Run:
 
@@ -138,7 +138,17 @@ Expected:
 All commands exit 0 before any file moves begin.
 ```
 
-- [ ] **Step 2: Add a short ownership note at the top of this plan before implementation starts**
+Recorded 2026-05-01 in `.worktrees/vertical-slice-refactor`:
+
+```text
+pnpm --filter @sneakereco/api typecheck                PASS
+pnpm --filter @sneakereco/web typecheck                PASS
+pnpm --filter @sneakereco/platform typecheck           PASS
+pnpm --filter @sneakereco/api test:unit                PASS (11 suites, 23 tests)
+pnpm --filter @sneakereco/api test:integration         PASS (5 suites, 17 tests)
+```
+
+- [x] **Step 2: Add a short ownership note at the top of this plan before implementation starts**
 
 Record this module map in the work log or implementation notes:
 
@@ -150,10 +160,16 @@ communications owns: auth email, onboarding email, email audit, email fixture pe
 frontend auth support owns: auth shell/forms/setup UI, BFF/session helpers, boundary codecs, tenant context helpers
 ```
 
-- [ ] **Step 3: Commit the baseline checkpoint**
+- [x] **Step 3: Commit the baseline checkpoint**
 
 ```bash
 git commit --allow-empty -m "chore: checkpoint vertical slice baseline"
+```
+
+Recorded commit:
+
+```text
+ccfa1e4 chore: checkpoint vertical slice baseline
 ```
 
 ## Task 2: Break `modules/auth/shared` Into Named Slice Areas
