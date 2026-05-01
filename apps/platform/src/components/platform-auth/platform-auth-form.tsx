@@ -41,7 +41,6 @@ export function PlatformAuthForm(props: {
             const csrfToken = await getCsrfToken();
             const response = await fetch(props.endpoint, {
               method: 'POST',
-              headers: { 'content-type': 'application/json' },
               headers: {
                 'content-type': 'application/json',
                 'x-csrf-token': csrfToken,

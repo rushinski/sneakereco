@@ -10,6 +10,7 @@ import { HttpAppModule } from './http-app.module';
 import { envSchema } from './core/config';
 import { LoggerService } from './core/observability/logging/logger.service';
 import { RequestContextService } from './core/observability/logging/request-context.service';
+import { createCorsOriginValidator } from './core/security/cors-origin-policy';
 import { SecurityService } from './core/security/security.service';
 import { TenantDomainConfigRepository } from './modules/tenants/tenant-domain-config.repository';
 
@@ -23,6 +24,7 @@ async function bootstrap() {
   const securityService = app.get(SecurityService);
   const requestContextService = app.get(RequestContextService);
   const logger = app.get(LoggerService);
+  const tenantDomainConfigRepository = app.get(TenantDomainConfigRepository);
 
   app.useLogger(logger);
 
@@ -30,27 +32,10 @@ async function bootstrap() {
   await app.register(fastifyCookie);
   await app.register(fastifyCors, {
     ...securityService.getCorsOptions(),
-    origin: (origin, callback) => {
-      if (!origin) {
-        callback(null, true);
-        return;
-      }
-
-      if (securityService.isKnownPlatformOrigin(origin)) {
-        callback(null, true);
-        return;
-      }
-
-      try {
-        const parsed = new URL(origin);
-        void tenantDomainConfigRepository
-          .findByOriginHost(parsed.hostname)
-          .then((tenantOrigin) => callback(null, Boolean(tenantOrigin)))
-          .catch(() => callback(null, false));
-      } catch {
-        callback(null, false);
-      }
-    },
+    origin: createCorsOriginValidator(
+      securityService,
+      async (host) => (await tenantDomainConfigRepository.findByOriginHost(host)) !== null,
+    ),
   });
 
   const fastify = app.getHttpAdapter().getInstance();
