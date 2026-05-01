@@ -16,7 +16,7 @@ export class ReviewController {
   deny(@Param('applicationId') applicationId: string, @Body() body: DenyApplicationDto) {
     return this.reviewService.deny(applicationId, {
       reviewedByAdminUserId: body.reviewedByAdminUserId,
-      denialReason: body.reason,
+      denialReason: body.denialReason,
     });
   }
 }

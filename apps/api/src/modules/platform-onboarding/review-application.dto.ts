@@ -4,5 +4,5 @@ export class ApproveApplicationDto {
 
 export class DenyApplicationDto {
   reviewedByAdminUserId!: string;
-  reason!: string;
+  denialReason!: string;
 }
