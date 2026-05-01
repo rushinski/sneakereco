@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 
-import type { AuthEmailPreviewFixture } from '../../core/email/email.types';
+import type { AuthEmailPreviewFixture } from '../../../core/email/email.types';
 
 @Injectable()
 export class AuthEmailFixturesRepository {

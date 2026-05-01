@@ -1,9 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 
-import type { Env } from '../../core/config';
-import { ENVIRONMENT } from '../../core/config/config.module';
-import { MailTransportService } from '../../core/email/mail-transport.service';
-import { EmailAuditService } from './email-audit.service';
+import type { Env } from '../../../core/config';
+import { ENVIRONMENT } from '../../../core/config/config.module';
+import { MailTransportService } from '../../../core/email/mail-transport.service';
+import { EmailAuditService } from '../email-audit/email-audit.service';
 
 @Injectable()
 export class PlatformOnboardingEmailService {

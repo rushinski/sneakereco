@@ -1,17 +1,17 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 
-import { EmailRendererService } from '../../core/email/email-renderer.service';
-import { MailTransportService } from '../../core/email/mail-transport.service';
-import { SenderIdentityService } from '../../core/email/sender-identity.service';
-import type { AuthEmailType, RenderedAuthEmail } from '../../core/email/email.types';
-import { TenantBusinessProfileRepository } from '../tenants/tenant-business-profile/tenant-business-profile.repository';
-import type { AuthPrincipal } from '../auth/principals/auth.types';
-import { DesignFamilyRegistryRepository } from '../web-builder/design-family-registry.repository';
-import { EmailDraftsRepository } from '../web-builder/email-drafts.repository';
-import { ReleaseSetsRepository } from '../web-builder/release-sets.repository';
+import { EmailRendererService } from '../../../core/email/email-renderer.service';
+import { MailTransportService } from '../../../core/email/mail-transport.service';
+import { SenderIdentityService } from '../../../core/email/sender-identity.service';
+import type { AuthEmailType, RenderedAuthEmail } from '../../../core/email/email.types';
+import type { AuthPrincipal } from '../../auth/principals/auth.types';
+import { TenantBusinessProfileRepository } from '../../tenants/tenant-business-profile/tenant-business-profile.repository';
+import { TenantDomainConfigRepository } from '../../tenants/tenant-domain/tenant-domain-config.repository';
+import { DesignFamilyRegistryRepository } from '../../web-builder/design-family-registry.repository';
+import { EmailDraftsRepository } from '../../web-builder/email-drafts.repository';
+import { ReleaseSetsRepository } from '../../web-builder/release-sets.repository';
 import { AuthEmailFixturesRepository } from './auth-email-fixtures.repository';
-import { EmailAuditService } from './email-audit.service';
-import { TenantDomainConfigRepository } from '../tenants/tenant-domain/tenant-domain-config.repository';
+import { EmailAuditService } from '../email-audit/email-audit.service';
 
 @Injectable()
 export class AuthEmailService {

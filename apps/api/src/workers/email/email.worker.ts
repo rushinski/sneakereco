@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 
 import { OutboxDispatcherService } from '../../core/events/outbox-dispatcher.service';
 import { OutboxRepository } from '../../core/events/outbox.repository';
-import { AuthEmailService } from '../../modules/communications/auth-email.service';
-import { PlatformOnboardingEmailService } from '../../modules/communications/platform-onboarding-email.service';
+import { AuthEmailService } from '../../modules/communications/auth-email/auth-email.service';
+import { PlatformOnboardingEmailService } from '../../modules/communications/onboarding-email/platform-onboarding-email.service';
 
 @Injectable()
 export class EmailWorker {

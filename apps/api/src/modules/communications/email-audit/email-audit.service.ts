@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 
-import { LoggerService } from '../../core/observability/logging/logger.service';
-import { MetricsService } from '../../core/observability/metrics/metrics.service';
-import { AuditService } from '../audit/audit.service';
+import { LoggerService } from '../../../core/observability/logging/logger.service';
+import { MetricsService } from '../../../core/observability/metrics/metrics.service';
+import { AuditService } from '../../audit/audit.service';
 
 @Injectable()
 export class EmailAuditService {
