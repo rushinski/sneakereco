@@ -25,7 +25,7 @@ export function createCorsOriginValidator(
         return true;
       }
 
-      return findAllowedOriginHost(parsed.hostname);
+      return await findAllowedOriginHost(parsed.hostname);
     } catch {
       return false;
     }

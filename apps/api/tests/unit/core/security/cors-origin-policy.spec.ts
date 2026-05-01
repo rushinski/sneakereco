@@ -54,4 +54,14 @@ describe('createCorsOriginValidator', () => {
     await expect(validateOrigin('not a url')).resolves.toBe(false);
     expect(findAllowedOriginHost).not.toHaveBeenCalled();
   });
+
+  it('fails closed when tenant lookup rejects', async () => {
+    const findAllowedOriginHost = jest
+      .fn<Promise<boolean>, [string]>()
+      .mockRejectedValue(new Error('lookup unavailable'));
+    const validateOrigin = createCorsOriginValidator(securityService, findAllowedOriginHost);
+
+    await expect(validateOrigin('https://heatkings.com')).resolves.toBe(false);
+    expect(findAllowedOriginHost).toHaveBeenCalledWith('heatkings.com');
+  });
 });
