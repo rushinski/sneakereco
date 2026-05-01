@@ -446,7 +446,7 @@ Recorded commit:
 - Test: `pnpm --filter @sneakereco/web build`
 - Test: `pnpm --filter @sneakereco/platform build`
 
-- [ ] **Step 1: Split web auth components into explicit `shell`, `forms`, and `admin-setup` groupings**
+- [x] **Step 1: Split web auth components into explicit `shell`, `forms`, and `admin-setup` groupings**
 
 Target direction:
 
@@ -458,7 +458,7 @@ apps/web/src/components/auth/
   web-design-studio.tsx
 ```
 
-- [ ] **Step 2: Group auth lib files by responsibility in both Next.js apps**
+- [x] **Step 2: Group auth lib files by responsibility in both Next.js apps**
 
 Target direction:
 
@@ -475,11 +475,11 @@ apps/platform/src/lib/auth/
   types.ts
 ```
 
-- [ ] **Step 3: Preserve route handler imports while clarifying ownership**
+- [x] **Step 3: Preserve route handler imports while clarifying ownership**
 
 `bff.ts`, `cookies.ts`, `csrf.ts`, `client-session.ts`, and `principal-codec.ts` should remain under the auth boundary, but the directory structure should distinguish browser/session concerns from HTTP boundary helpers.
 
-- [ ] **Step 4: Run frontend verification**
+- [x] **Step 4: Run frontend verification**
 
 Run:
 
@@ -490,11 +490,17 @@ $env:SESSION_SIGNING_SECRET='bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'; pnpm --filter @s
 $env:SESSION_SIGNING_SECRET='bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'; pnpm --filter @sneakereco/platform build
 ```
 
-- [ ] **Step 5: Commit the frontend boundary cleanup**
+- [x] **Step 5: Commit the frontend boundary cleanup**
 
 ```bash
 git add apps/web/src/components/auth apps/web/src/lib/auth apps/platform/src/lib/auth
 git commit -m "refactor: clarify frontend auth boundaries"
+```
+
+Recorded commit:
+
+```text
+9ca8f5d refactor: clarify frontend auth boundaries
 ```
 
 ## Task 7: Full Regression Verification And Cleanup
