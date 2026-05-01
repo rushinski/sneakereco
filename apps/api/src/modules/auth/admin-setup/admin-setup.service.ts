@@ -1,6 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 
-import { SetupSessionService } from '../../platform-onboarding/setup-session.service';
+import { SetupSessionService } from '../../platform-onboarding/setup-session/setup-session.service';
 import { AdminTenantRelationshipsRepository } from '../../tenants/admin-tenant-relationships.repository';
 import { TenantRepository } from '../../tenants/tenant.repository';
 import { AuthAuditService } from '../audit/auth-audit.service';

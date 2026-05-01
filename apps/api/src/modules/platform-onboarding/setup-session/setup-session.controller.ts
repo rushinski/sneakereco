@@ -1,6 +1,6 @@
 import { Body, Controller, Post } from '@nestjs/common';
 
-import { AuthRateLimit } from '../auth/principals/auth-rate-limit.decorator';
+import { AuthRateLimit } from '../../auth/principals/auth-rate-limit.decorator';
 import type { ConsumeSetupInvitationDto } from './setup-session.dto';
 import { SetupSessionService } from './setup-session.service';
 

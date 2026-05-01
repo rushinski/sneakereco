@@ -6,8 +6,8 @@ import { OutboxDispatcherService } from '../../../../src/core/events/outbox-disp
 import { ObservabilityModule } from '../../../../src/core/observability/observability.module';
 import { AuthModule } from '../../../../src/modules/auth/auth.module';
 import { PlatformOnboardingModule } from '../../../../src/modules/platform-onboarding/platform-onboarding.module';
-import { TenantApplicationsRepository } from '../../../../src/modules/platform-onboarding/tenant-applications.repository';
-import { TenantSetupInvitationsRepository } from '../../../../src/modules/platform-onboarding/tenant-setup-invitations.repository';
+import { TenantApplicationsRepository } from '../../../../src/modules/platform-onboarding/applications/tenant-applications.repository';
+import { TenantSetupInvitationsRepository } from '../../../../src/modules/platform-onboarding/invitations/tenant-setup-invitations.repository';
 import { CommunicationsModule } from '../../../../src/modules/communications/communications.module';
 import { TenantsModule } from '../../../../src/modules/tenants/tenants.module';
 import { AdminTenantRelationshipsRepository } from '../../../../src/modules/tenants/admin-tenant-relationships.repository';

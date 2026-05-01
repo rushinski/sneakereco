@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 
-import { AuthAuditService } from '../auth/audit/auth-audit.service';
-import { OutboxDispatcherService } from '../../core/events/outbox-dispatcher.service';
-import { TenantApplicationsRepository } from './tenant-applications.repository';
+import { OutboxDispatcherService } from '../../../core/events/outbox-dispatcher.service';
+import { AuthAuditService } from '../../auth/audit/auth-audit.service';
+import { TenantApplicationsRepository } from '../applications/tenant-applications.repository';
 
 @Injectable()
 export class ApplicationSubmissionService {
