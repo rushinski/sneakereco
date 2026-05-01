@@ -1,6 +1,6 @@
 import { Body, Controller, Post } from '@nestjs/common';
 
-import { AuthRateLimit } from '../shared/auth-rate-limit.decorator';
+import { AuthRateLimit } from '../principals/auth-rate-limit.decorator';
 import type { ForgotPasswordDto } from './forgot-password.dto';
 import { PasswordResetService } from './password-reset.service';
 import type { ResetPasswordDto } from './reset-password.dto';

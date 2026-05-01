@@ -30,7 +30,7 @@ import type {
   CustomerRegistrationResult,
   OtpRequestResult,
   PasswordResetRequestResult,
-} from './auth.types';
+} from '../principals/auth.types';
 
 type AdminChallengePayload = {
   session: string;

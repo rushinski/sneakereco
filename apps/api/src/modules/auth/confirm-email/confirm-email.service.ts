@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 
-import { AuthAuditService } from '../shared/auth-audit.service';
-import { CognitoAuthGateway } from '../shared/cognito-auth.gateway';
-import { CustomerUsersRepository } from '../shared/customer-users.repository';
+import { AuthAuditService } from '../audit/auth-audit.service';
+import { CustomerUsersRepository } from '../customer-users/customer-users.repository';
+import { CognitoAuthGateway } from '../gateways/cognito-auth.gateway';
 
 @Injectable()
 export class ConfirmEmailService {

@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 
-import { AdminUsersRepository } from '../auth/shared/admin-users.repository';
+import { AdminUsersRepository } from '../auth/admin-users/admin-users.repository';
 import { TenantSetupInvitationsRepository } from './tenant-setup-invitations.repository';
 import type { SetupSessionRecord } from './setup-session.dto';
 

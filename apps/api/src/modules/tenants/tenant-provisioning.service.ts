@@ -7,7 +7,7 @@ import { OutboxDispatcherService } from '../../core/events/outbox-dispatcher.ser
 import { LoggerService } from '../../core/observability/logging/logger.service';
 import { MetricsService } from '../../core/observability/metrics/metrics.service';
 import { AuditService } from '../audit/audit.service';
-import { AdminUsersRepository } from '../auth/shared/admin-users.repository';
+import { AdminUsersRepository } from '../auth/admin-users/admin-users.repository';
 import { TenantSetupInvitationsRepository } from '../platform-onboarding/tenant-setup-invitations.repository';
 import { TenantApplicationsRepository } from '../platform-onboarding/tenant-applications.repository';
 import { AdminTenantRelationshipsRepository } from './admin-tenant-relationships.repository';

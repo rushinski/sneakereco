@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { generateId } from '@sneakereco/shared';
 
-import type { ActorType } from './auth.types';
+import type { ActorType } from '../principals/auth.types';
 
 export interface AuthSessionRecord {
   id: string;

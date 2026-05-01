@@ -1,10 +1,10 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 
-import { AdminUsersRepository } from './admin-users.repository';
+import { AdminUsersRepository } from '../admin-users/admin-users.repository';
 import { AuthSessionRepository } from './auth-session.repository';
-import type { CompletedAuthChallenge } from './auth.types';
-import { CustomerUsersRepository } from './customer-users.repository';
+import type { CompletedAuthChallenge } from '../principals/auth.types';
+import { CustomerUsersRepository } from '../customer-users/customer-users.repository';
 
 @Injectable()
 export class SessionIssuerService {

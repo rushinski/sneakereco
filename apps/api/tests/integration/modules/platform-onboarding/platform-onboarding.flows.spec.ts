@@ -20,8 +20,8 @@ import { SentEmailRepository } from '../../../../src/core/email/sent-email.repos
 import { EmailWorker } from '../../../../src/workers/email/email.worker';
 import { TenantProvisioningWorkerService } from '../../../../src/workers/tenant-provisioning/tenant-provisioning.worker.service';
 import { WebBuilderModule } from '../../../../src/modules/web-builder/web-builder.module';
-import { CognitoAuthGateway } from '../../../../src/modules/auth/shared/cognito-auth.gateway';
-import { AdminUsersRepository } from '../../../../src/modules/auth/shared/admin-users.repository';
+import { CognitoAuthGateway } from '../../../../src/modules/auth/gateways/cognito-auth.gateway';
+import { AdminUsersRepository } from '../../../../src/modules/auth/admin-users/admin-users.repository';
 
 describe('Platform onboarding flows', () => {
   beforeAll(() => {

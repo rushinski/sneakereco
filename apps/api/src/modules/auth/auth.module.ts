@@ -25,17 +25,17 @@ import { RefreshController } from './refresh/refresh.controller';
 import { RefreshService } from './refresh/refresh.service';
 import { RegisterController } from './register/register.controller';
 import { RegisterService } from './register/register.service';
-import { AdminUsersRepository } from './shared/admin-users.repository';
-import { AuthAuditService } from './shared/auth-audit.service';
-import { AuthPrincipalGuard } from './shared/auth-principal.guard';
-import { AuthPrincipalNormalizerService } from './shared/auth-principal-normalizer.service';
-import { AuthSessionRepository } from './shared/auth-session.repository';
-import { AuthSubjectRevocationsRepository } from './shared/auth-subject-revocations.repository';
-import { CognitoAuthGateway } from './shared/cognito-auth.gateway';
-import { CustomerUsersRepository } from './shared/customer-users.repository';
-import { SessionEnforcementService } from './shared/session-enforcement.service';
-import { SessionIssuerService } from './shared/session-issuer.service';
-import { SuspiciousAuthTelemetryService } from './shared/suspicious-auth-telemetry.service';
+import { AdminUsersRepository } from './admin-users/admin-users.repository';
+import { AuthAuditService } from './audit/auth-audit.service';
+import { SuspiciousAuthTelemetryService } from './audit/suspicious-auth-telemetry.service';
+import { CustomerUsersRepository } from './customer-users/customer-users.repository';
+import { CognitoAuthGateway } from './gateways/cognito-auth.gateway';
+import { AuthPrincipalGuard } from './principals/auth-principal.guard';
+import { AuthPrincipalNormalizerService } from './principals/auth-principal-normalizer.service';
+import { AuthSessionRepository } from './session-control/auth-session.repository';
+import { AuthSubjectRevocationsRepository } from './session-control/auth-subject-revocations.repository';
+import { SessionEnforcementService } from './session-control/session-enforcement.service';
+import { SessionIssuerService } from './session-control/session-issuer.service';
 
 @Module({
   imports: [
@@ -87,6 +87,7 @@ import { SuspiciousAuthTelemetryService } from './shared/suspicious-auth-telemet
     AuthSubjectRevocationsRepository,
     AuthPrincipalNormalizerService,
     SessionEnforcementService,
+    SessionIssuerService,
     CognitoAuthGateway,
     AuthAuditService,
     AuthPrincipalGuard,

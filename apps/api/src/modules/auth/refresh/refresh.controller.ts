@@ -1,6 +1,6 @@
 import { Body, Controller, Post } from '@nestjs/common';
 
-import { AuthRateLimit } from '../shared/auth-rate-limit.decorator';
+import { AuthRateLimit } from '../principals/auth-rate-limit.decorator';
 import type { RefreshDto } from './refresh.dto';
 import { RefreshService } from './refresh.service';
 

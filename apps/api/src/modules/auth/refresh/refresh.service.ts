@@ -1,9 +1,9 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 
-import { AuthAuditService } from '../shared/auth-audit.service';
-import { AuthSessionRepository } from '../shared/auth-session.repository';
-import { CognitoAuthGateway } from '../shared/cognito-auth.gateway';
-import { SuspiciousAuthTelemetryService } from '../shared/suspicious-auth-telemetry.service';
+import { AuthAuditService } from '../audit/auth-audit.service';
+import { AuthSessionRepository } from '../session-control/auth-session.repository';
+import { SuspiciousAuthTelemetryService } from '../audit/suspicious-auth-telemetry.service';
+import { CognitoAuthGateway } from '../gateways/cognito-auth.gateway';
 
 @Injectable()
 export class RefreshService {

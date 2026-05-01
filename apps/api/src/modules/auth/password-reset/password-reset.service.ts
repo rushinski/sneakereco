@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
-import { AuthAuditService } from '../shared/auth-audit.service';
-import { CognitoAuthGateway } from '../shared/cognito-auth.gateway';
+import { AuthAuditService } from '../audit/auth-audit.service';
+import { CognitoAuthGateway } from '../gateways/cognito-auth.gateway';
 
 @Injectable()
 export class PasswordResetService {

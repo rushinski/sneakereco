@@ -1,8 +1,8 @@
 import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 
-import { CurrentPrincipal } from '../auth/shared/current-principal.decorator';
-import { AuthPrincipalGuard } from '../auth/shared/auth-principal.guard';
-import type { AuthPrincipal } from '../auth/shared/auth.types';
+import { CurrentPrincipal } from '../auth/principals/current-principal.decorator';
+import { AuthPrincipalGuard } from '../auth/principals/auth-principal.guard';
+import type { AuthPrincipal } from '../auth/principals/auth.types';
 import { AuthEmailService } from './auth-email.service';
 
 @Controller('communications/auth-emails')

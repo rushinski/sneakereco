@@ -7,7 +7,7 @@ import {
 import { Inject } from '@nestjs/common';
 
 import { AuthPrincipalNormalizerService } from './auth-principal-normalizer.service';
-import { SessionEnforcementService } from './session-enforcement.service';
+import { SessionEnforcementService } from '../session-control/session-enforcement.service';
 import { ENVIRONMENT } from '../../../core/config/config.module';
 import type { Env } from '../../../core/config';
 import { verifyPrincipalPayload } from './auth-principal-codec';

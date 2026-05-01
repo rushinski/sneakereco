@@ -1,6 +1,6 @@
 import { Body, Controller, Post } from '@nestjs/common';
 
-import { AuthRateLimit } from '../shared/auth-rate-limit.decorator';
+import { AuthRateLimit } from '../principals/auth-rate-limit.decorator';
 import type { AdminLoginDto } from './admin-login.dto';
 import { AdminLoginService } from './admin-login.service';
 

@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 
-import { AuthAuditService } from '../shared/auth-audit.service';
-import { AuthSessionRepository } from '../shared/auth-session.repository';
-import { AuthSubjectRevocationsRepository } from '../shared/auth-subject-revocations.repository';
-import type { AuthPrincipal } from '../shared/auth.types';
+import { AuthAuditService } from '../audit/auth-audit.service';
+import { AuthSessionRepository } from '../session-control/auth-session.repository';
+import { AuthSubjectRevocationsRepository } from '../session-control/auth-subject-revocations.repository';
+import type { AuthPrincipal } from '../principals/auth.types';
 
 @Injectable()
 export class LogoutService {

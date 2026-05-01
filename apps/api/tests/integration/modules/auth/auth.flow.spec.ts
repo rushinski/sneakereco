@@ -3,9 +3,9 @@ import { Test } from '@nestjs/testing';
 import { createHmac } from 'node:crypto';
 
 import { AuthModule } from '../../../../src/modules/auth/auth.module';
-import { AdminUsersRepository } from '../../../../src/modules/auth/shared/admin-users.repository';
-import { CognitoAuthGateway } from '../../../../src/modules/auth/shared/cognito-auth.gateway';
-import { CustomerUsersRepository } from '../../../../src/modules/auth/shared/customer-users.repository';
+import { AdminUsersRepository } from '../../../../src/modules/auth/admin-users/admin-users.repository';
+import { CognitoAuthGateway } from '../../../../src/modules/auth/gateways/cognito-auth.gateway';
+import { CustomerUsersRepository } from '../../../../src/modules/auth/customer-users/customer-users.repository';
 
 describe('Auth flows', () => {
   beforeAll(() => {

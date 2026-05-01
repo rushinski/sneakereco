@@ -1,6 +1,6 @@
 import { Body, Controller, Post } from '@nestjs/common';
 
-import { AuthRateLimit } from '../auth/shared/auth-rate-limit.decorator';
+import { AuthRateLimit } from '../auth/principals/auth-rate-limit.decorator';
 import type { ApplicationSubmissionDto } from './application-submission.dto';
 import { ApplicationSubmissionService } from './application-submission.service';
 

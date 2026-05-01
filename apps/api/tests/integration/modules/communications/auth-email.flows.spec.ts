@@ -8,7 +8,7 @@ import { OutboxRepository } from '../../../../src/core/events/outbox.repository'
 import { SentEmailRepository } from '../../../../src/core/email/sent-email.repository';
 import { ObservabilityModule } from '../../../../src/core/observability/observability.module';
 import { AuthModule } from '../../../../src/modules/auth/auth.module';
-import { AuthSessionRepository } from '../../../../src/modules/auth/shared/auth-session.repository';
+import { AuthSessionRepository } from '../../../../src/modules/auth/session-control/auth-session.repository';
 import { CommunicationsModule } from '../../../../src/modules/communications/communications.module';
 import { TenantBusinessProfileRepository } from '../../../../src/modules/tenants/tenant-business-profile.repository';
 import { TenantDomainConfigRepository } from '../../../../src/modules/tenants/tenant-domain-config.repository';

@@ -5,7 +5,7 @@ import { MailTransportService } from '../../core/email/mail-transport.service';
 import { SenderIdentityService } from '../../core/email/sender-identity.service';
 import type { AuthEmailType, RenderedAuthEmail } from '../../core/email/email.types';
 import { TenantBusinessProfileRepository } from '../tenants/tenant-business-profile.repository';
-import type { AuthPrincipal } from '../auth/shared/auth.types';
+import type { AuthPrincipal } from '../auth/principals/auth.types';
 import { DesignFamilyRegistryRepository } from '../web-builder/design-family-registry.repository';
 import { EmailDraftsRepository } from '../web-builder/email-drafts.repository';
 import { ReleaseSetsRepository } from '../web-builder/release-sets.repository';

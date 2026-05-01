@@ -1,9 +1,9 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 
-import type { AuthPrincipal } from './auth.types';
+import type { AuthPrincipal } from '../principals/auth.types';
 import { AuthSessionRepository } from './auth-session.repository';
 import { AuthSubjectRevocationsRepository } from './auth-subject-revocations.repository';
-import { SuspiciousAuthTelemetryService } from './suspicious-auth-telemetry.service';
+import { SuspiciousAuthTelemetryService } from '../audit/suspicious-auth-telemetry.service';
 
 @Injectable()
 export class SessionEnforcementService {
