@@ -294,15 +294,15 @@ describe('Hardening and operations', () => {
     expect(platformResponse.statusCode).toBe(200);
     expect(platformResponse.headers['access-control-allow-origin']).toBe('https://sneakereco.test');
 
-    const managedSubdomainResponse = await app.inject({
+    const unknownManagedSubdomainResponse = await app.inject({
       method: 'GET',
       url: '/health',
       headers: {
         origin: 'https://managed.sneakereco.test',
       },
     });
-    expect(managedSubdomainResponse.statusCode).toBe(200);
-    expect(managedSubdomainResponse.headers['access-control-allow-origin']).toBe('https://managed.sneakereco.test');
+    expect(unknownManagedSubdomainResponse.statusCode).toBe(200);
+    expect(unknownManagedSubdomainResponse.headers['access-control-allow-origin']).toBeUndefined();
 
     const insecureManagedSubdomainResponse = await app.inject({
       method: 'GET',
@@ -328,6 +328,16 @@ describe('Hardening and operations', () => {
       storefrontReadinessState: 'pending_dns',
       adminReadinessState: 'not_configured',
     });
+
+    const managedSubdomainResponse = await app.inject({
+      method: 'GET',
+      url: '/health',
+      headers: {
+        origin: 'https://demo.sneakereco.test',
+      },
+    });
+    expect(managedSubdomainResponse.statusCode).toBe(200);
+    expect(managedSubdomainResponse.headers['access-control-allow-origin']).toBe('https://demo.sneakereco.test');
 
     const customDomainResponse = await app.inject({
       method: 'GET',

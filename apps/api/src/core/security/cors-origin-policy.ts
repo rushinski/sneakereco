@@ -21,10 +21,6 @@ export function createCorsOriginValidator(
         return false;
       }
 
-      if (securityService.isBaseDomainHost(parsed.hostname)) {
-        return true;
-      }
-
       return await findAllowedOriginHost(parsed.hostname);
     } catch {
       return false;

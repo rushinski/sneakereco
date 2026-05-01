@@ -32,16 +32,22 @@ describe('createCorsOriginValidator', () => {
     expect(findAllowedOriginHost).not.toHaveBeenCalled();
   });
 
-  it('allows secure managed subdomains and ready custom domains', async () => {
+  it('allows only provisioned tenant hosts and ready custom domains', async () => {
     const findAllowedOriginHost = jest
       .fn<Promise<boolean>, [string]>()
-      .mockImplementation(async (host) => host === 'heatkings.com' || host === 'admin.heatkings.com');
+      .mockImplementation(
+        async (host) =>
+          host === 'demo.sneakereco.test' || host === 'heatkings.com' || host === 'admin.heatkings.com',
+      );
     const validateOrigin = createCorsOriginValidator(securityService, findAllowedOriginHost);
 
-    await expect(validateOrigin('https://managed.sneakereco.test')).resolves.toBe(true);
+    await expect(validateOrigin('https://managed.sneakereco.test')).resolves.toBe(false);
+    await expect(validateOrigin('https://demo.sneakereco.test')).resolves.toBe(true);
     await expect(validateOrigin('https://heatkings.com')).resolves.toBe(true);
     await expect(validateOrigin('https://admin.heatkings.com')).resolves.toBe(true);
     await expect(validateOrigin('https://pending-heatkings.com')).resolves.toBe(false);
+    expect(findAllowedOriginHost).toHaveBeenCalledWith('managed.sneakereco.test');
+    expect(findAllowedOriginHost).toHaveBeenCalledWith('demo.sneakereco.test');
     expect(findAllowedOriginHost).toHaveBeenCalledWith('heatkings.com');
     expect(findAllowedOriginHost).toHaveBeenCalledWith('admin.heatkings.com');
     expect(findAllowedOriginHost).toHaveBeenCalledWith('pending-heatkings.com');
