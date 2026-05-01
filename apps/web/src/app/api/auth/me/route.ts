@@ -2,6 +2,6 @@ import type { NextRequest } from 'next/server';
 
 import { handleSessionAction } from '@/lib/auth/bff';
 
-export function POST(request: NextRequest) {
-  return handleSessionAction(request, 'auth/session-control/logout');
+export function GET(request: NextRequest) {
+  return handleSessionAction(request, 'auth/session-control/me');
 }
