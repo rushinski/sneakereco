@@ -32,7 +32,10 @@ async function bootstrap() {
   await app.register(fastifyCookie);
   await app.register(fastifyCors, {
     ...securityService.getCorsOptions(),
-    origin: createCorsOriginValidator(securityService, tenantDomainConfigRepository),
+    origin: createCorsOriginValidator(
+      securityService,
+      async (host) => (await tenantDomainConfigRepository.findByOriginHost(host)) !== null,
+    ),
   });
 
   const fastify = app.getHttpAdapter().getInstance();

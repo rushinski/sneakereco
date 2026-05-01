@@ -86,7 +86,10 @@ describe('Hardening and operations', () => {
 
     await app.register(fastifyCors, {
       ...securityService.getCorsOptions(),
-      origin: createCorsOriginValidator(securityService, tenantDomainConfigRepository),
+      origin: createCorsOriginValidator(
+        securityService,
+        async (host) => (await tenantDomainConfigRepository.findByOriginHost(host)) !== null,
+      ),
     });
 
     await app.init();

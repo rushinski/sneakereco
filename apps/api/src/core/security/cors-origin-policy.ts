@@ -1,9 +1,10 @@
-import { TenantDomainConfigRepository } from '../../modules/tenants/tenant-domain-config.repository';
 import { SecurityService } from './security.service';
+
+type FindAllowedOriginHost = (host: string) => Promise<boolean>;
 
 export function createCorsOriginValidator(
   securityService: SecurityService,
-  tenantDomainConfigRepository: TenantDomainConfigRepository,
+  findAllowedOriginHost: FindAllowedOriginHost,
 ) {
   return async (origin: string | undefined) => {
     if (!origin) {
@@ -24,7 +25,7 @@ export function createCorsOriginValidator(
         return true;
       }
 
-      return (await tenantDomainConfigRepository.findByOriginHost(parsed.hostname)) !== null;
+      return findAllowedOriginHost(parsed.hostname);
     } catch {
       return false;
     }
