@@ -1,6 +1,7 @@
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 import { createHmac } from 'node:crypto';
+import fastifyCors from '@fastify/cors';
 
 import { CacheService } from '../../../src/core/cache/cache.service';
 import { DatabaseService } from '../../../src/core/database/database.service';
@@ -10,6 +11,8 @@ import { WorkerHeartbeatService } from '../../../src/core/observability/health/w
 import { AuthSessionRepository } from '../../../src/modules/auth/shared/auth-session.repository';
 import { OutboxDispatcherService } from '../../../src/core/events/outbox-dispatcher.service';
 import { OutboxRepository } from '../../../src/core/events/outbox.repository';
+import { SecurityService } from '../../../src/core/security/security.service';
+import { TenantDomainConfigRepository } from '../../../src/modules/tenants/tenant-domain-config.repository';
 
 describe('Hardening and operations', () => {
   beforeAll(() => {
@@ -77,6 +80,33 @@ describe('Hardening and operations', () => {
       .compile();
 
     const app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
+    const securityService = app.get(SecurityService);
+    const tenantDomainConfigRepository = app.get(TenantDomainConfigRepository);
+
+    await app.register(fastifyCors, {
+      ...securityService.getCorsOptions(),
+      origin: async (origin: string | undefined) => {
+        if (!origin) {
+          return true;
+        }
+
+        if (securityService.isKnownPlatformOrigin(origin)) {
+          return true;
+        }
+
+        try {
+          const parsed = new URL(origin);
+          if (securityService.isBaseDomainHost(parsed.hostname)) {
+            return true;
+          }
+
+          return (await tenantDomainConfigRepository.findByOriginHost(parsed.hostname)) !== null;
+        } catch {
+          return false;
+        }
+      },
+    });
+
     await app.init();
     await app.getHttpAdapter().getInstance().ready();
 
@@ -85,6 +115,7 @@ describe('Hardening and operations', () => {
       authSessionRepository: app.get(AuthSessionRepository),
       outboxDispatcherService: app.get(OutboxDispatcherService),
       outboxRepository: app.get(OutboxRepository),
+      tenantDomainConfigRepository,
     };
   }
 
@@ -261,6 +292,60 @@ describe('Hardening and operations', () => {
         'outbox.pending': expect.any(Number),
       },
     });
+
+    await app.close();
+  });
+
+  it('admits only allowed platform and tenant origins for CORS', async () => {
+    const { app, tenantDomainConfigRepository } = await createApp();
+
+    await tenantDomainConfigRepository.create({
+      tenantId: 'tnt_demo',
+      subdomain: 'demo.sneakereco.test',
+      storefrontCustomDomain: 'heatkings.com',
+      storefrontReadinessState: 'ready',
+      adminReadinessState: 'not_configured',
+    });
+
+    const platformResponse = await app.inject({
+      method: 'GET',
+      url: '/health',
+      headers: {
+        origin: 'https://sneakereco.test',
+      },
+    });
+    expect(platformResponse.statusCode).toBe(200);
+    expect(platformResponse.headers['access-control-allow-origin']).toBe('https://sneakereco.test');
+
+    const managedSubdomainResponse = await app.inject({
+      method: 'GET',
+      url: '/health',
+      headers: {
+        origin: 'https://managed.sneakereco.test',
+      },
+    });
+    expect(managedSubdomainResponse.statusCode).toBe(200);
+    expect(managedSubdomainResponse.headers['access-control-allow-origin']).toBe('https://managed.sneakereco.test');
+
+    const customDomainResponse = await app.inject({
+      method: 'GET',
+      url: '/health',
+      headers: {
+        origin: 'https://heatkings.com',
+      },
+    });
+    expect(customDomainResponse.statusCode).toBe(200);
+    expect(customDomainResponse.headers['access-control-allow-origin']).toBe('https://heatkings.com');
+
+    const unknownDomainResponse = await app.inject({
+      method: 'GET',
+      url: '/health',
+      headers: {
+        origin: 'https://unknown.example.com',
+      },
+    });
+    expect(unknownDomainResponse.statusCode).toBe(200);
+    expect(unknownDomainResponse.headers['access-control-allow-origin']).toBeUndefined();
 
     await app.close();
   });
