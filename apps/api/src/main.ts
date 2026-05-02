@@ -59,7 +59,18 @@ async function bootstrap() {
   if (env.SWAGGER_ENABLED) {
     const document = SwaggerModule.createDocument(
       app,
-      new DocumentBuilder().setTitle('SneakerEco API').setVersion('0.1.0').build(),
+      new DocumentBuilder()
+        .setTitle('SneakerEco API')
+        .setDescription('Internal API for the SneakerEco platform and tenant-web BFFs')
+        .setVersion('0.1.0')
+        .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'cognito-jwt')
+        .addApiKey({ type: 'apiKey', in: 'header', name: 'x-ops-token' }, 'ops-token')
+        .addTag('auth', 'Authentication flows')
+        .addTag('tenants', 'Tenant management')
+        .addTag('platform-admins', 'Platform admin management')
+        .addTag('communications', 'Email delivery')
+        .addTag('web-builder', 'Storefront builder')
+        .build(),
     );
     SwaggerModule.setup(env.SWAGGER_PATH, app, document);
   }

@@ -1,9 +1,10 @@
 import { SendEmailCommand, SESClient } from '@aws-sdk/client-ses';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { createTransport } from 'nodemailer';
 
 import { LoggerService } from '../observability/logging/logger.service';
-import { envSchema } from '../config/env.schema';
+import { ENVIRONMENT } from '../config/config.module';
+import type { Env } from '../config/env.schema';
 import type { SendEmailInput } from './email.types';
 import { SentEmailRepository } from './sent-email.repository';
 
@@ -12,10 +13,11 @@ export class MailTransportService {
   constructor(
     private readonly sentEmailRepository: SentEmailRepository,
     private readonly logger: LoggerService,
+    @Inject(ENVIRONMENT) private readonly env: Env,
   ) {}
 
   async send(input: SendEmailInput) {
-    const env = envSchema.parse(process.env);
+    const env = this.env;
     const transport = env.MAIL_TRANSPORT;
 
     if (transport === 'smtp') {

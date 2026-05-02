@@ -1,5 +1,7 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 
+import { ENVIRONMENT } from '../../../core/config/config.module';
+import type { Env } from '../../../core/config/env.schema';
 import { EmailRendererService } from '../../../core/email/email-renderer.service';
 import { MailTransportService } from '../../../core/email/mail-transport.service';
 import { SenderIdentityService } from '../../../core/email/sender-identity.service';
@@ -26,6 +28,7 @@ export class AuthEmailService {
     private readonly emailRendererService: EmailRendererService,
     private readonly mailTransportService: MailTransportService,
     private readonly emailAuditService: EmailAuditService,
+    @Inject(ENVIRONMENT) private readonly env: Env,
   ) {}
 
   async preview(input: {
@@ -166,8 +169,8 @@ export class AuthEmailService {
     const sender = await this.senderIdentityService.resolve({
       tenantId: input.tenantId,
       purpose: 'auth',
-      fallbackFromEmail: process.env.PLATFORM_FROM_EMAIL ?? 'noreply@sneakereco.com',
-      fallbackFromName: process.env.PLATFORM_FROM_NAME ?? 'SneakerEco',
+      fallbackFromEmail: this.env.PLATFORM_FROM_EMAIL,
+      fallbackFromName: this.env.PLATFORM_FROM_NAME,
     });
     const fixture = input.fixtureOverride ?? this.authEmailFixturesRepository.get(input.stateKey);
 
@@ -176,7 +179,7 @@ export class AuthEmailService {
       emailType: input.emailType,
       fixture,
       sender,
-      businessName: businessProfile?.businessName ?? process.env.PLATFORM_FROM_NAME ?? 'SneakerEco',
+      businessName: businessProfile?.businessName ?? this.env.PLATFORM_FROM_NAME,
       brandAccent: designFamilyKey === 'auth-family-b' ? '#dc2626' : '#151515',
     });
   }
@@ -218,6 +221,6 @@ export class AuthEmailService {
       return `https://${domainConfig.subdomain}/admin/setup?token=${invitationToken}`;
     }
 
-    return `${process.env.PLATFORM_DASHBOARD_URL ?? 'https://dashboard.sneakereco.test'}/tenants/setup?token=${invitationToken}`;
+    return `${this.env.PLATFORM_DASHBOARD_URL}/tenants/setup?token=${invitationToken}`;
   }
 }
