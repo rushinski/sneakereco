@@ -5,13 +5,11 @@ export const apiBaseUrl =
   process.env.API_BASE_URL ??
   'https://api.sneakereco.test';
 
-const signingSecret = process.env.SESSION_SIGNING_SECRET;
-
-if (!signingSecret) {
-  throw new Error('SESSION_SIGNING_SECRET is required for tenant-web BFF auth cookies');
+export function getSessionSigningSecret(): string {
+  const secret = process.env.SESSION_SIGNING_SECRET;
+  if (!secret) throw new Error('SESSION_SIGNING_SECRET is required for tenant-web BFF auth cookies');
+  return secret;
 }
-
-export const sessionSigningSecret = signingSecret;
 
 export const refreshTtlSeconds = {
   customer: Number(process.env.CUSTOMER_REFRESH_TOKEN_TTL_SECONDS ?? 2_592_000),

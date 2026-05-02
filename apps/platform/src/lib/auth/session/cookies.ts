@@ -2,11 +2,11 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 
 import type { NextRequest, NextResponse } from 'next/server';
 
-import { adminRefreshTtlSeconds, authCookieName, sessionSigningSecret } from '../boundary/config';
+import { adminRefreshTtlSeconds, authCookieName, getSessionSigningSecret } from '../boundary/config';
 import type { BffSession } from '../types';
 
 function sign(value: string) {
-  return createHmac('sha256', sessionSigningSecret).update(value).digest('base64url');
+  return createHmac('sha256', getSessionSigningSecret()).update(value).digest('base64url');
 }
 
 function encodeSession(session: BffSession) {

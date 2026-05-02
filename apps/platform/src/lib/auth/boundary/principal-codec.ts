@@ -1,6 +1,6 @@
 import { createHmac } from 'node:crypto';
 
-import { sessionSigningSecret } from './config';
+import { getSessionSigningSecret } from './config';
 import type { AuthPrincipal } from '../types';
 
 export function principalHeaders(principal: AuthPrincipal) {
@@ -23,7 +23,7 @@ export function principalHeaders(principal: AuthPrincipal) {
   }
 
   const payload = Buffer.from(JSON.stringify(claims)).toString('base64url');
-  const signature = createHmac('sha256', sessionSigningSecret).update(payload).digest('base64url');
+  const signature = createHmac('sha256', getSessionSigningSecret()).update(payload).digest('base64url');
 
   return {
     'x-auth-principal': payload,
