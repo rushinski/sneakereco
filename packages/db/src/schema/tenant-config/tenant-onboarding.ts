@@ -13,6 +13,10 @@ export const tenantOnboardingRequestStatusValues = [
 
 export type TenantOnboardingRequestStatus = (typeof tenantOnboardingRequestStatusValues)[number];
 
+/**
+ * @deprecated Replaced by `tenant_applications` + `tenant_setup_invitations`.
+ * Do not reference in new code. Kept for migration continuity only.
+ */
 export const tenantOnboarding = pgTable(
   'tenant_onboarding',
   {

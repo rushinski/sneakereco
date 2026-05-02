@@ -10,6 +10,10 @@ export const tenantMemberRoleValues = ['customer', 'admin'] as const;
 
 export type TenantMemberRole = (typeof tenantMemberRoleValues)[number];
 
+/**
+ * @deprecated Replaced by `admin_tenant_relationships` + `customer_users`.
+ * Do not reference in new code. Kept for migration continuity only.
+ */
 export const tenantMembers = pgTable(
   'tenant_members',
   {

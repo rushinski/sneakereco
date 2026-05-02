@@ -3,6 +3,10 @@ import { index, pgTable, text, uniqueIndex } from 'drizzle-orm/pg-core';
 
 import { createdAtColumn, updatedAtColumn } from '../shared/columns';
 
+/**
+ * @deprecated Replaced by `admin_users` + `customer_users`.
+ * Do not reference in new code. Kept for migration continuity only.
+ */
 export const users = pgTable(
   'users',
   {

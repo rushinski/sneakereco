@@ -5,6 +5,7 @@ import { currentTenantScope, currentUserScope, tenantAdminScope } from '../share
 
 import { adminTenantRelationships } from './admin-tenant-relationships';
 import { adminUsers } from './admin-users';
+import { tenantBusinessProfiles } from './tenant-business-profiles';
 import { customerUsers } from './customer-users';
 import { tenants } from './tenants';
 
@@ -83,3 +84,24 @@ export const adminTenantRelationshipsAdminManagePolicy = pgPolicy(
     withCheck: tenantAdminScope(adminTenantRelationships.tenantId),
   },
 ).link(adminTenantRelationships);
+
+// ─── tenant_business_profiles ─────────────────────────────────────────────────
+
+export const tenantBusinessProfilesPublicReadPolicy = pgPolicy(
+  'tenant_business_profiles_public_read',
+  {
+    for: 'select',
+    to: sneakerecoAppRole,
+    using: currentTenantScope(tenantBusinessProfiles.tenantId),
+  },
+).link(tenantBusinessProfiles);
+
+export const tenantBusinessProfilesAdminManagePolicy = pgPolicy(
+  'tenant_business_profiles_admin_manage',
+  {
+    for: 'all',
+    to: sneakerecoAppRole,
+    using: tenantAdminScope(tenantBusinessProfiles.tenantId),
+    withCheck: tenantAdminScope(tenantBusinessProfiles.tenantId),
+  },
+).link(tenantBusinessProfiles);
