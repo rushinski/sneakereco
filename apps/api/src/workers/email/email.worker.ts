@@ -42,6 +42,13 @@ export class EmailWorker {
             businessName: String(event.payload.businessName),
             denialReason: String(event.payload.denialReason),
           });
+        } else if (event.name === 'tenant.application.approved') {
+          await this.platformOnboardingEmailService.sendApprovedNotification({
+            requestedByName: String(event.payload.requestedByName),
+            requestedByEmail: String(event.payload.requestedByEmail),
+            businessName: String(event.payload.businessName),
+            setupUrl: String(event.payload.setupUrl ?? ''),
+          });
         } else {
           continue;
         }

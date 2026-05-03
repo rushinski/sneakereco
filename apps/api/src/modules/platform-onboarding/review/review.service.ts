@@ -33,6 +33,9 @@ export class ReviewService {
       occurredAt: reviewedAt,
       payload: {
         applicationId,
+        requestedByName: application.requestedByName,
+        requestedByEmail: application.requestedByEmail,
+        businessName: application.businessName,
       },
     });
 

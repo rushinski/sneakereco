@@ -86,4 +86,36 @@ export class PlatformOnboardingEmailService {
       businessName: input.businessName,
     });
   }
+
+  async sendApprovedNotification(input: {
+    requestedByName: string;
+    requestedByEmail: string;
+    businessName: string;
+    setupUrl: string;
+  }) {
+    const sender = {
+      id: 'platform-onboarding',
+      fromEmail: this.env.PLATFORM_FROM_EMAIL,
+      fromName: this.env.PLATFORM_FROM_NAME,
+      readinessState: 'platform_fallback' as const,
+      purpose: 'auth' as const,
+    };
+
+    await this.mailTransportService.send({
+      toEmail: input.requestedByEmail,
+      subject: `Your SneakerEco application for ${input.businessName} was approved`,
+      text: `Hi ${input.requestedByName}, congratulations — your application for ${input.businessName} has been approved. Set up your account here: ${input.setupUrl}`,
+      html: `<p>Hi ${input.requestedByName},</p><p>Congratulations — <strong>${input.businessName}</strong> has been approved on SneakerEco.</p><p><a href="${input.setupUrl}">Set up my account</a></p><p style="color:#666;font-size:12px">This link expires in 48 hours.</p>`,
+      sender,
+      tags: {
+        purpose: 'platform_onboarding',
+        emailType: 'application_approved',
+      },
+    });
+
+    this.emailAuditService.record('platform.onboarding.application_approved.sent', {
+      toEmail: input.requestedByEmail,
+      businessName: input.businessName,
+    });
+  }
 }

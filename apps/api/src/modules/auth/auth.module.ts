@@ -7,6 +7,14 @@ import { PlatformOnboardingModule } from '../platform-onboarding/platform-onboar
 import { TenantsModule } from '../tenants/tenants.module';
 import { AdminSetupController } from './admin-setup/admin-setup.controller';
 import { AdminSetupService } from './admin-setup/admin-setup.service';
+import { MfaDisableController } from './mfa-disable/mfa-disable.controller';
+import { MfaDisableService } from './mfa-disable/mfa-disable.service';
+import { MfaEnableController } from './mfa-enable/mfa-enable.controller';
+import { MfaEnableService } from './mfa-enable/mfa-enable.service';
+import { MfaSetupController } from './mfa-setup/mfa-setup.controller';
+import { MfaSetupService } from './mfa-setup/mfa-setup.service';
+import { MfaVerifySetupController } from './mfa-verify-setup/mfa-verify-setup.controller';
+import { MfaVerifySetupService } from './mfa-verify-setup/mfa-verify-setup.service';
 import { AdminLoginController } from './admin-login/admin-login.controller';
 import { AdminLoginService } from './admin-login/admin-login.service';
 import { ConfirmEmailController } from './confirm-email/confirm-email.controller';
@@ -49,6 +57,10 @@ import { SessionIssuerService } from './session-control/session-issuer.service';
     AdminSetupController,
     AdminLoginController,
     MfaChallengeController,
+    MfaSetupController,
+    MfaVerifySetupController,
+    MfaEnableController,
+    MfaDisableController,
     CustomerLoginController,
     RegisterController,
     ConfirmEmailController,
@@ -61,6 +73,10 @@ import { SessionIssuerService } from './session-control/session-issuer.service';
     AdminSetupService,
     AdminLoginService,
     MfaChallengeService,
+    MfaSetupService,
+    MfaVerifySetupService,
+    MfaEnableService,
+    MfaDisableService,
     CustomerLoginService,
     RegisterService,
     ConfirmEmailService,

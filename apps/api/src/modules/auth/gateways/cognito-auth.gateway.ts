@@ -8,6 +8,7 @@ import {
   ForgotPasswordCommand,
   InitiateAuthCommand,
   RespondToAuthChallengeCommand,
+  SetUserMFAPreferenceCommand,
   SignUpCommand,
   VerifySoftwareTokenCommand,
   type AuthenticationResultType,
@@ -429,6 +430,48 @@ export class CognitoAuthGateway {
       userPoolIdOverride: tenantConfig.userPoolId,
       appClientIdOverride: tenantConfig.customerClientId,
     });
+  }
+
+  async initiateCustomerMfaSetup(accessToken: string): Promise<{ secretCode: string; otpAuthUrl: string; session: string }> {
+    const result = await this.cognitoAdminService.getClient().send(
+      new AssociateSoftwareTokenCommand({ AccessToken: accessToken }),
+    );
+    if (!result.SecretCode || !result.Session) {
+      throw new UnauthorizedException('Cognito did not return MFA setup data');
+    }
+    const otpAuthUrl = this.buildCustomerTotpUri(accessToken, result.SecretCode);
+    return { secretCode: result.SecretCode, otpAuthUrl, session: result.Session };
+  }
+
+  async verifyCustomerMfaSetup(accessToken: string, session: string, userCode: string): Promise<void> {
+    const result = await this.cognitoAdminService.getClient().send(
+      new VerifySoftwareTokenCommand({ AccessToken: accessToken, Session: session, UserCode: userCode }),
+    );
+    if (result.Status !== 'SUCCESS') {
+      throw new UnauthorizedException('MFA verification code was incorrect');
+    }
+    await this.cognitoAdminService.getClient().send(
+      new SetUserMFAPreferenceCommand({
+        AccessToken: accessToken,
+        SoftwareTokenMfaSettings: { Enabled: true, PreferredMfa: true },
+      }),
+    );
+  }
+
+  async setCustomerMfaPreference(accessToken: string, enabled: boolean): Promise<void> {
+    await this.cognitoAdminService.getClient().send(
+      new SetUserMFAPreferenceCommand({
+        AccessToken: accessToken,
+        SoftwareTokenMfaSettings: { Enabled: enabled, PreferredMfa: enabled },
+      }),
+    );
+  }
+
+  private buildCustomerTotpUri(accessToken: string, secret: string) {
+    const claims = this.decodeJwt(accessToken);
+    const email = String(claims.username ?? claims.email ?? 'user');
+    const issuer = 'SneakerEco';
+    return `otpauth://totp/${encodeURIComponent(`${issuer}:${email}`)}?secret=${encodeURIComponent(secret)}&issuer=${encodeURIComponent(issuer)}`;
   }
 
   private async requireTenantConfig(tenantId: string) {
