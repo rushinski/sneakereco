@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 import { apiBaseUrl } from './config';
 import { clearSessionCookie, readSessionCookie, writeSessionCookie } from '../session/cookies';
 import { principalHeaders } from './principal-codec';
-import { resolveTenantContext } from '../tenant';
+import { resolveTenantFromHost, getRequestHost } from '../tenant';
 import type { ApiErrorPayload, BffAuthResponse, BffSession } from '../types';
 
 async function parseJson(response: Response) {
@@ -59,7 +59,10 @@ export async function handleAuthCompletion(
   path: string,
   body: Record<string, unknown>,
 ) {
-  const tenant = resolveTenantContext(request, typeof body.tenantId === 'string' ? body.tenantId : undefined);
+  const tenant = await resolveTenantFromHost(getRequestHost(request));
+  if (!tenant) {
+    return jsonError(404, { code: 'TENANT_NOT_FOUND', message: 'Unknown host' });
+  }
   const result = await proxyJson<BffAuthResponse>(path, {
     body: {
       ...body,

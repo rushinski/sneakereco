@@ -12,6 +12,7 @@ import { LoggerService } from './core/observability/logging/logger.service';
 import { RequestContextService } from './core/observability/logging/request-context.service';
 import { createCorsOriginValidator } from './core/security/cors-origin-policy';
 import { SecurityService } from './core/security/security.service';
+import { TrustedHostService } from './core/security/trusted-host.service';
 import { TenantDomainConfigRepository } from './modules/tenants/tenant-domain/tenant-domain-config.repository';
 
 async function bootstrap() {
@@ -22,6 +23,7 @@ async function bootstrap() {
     new FastifyAdapter({ logger: false }),
   );
   const securityService = app.get(SecurityService);
+  const trustedHostService = app.get(TrustedHostService);
   const requestContextService = app.get(RequestContextService);
   const logger = app.get(LoggerService);
   const tenantDomainConfigRepository = app.get(TenantDomainConfigRepository);
@@ -33,8 +35,8 @@ async function bootstrap() {
   await app.register(fastifyCors, {
     ...securityService.getCorsOptions(),
     origin: createCorsOriginValidator(
-      securityService,
-      async (host) => (await tenantDomainConfigRepository.findByOriginHost(host)) !== null,
+      trustedHostService,
+      async (host) => (await tenantDomainConfigRepository.findByCustomDomain(host)) !== null,
     ),
   });
 

@@ -4,7 +4,7 @@ import { handleAuthCompletion } from '@/lib/auth/bff';
 import { validateBrowserMutation } from '@/lib/auth/csrf';
 
 export async function POST(request: NextRequest) {
-  const rejected = validateBrowserMutation(request);
+  const rejected = validateBrowserMutation(request, { requireToken: true });
   if (rejected) {
     return rejected;
   }

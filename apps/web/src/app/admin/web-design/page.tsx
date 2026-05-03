@@ -1,6 +1,8 @@
+import { requireTenantAdmin } from '@/lib/auth/server-auth';
 import { AdminShell } from '@/components/admin/admin-shell';
 
-export default function TenantAdminDashboardPage() {
+export default async function TenantAdminDashboardPage() {
+  await requireTenantAdmin();
   return (
     <AdminShell title="Dashboard" trail={['Home', 'Dashboard']}>
       <div className="rounded-[1.75rem] border border-slate-200 bg-white p-8 shadow-sm">

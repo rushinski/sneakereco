@@ -4,7 +4,7 @@ import { handleSessionAction } from '@/lib/auth/bff';
 import { validateBrowserMutation } from '@/lib/auth/csrf';
 
 export function GET(request: NextRequest) {
-  const rejected = validateBrowserMutation(request);
+  const rejected = validateBrowserMutation(request, { requireToken: true });
   if (rejected) {
     return rejected;
   }

@@ -2,16 +2,20 @@ import type { NextRequest } from 'next/server';
 
 import { jsonError, proxyJson } from '@/lib/auth/bff';
 import { validateBrowserMutation } from '@/lib/auth/csrf';
-import { resolveTenantContext } from '@/lib/auth/tenant';
+import { getRequestHost, resolveTenantFromHost } from '@/lib/auth/tenant';
 
 export async function POST(request: NextRequest) {
-  const rejected = validateBrowserMutation(request);
+  const rejected = validateBrowserMutation(request, { requireToken: true });
   if (rejected) {
     return rejected;
   }
 
+  const tenant = await resolveTenantFromHost(getRequestHost(request));
+  if (!tenant) {
+    return Response.json({ code: 'TENANT_NOT_FOUND', message: 'Unknown host' }, { status: 404 });
+  }
+
   const body = (await request.json()) as Record<string, unknown>;
-  const tenant = resolveTenantContext(request, typeof body.tenantId === 'string' ? body.tenantId : undefined);
   const result = await proxyJson('auth/otp/request', {
     body: {
       tenantId: tenant.tenantId,

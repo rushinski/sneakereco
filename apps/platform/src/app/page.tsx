@@ -1,6 +1,8 @@
+import { requirePlatformAdmin } from '@/lib/auth/server-auth';
 import { DashboardShell } from '@/components/platform-shell/dashboard-shell';
 
-export default function PlatformDashboardPage() {
+export default async function PlatformDashboardPage() {
+  await requirePlatformAdmin();
   return (
     <DashboardShell title="Dashboard" trail={['Home', 'Dashboard']}>
       <div className="rounded-[1.75rem] border border-slate-200 bg-white p-8 shadow-sm">

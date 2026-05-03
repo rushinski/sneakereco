@@ -1,9 +1,11 @@
+import { requireCustomer } from '@/lib/auth/server-auth';
 import { AuthForm } from '@/components/auth/auth-form';
 import { AuthFamilyShell } from '@/components/auth/auth-shell';
 
 export default async function VerifyEmailPage(props: {
   searchParams: Promise<{ family?: string }>;
 }) {
+  await requireCustomer();
   const searchParams = await props.searchParams;
   const family = searchParams.family === 'b' ? 'b' : 'a';
 

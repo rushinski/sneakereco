@@ -1,19 +1,27 @@
 import type { NextRequest } from 'next/server';
 
+import { apiBaseUrl } from './boundary/config';
 import type { TenantContext } from './types';
 
-function stripPort(host: string) {
-  return host.split(':')[0] ?? host;
-}
-
-export function resolveTenantContext(request: NextRequest, explicitTenantId?: string): TenantContext {
-  const host = stripPort(request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? 'tenant.sneakereco.test');
-  const firstLabel = host.split('.')[0] ?? 'tenant';
-  const slug = firstLabel === 'www' || firstLabel === 'admin' || firstLabel === 'dashboard' ? 'tenant' : firstLabel;
-
+export async function resolveTenantFromHost(host: string): Promise<TenantContext | null> {
+  const res = await fetch(`${apiBaseUrl}/tenants/resolve?host=${encodeURIComponent(host)}`, {
+    headers: { 'Content-Type': 'application/json' },
+    cache: 'no-store',
+  });
+  if (!res.ok) return null;
+  const data = (await res.json()) as { tenantId: string; slug: string; source: string };
+  if (!data.tenantId) return null;
   return {
-    slug,
-    tenantId: explicitTenantId ?? `tnt_${slug}`,
+    tenantId: data.tenantId,
+    slug: data.slug ?? '',
     host,
   };
+}
+
+export function getRequestHost(request: NextRequest): string {
+  return (
+    request.headers.get('x-forwarded-host') ??
+    request.headers.get('host') ??
+    ''
+  );
 }

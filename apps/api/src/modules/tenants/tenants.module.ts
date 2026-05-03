@@ -14,8 +14,11 @@ import { TenantDomainConfigRepository } from './tenant-domain/tenant-domain-conf
 import { TenantCognitoConfigRepository } from './tenant-cognito/tenant-cognito-config.repository';
 import { TenantBusinessProfileRepository } from './tenant-business-profile/tenant-business-profile.repository';
 import { AdminTenantRelationshipsRepository } from './tenant-admin-relationships/admin-tenant-relationships.repository';
+import { TenantResolutionService } from './tenant-domain/tenant-resolution.service';
+import { TenantsController } from './tenants.controller';
 
 @Module({
+  controllers: [TenantsController],
   imports: [
     forwardRef(() => AuthModule),
     forwardRef(() => AuditModule),
@@ -33,6 +36,7 @@ import { AdminTenantRelationshipsRepository } from './tenant-admin-relationships
     TenantProvisioningGateway,
     TenantProvisioningService,
     TenantProvisioningWorkerService,
+    TenantResolutionService,
   ],
   exports: [
     TenantRepository,
@@ -43,6 +47,7 @@ import { AdminTenantRelationshipsRepository } from './tenant-admin-relationships
     TenantProvisioningGateway,
     TenantProvisioningService,
     TenantProvisioningWorkerService,
+    TenantResolutionService,
   ],
 })
 export class TenantsModule {}
