@@ -1,42 +1,66 @@
-import { Test } from '@nestjs/testing';
-
-import { LoggerService } from '../../../../src/core/observability/logging/logger.service';
 import { SenderIdentityService } from '../../../../src/core/email/sender-identity.service';
-import { TenantBusinessProfileRepository } from '../../../../src/modules/tenants/tenant-business-profile/tenant-business-profile.repository';
-import { TenantDomainConfigRepository } from '../../../../src/modules/tenants/tenant-domain/tenant-domain-config.repository';
-import { TenantRepository } from '../../../../src/modules/tenants/tenant-lifecycle/tenant.repository';
+import type { TenantRecord } from '../../../../src/modules/tenants/tenant-lifecycle/tenant.repository';
+import type { TenantBusinessProfileRecord } from '../../../../src/modules/tenants/tenant-business-profile/tenant-business-profile.repository';
+import type { TenantDomainConfigRecord } from '../../../../src/modules/tenants/tenant-domain/tenant-domain-config.repository';
+import { generateId } from '@sneakereco/shared';
+
+class FakeTenantRepository {
+  private records = new Map<string, TenantRecord>();
+  async create(record: Omit<TenantRecord, 'id'>) {
+    const tenant: TenantRecord = { id: generateId('tenant'), ...record };
+    this.records.set(tenant.id, tenant);
+    return tenant;
+  }
+  async findById(id: string) { return this.records.get(id) ?? null; }
+  async findBySlug(slug: string) { return [...this.records.values()].find((r) => r.slug === slug) ?? null; }
+  async update() { return null; }
+}
+
+class FakeTenantBusinessProfileRepository {
+  private records = new Map<string, TenantBusinessProfileRecord>();
+  async create(record: Omit<TenantBusinessProfileRecord, 'id'>) {
+    const profile: TenantBusinessProfileRecord = { id: generateId('tbp'), ...record };
+    this.records.set(profile.id, profile);
+    return profile;
+  }
+  async findByTenantId(tenantId: string) {
+    return [...this.records.values()].find((r) => r.tenantId === tenantId) ?? null;
+  }
+}
+
+class FakeTenantDomainConfigRepository {
+  private records = new Map<string, TenantDomainConfigRecord>();
+  async create(record: Omit<TenantDomainConfigRecord, 'id'>) {
+    const config: TenantDomainConfigRecord = { id: generateId('tdc'), ...record };
+    this.records.set(config.id, config);
+    return config;
+  }
+  async findByTenantId(tenantId: string) {
+    return [...this.records.values()].find((r) => r.tenantId === tenantId) ?? null;
+  }
+  async findBySubdomain() { return null; }
+  async findByCustomDomain() { return null; }
+  async findByOriginHost() { return null; }
+}
+
+function makeService() {
+  const tenantRepository = new FakeTenantRepository();
+  const businessProfileRepository = new FakeTenantBusinessProfileRepository();
+  const domainConfigRepository = new FakeTenantDomainConfigRepository();
+  const logger = { log: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() };
+  const service = new SenderIdentityService(
+    tenantRepository as never,
+    businessProfileRepository as never,
+    domainConfigRepository as never,
+    logger as never,
+  );
+  return { service, tenantRepository, businessProfileRepository, domainConfigRepository };
+}
 
 describe('SenderIdentityService', () => {
-  async function createService() {
-    const moduleRef = await Test.createTestingModule({
-      providers: [
-        SenderIdentityService,
-        TenantRepository,
-        TenantBusinessProfileRepository,
-        TenantDomainConfigRepository,
-        {
-          provide: LoggerService,
-          useValue: {
-            log: jest.fn(),
-            error: jest.fn(),
-            warn: jest.fn(),
-            debug: jest.fn(),
-          },
-        },
-      ],
-    }).compile();
-
-    return {
-      service: moduleRef.get(SenderIdentityService),
-      tenantRepository: moduleRef.get(TenantRepository),
-      businessProfileRepository: moduleRef.get(TenantBusinessProfileRepository),
-      domainConfigRepository: moduleRef.get(TenantDomainConfigRepository),
-    };
-  }
-
   it('uses the custom domain sender when the storefront custom domain is ready', async () => {
     const { service, tenantRepository, businessProfileRepository, domainConfigRepository } =
-      await createService();
+      makeService();
 
     const tenant = await tenantRepository.create({
       name: 'Heat Kings',
@@ -74,7 +98,7 @@ describe('SenderIdentityService', () => {
 
   it('falls back to the SneakerEco-managed subdomain sender when the custom domain is not ready', async () => {
     const { service, tenantRepository, businessProfileRepository, domainConfigRepository } =
-      await createService();
+      makeService();
 
     const tenant = await tenantRepository.create({
       name: 'Heat Kings',

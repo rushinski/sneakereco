@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
-
+import { and, eq } from 'drizzle-orm';
+import { customerUsers } from '@sneakereco/db';
 import { generateId } from '@sneakereco/shared';
+
+import { DatabaseService } from '../../../core/database/database.service';
 
 export interface CustomerUserRecord {
   id: string;
@@ -12,40 +15,68 @@ export interface CustomerUserRecord {
   lastLoginAt?: string;
 }
 
+type CustomerUserRow = typeof customerUsers.$inferSelect;
+
 @Injectable()
 export class CustomerUsersRepository {
-  private readonly records = new Map<string, CustomerUserRecord>();
+  constructor(private readonly database: DatabaseService) {}
 
-  async create(record: Omit<CustomerUserRecord, 'id'>) {
-    const created: CustomerUserRecord = {
-      id: generateId('customerUser'),
-      ...record,
+  async create(record: Omit<CustomerUserRecord, 'id'>): Promise<CustomerUserRecord> {
+    const id = generateId('customerUser');
+    const [row] = await this.database.db
+      .insert(customerUsers)
+      .values({
+        id,
+        tenantId: record.tenantId,
+        email: record.email,
+        fullName: record.fullName ?? null,
+        cognitoSub: record.cognitoSub,
+        status: record.status,
+        lastLoginAt: record.lastLoginAt ? new Date(record.lastLoginAt) : null,
+      })
+      .returning();
+    return this.toRecord(row!);
+  }
+
+  async findByTenantAndEmail(tenantId: string, email: string): Promise<CustomerUserRecord | null> {
+    const [row] = await this.database.db
+      .select()
+      .from(customerUsers)
+      .where(and(eq(customerUsers.tenantId, tenantId), eq(customerUsers.email, email)))
+      .limit(1);
+    return row ? this.toRecord(row) : null;
+  }
+
+  async findByTenantAndCognitoSub(
+    tenantId: string,
+    cognitoSub: string,
+  ): Promise<CustomerUserRecord | null> {
+    const [row] = await this.database.db
+      .select()
+      .from(customerUsers)
+      .where(
+        and(eq(customerUsers.tenantId, tenantId), eq(customerUsers.cognitoSub, cognitoSub)),
+      )
+      .limit(1);
+    return row ? this.toRecord(row) : null;
+  }
+
+  async touchLastLogin(id: string): Promise<void> {
+    await this.database.db
+      .update(customerUsers)
+      .set({ lastLoginAt: new Date() })
+      .where(eq(customerUsers.id, id));
+  }
+
+  private toRecord(row: CustomerUserRow): CustomerUserRecord {
+    return {
+      id: row.id,
+      tenantId: row.tenantId,
+      email: row.email,
+      fullName: row.fullName ?? undefined,
+      cognitoSub: row.cognitoSub,
+      status: row.status,
+      lastLoginAt: row.lastLoginAt?.toISOString(),
     };
-    this.records.set(created.id, created);
-    return created;
-  }
-
-  async findByTenantAndEmail(tenantId: string, email: string) {
-    return (
-      [...this.records.values()].find(
-        (record) => record.tenantId === tenantId && record.email === email,
-      ) ?? null
-    );
-  }
-
-  async findByTenantAndCognitoSub(tenantId: string, cognitoSub: string) {
-    return (
-      [...this.records.values()].find(
-        (record) => record.tenantId === tenantId && record.cognitoSub === cognitoSub,
-      ) ?? null
-    );
-  }
-
-  async touchLastLogin(id: string) {
-    const record = this.records.get(id);
-    if (record) {
-      record.lastLoginAt = new Date().toISOString();
-      this.records.set(id, record);
-    }
   }
 }

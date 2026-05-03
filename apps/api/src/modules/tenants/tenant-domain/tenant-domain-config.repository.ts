@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
-
+import { and, eq, or } from 'drizzle-orm';
+import { tenantDomainConfig } from '@sneakereco/db';
 import { generateId } from '@sneakereco/shared';
+
+import { DatabaseService } from '../../../core/database/database.service';
 
 export interface TenantDomainConfigRecord {
   id: string;
@@ -25,45 +28,99 @@ export interface TenantDomainConfigRecord {
     | 'failed';
 }
 
+type DomainConfigRow = typeof tenantDomainConfig.$inferSelect;
+
 @Injectable()
 export class TenantDomainConfigRepository {
-  private readonly records = new Map<string, TenantDomainConfigRecord>();
+  constructor(private readonly database: DatabaseService) {}
 
-  async create(record: Omit<TenantDomainConfigRecord, 'id'>) {
-    const created: TenantDomainConfigRecord = {
-      id: generateId('tenantDomainConfig'),
-      ...record,
+  async create(record: Omit<TenantDomainConfigRecord, 'id'>): Promise<TenantDomainConfigRecord> {
+    const id = generateId('tenantDomainConfig');
+    const [row] = await this.database.db
+      .insert(tenantDomainConfig)
+      .values({
+        id,
+        tenantId: record.tenantId,
+        subdomain: record.subdomain,
+        dnsVerificationToken: record.dnsVerificationToken ?? null,
+        storefrontCustomDomain: record.storefrontCustomDomain ?? null,
+        storefrontReadinessState: record.storefrontReadinessState,
+        adminDomain: record.adminDomain ?? null,
+        adminReadinessState: record.adminReadinessState,
+      })
+      .returning();
+    return this.toRecord(row!);
+  }
+
+  async findByTenantId(tenantId: string): Promise<TenantDomainConfigRecord | null> {
+    const [row] = await this.database.db
+      .select()
+      .from(tenantDomainConfig)
+      .where(eq(tenantDomainConfig.tenantId, tenantId))
+      .limit(1);
+    return row ? this.toRecord(row) : null;
+  }
+
+  async findBySubdomain(subdomain: string): Promise<TenantDomainConfigRecord | null> {
+    const [row] = await this.database.db
+      .select()
+      .from(tenantDomainConfig)
+      .where(eq(tenantDomainConfig.subdomain, subdomain))
+      .limit(1);
+    return row ? this.toRecord(row) : null;
+  }
+
+  async findByCustomDomain(host: string): Promise<TenantDomainConfigRecord | null> {
+    const [row] = await this.database.db
+      .select()
+      .from(tenantDomainConfig)
+      .where(
+        or(
+          and(
+            eq(tenantDomainConfig.storefrontCustomDomain, host),
+            eq(tenantDomainConfig.storefrontReadinessState, 'ready'),
+          ),
+          and(
+            eq(tenantDomainConfig.adminDomain, host),
+            eq(tenantDomainConfig.adminReadinessState, 'ready'),
+          ),
+        ),
+      )
+      .limit(1);
+    return row ? this.toRecord(row) : null;
+  }
+
+  async findByOriginHost(host: string): Promise<TenantDomainConfigRecord | null> {
+    const [row] = await this.database.db
+      .select()
+      .from(tenantDomainConfig)
+      .where(
+        or(
+          eq(tenantDomainConfig.subdomain, host),
+          and(
+            eq(tenantDomainConfig.storefrontCustomDomain, host),
+            eq(tenantDomainConfig.storefrontReadinessState, 'ready'),
+          ),
+          and(
+            eq(tenantDomainConfig.adminDomain, host),
+            eq(tenantDomainConfig.adminReadinessState, 'ready'),
+          ),
+        ),
+      )
+      .limit(1);
+    return row ? this.toRecord(row) : null;
+  }
+
+  private toRecord(row: DomainConfigRow): TenantDomainConfigRecord {
+    return {
+      id: row.id,
+      tenantId: row.tenantId,
+      subdomain: row.subdomain,
+      dnsVerificationToken: row.dnsVerificationToken ?? undefined,
+      storefrontCustomDomain: row.storefrontCustomDomain ?? undefined,
+      storefrontReadinessState: row.storefrontReadinessState,
+      adminDomain: row.adminDomain ?? undefined,
+      adminReadinessState: row.adminReadinessState,
     };
-    this.records.set(created.id, created);
-    return created;
-  }
-
-  async findByTenantId(tenantId: string) {
-    return [...this.records.values()].find((record) => record.tenantId === tenantId) ?? null;
-  }
-
-  async findBySubdomain(subdomain: string) {
-    return [...this.records.values()].find((record) => record.subdomain === subdomain) ?? null;
-  }
-
-  async findByCustomDomain(host: string) {
-    return (
-      [...this.records.values()].find(
-        (record) =>
-          (record.storefrontCustomDomain === host && record.storefrontReadinessState === 'ready') ||
-          (record.adminDomain === host && record.adminReadinessState === 'ready'),
-      ) ?? null
-    );
-  }
-
-  async findByOriginHost(host: string) {
-    return (
-      [...this.records.values()].find(
-        (record) =>
-          record.subdomain === host ||
-          (record.storefrontCustomDomain === host && record.storefrontReadinessState === 'ready') ||
-          (record.adminDomain === host && record.adminReadinessState === 'ready'),
-      ) ?? null
-    );
   }
 }
