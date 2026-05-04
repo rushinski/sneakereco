@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 
-import { CapabilityContractValidatorService } from '../../../../src/modules/web-builder/capability-contract-validator.service';
+import { CapabilityContractValidatorService } from '../../../../src/modules/web-builder/shared/capability-contract-validator.service';
 
 describe('CapabilityContractValidatorService', () => {
   const service = new CapabilityContractValidatorService();

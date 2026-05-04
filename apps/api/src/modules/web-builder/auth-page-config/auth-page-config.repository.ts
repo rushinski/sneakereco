@@ -2,7 +2,7 @@ import { ConflictException, Injectable } from '@nestjs/common';
 
 import { generateId } from '@sneakereco/shared';
 
-import type { AuthPageDraft } from './web-builder.types';
+import type { AuthPageDraft } from '../shared/web-builder.types';
 
 @Injectable()
 export class AuthPageDraftsRepository {

@@ -7,11 +7,11 @@ import { MailTransportService } from '../../../core/email/mail-transport.service
 import { SenderIdentityService } from '../../../core/email/sender-identity.service';
 import type { AuthEmailType, RenderedAuthEmail } from '../../../core/email/email.types';
 import type { AuthPrincipal } from '../../auth/principals/auth.types';
-import { TenantBusinessProfileRepository } from '../../tenants/tenant-business-profile/tenant-business-profile.repository';
-import { TenantDomainConfigRepository } from '../../tenants/tenant-domain/tenant-domain-config.repository';
-import { DesignFamilyRegistryRepository } from '../../web-builder/design-family-registry.repository';
-import { EmailDraftsRepository } from '../../web-builder/email-drafts.repository';
-import { ReleaseSetsRepository } from '../../web-builder/release-sets.repository';
+import { TenantBusinessProfileRepository } from '../../tenants/tenant-business-profile/business-profile.repository';
+import { TenantDomainConfigRepository } from '../../tenants/tenant-domain/domain-config.repository';
+import { DesignFamilyRegistryRepository } from '../../web-builder/design-registry/design-registry.repository';
+import { EmailDraftsRepository } from '../../web-builder/email-config/email-config.repository';
+import { ReleaseSetsRepository } from '../../web-builder/release-sets/release-sets.repository';
 import { AuthEmailFixturesRepository } from './auth-email-fixtures.repository';
 import { EmailAuditService } from '../email-audit/email-audit.service';
 

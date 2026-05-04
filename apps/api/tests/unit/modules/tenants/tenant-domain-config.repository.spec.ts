@@ -1,4 +1,4 @@
-﻿import { TenantDomainConfigRepository } from '../../../../src/modules/tenants/tenant-domain/tenant-domain-config.repository';
+import { TenantDomainConfigRepository } from '../../../../src/modules/tenants/tenant-domain/domain-config.repository';
 
 const baseRow = {
   id: 'tdc_1',

@@ -1,15 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { AuditService } from '../audit/audit.service';
-import { CapabilityContractValidatorService } from './capability-contract-validator.service';
-import { DesignFamilyRegistryRepository } from './design-family-registry.repository';
-import { EmailDraftsRepository } from './email-drafts.repository';
-import { PreviewFixturesRepository } from './preview-fixtures.repository';
-import { ReleaseHistoryRepository } from './release-history.repository';
-import { ReleaseSetsRepository } from './release-sets.repository';
-import { ReleaseSetValidatorService } from './release-set-validator.service';
-import { AuthPageDraftsRepository } from './auth-page-drafts.repository';
-import { ThemeDraftsRepository } from './theme-drafts.repository';
+import { AuthPageDraftsRepository } from './auth-page-config/auth-page-config.repository';
+import { DesignFamilyRegistryRepository } from './design-registry/design-registry.repository';
+import { EmailDraftsRepository } from './email-config/email-config.repository';
+import { PreviewFixturesRepository } from './preview/preview-fixtures.repository';
+import { ReleaseHistoryRepository } from './release-sets/release-history.repository';
+import { ReleaseSetsRepository } from './release-sets/release-sets.repository';
+import { CapabilityContractValidatorService } from './shared/capability-contract-validator.service';
+import { ReleaseSetValidatorService } from './shared/release-set-validator.service';
+import { ThemeDraftsRepository } from './theme-config/theme-config.repository';
 
 @Injectable()
 export class WebBuilderService {
@@ -34,7 +34,7 @@ export class WebBuilderService {
     tenantId: string;
     pageType: 'login' | 'register' | 'forgot_password' | 'reset_password' | 'verify_email' | 'otp' | 'mfa';
     designFamilyId: string;
-    requiredCapabilities: import('./web-builder.types').AuthCapability[];
+    requiredCapabilities: import('./shared/web-builder.types').AuthCapability[];
     enabledFeatures: {
       signupEnabled?: boolean;
       forgotPasswordEnabled?: boolean;

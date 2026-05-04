@@ -11,11 +11,11 @@ import { AdminUsersRepository } from '../../auth/admin-users/admin-users.reposit
 import { TenantApplicationsRepository } from '../../platform-onboarding/applications/tenant-applications.repository';
 import { TenantSetupInvitationsRepository } from '../../platform-onboarding/invitations/tenant-setup-invitations.repository';
 import { AdminTenantRelationshipsRepository } from '../tenant-admin-relationships/admin-tenant-relationships.repository';
-import { TenantBusinessProfileRepository } from '../tenant-business-profile/tenant-business-profile.repository';
-import { TenantCognitoConfigRepository } from '../tenant-cognito/tenant-cognito-config.repository';
-import { TenantDomainConfigRepository } from '../tenant-domain/tenant-domain-config.repository';
+import { TenantBusinessProfileRepository } from '../tenant-business-profile/business-profile.repository';
+import { TenantCognitoConfigRepository } from '../tenant-cognito/cognito-config.repository';
+import { TenantDomainConfigRepository } from '../tenant-domain/domain-config.repository';
 import { TenantRepository } from '../tenant-lifecycle/tenant.repository';
-import { TenantProvisioningGateway } from './tenant-provisioning.gateway';
+import { TenantProvisioningGateway } from './provisioning.gateway';
 
 @Injectable()
 export class TenantProvisioningService {

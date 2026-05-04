@@ -1,4 +1,4 @@
-﻿import { TenantCognitoConfigRepository } from '../../../../src/modules/tenants/tenant-cognito/tenant-cognito-config.repository';
+import { TenantCognitoConfigRepository } from '../../../../src/modules/tenants/tenant-cognito/cognito-config.repository';
 
 const baseRow = {
   id: 'tcc_1',

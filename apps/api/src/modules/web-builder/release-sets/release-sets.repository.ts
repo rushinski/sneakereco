@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { generateId } from '@sneakereco/shared';
 
-import type { ReleaseSetRecord } from './web-builder.types';
+import type { ReleaseSetRecord } from '../shared/web-builder.types';
 
 @Injectable()
 export class ReleaseSetsRepository {

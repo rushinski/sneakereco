@@ -11,7 +11,7 @@
 | 3 | Web Platform Security & Tenant Resolution | [2026-05-01-03-web-platform-security.md](./2026-05-01-03-web-platform-security.md) | 1 | After Plan 1 |
 | 4 | Repository Layer → Drizzle | [2026-05-01-04-repository-layer-drizzle.md](./2026-05-01-04-repository-layer-drizzle.md) | 1, 2 | After Plans 1 + 2 |
 | 5 | Auth Completion (MFA + Emails) | [2026-05-01-05-auth-completion.md](./2026-05-01-05-auth-completion.md) | 1, 4 | Complete |
-| 6 | Module Structure Cleanup | [2026-05-01-06-module-structure-cleanup.md](./2026-05-01-06-module-structure-cleanup.md) | 1, 4 | After Plans 1 + 4 |
+| 6 | Module Structure Cleanup | [2026-05-01-06-module-structure-cleanup.md](./2026-05-01-06-module-structure-cleanup.md) | 1, 4 | Complete |
 
 ## What Each Plan Fixes
 

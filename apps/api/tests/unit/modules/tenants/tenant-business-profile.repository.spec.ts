@@ -1,4 +1,4 @@
-﻿import { TenantBusinessProfileRepository } from '../../../../src/modules/tenants/tenant-business-profile/tenant-business-profile.repository';
+import { TenantBusinessProfileRepository } from '../../../../src/modules/tenants/tenant-business-profile/business-profile.repository';
 
 const baseRow = {
   id: 'tbp_1',

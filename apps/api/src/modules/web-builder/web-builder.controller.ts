@@ -18,7 +18,7 @@ export class WebBuilderController {
       tenantId: string;
       pageType: 'login' | 'register' | 'forgot_password' | 'reset_password' | 'verify_email' | 'otp' | 'mfa';
       designFamilyId: string;
-      requiredCapabilities: import('./web-builder.types').AuthCapability[];
+      requiredCapabilities: import('./shared/web-builder.types').AuthCapability[];
       enabledFeatures: {
         signupEnabled?: boolean;
         forgotPasswordEnabled?: boolean;

@@ -22,7 +22,7 @@ import { CognitoAdminService } from '../../../core/cognito/cognito-admin.service
 import type { AuthConfig, Env } from '../../../core/config';
 import { AUTH_CONFIG, ENVIRONMENT } from '../../../core/config/config.module';
 import { CacheService } from '../../../core/cache/cache.service';
-import { TenantCognitoConfigRepository } from '../../tenants/tenant-cognito/tenant-cognito-config.repository';
+import { TenantCognitoConfigRepository } from '../../tenants/tenant-cognito/cognito-config.repository';
 import type {
   AdminLoginChallenge,
   AdminSetupBeginResult,

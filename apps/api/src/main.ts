@@ -13,7 +13,7 @@ import { RequestContextService } from './core/observability/logging/request-cont
 import { createCorsOriginValidator } from './core/security/cors-origin-policy';
 import { SecurityService } from './core/security/security.service';
 import { TrustedHostService } from './core/security/trusted-host.service';
-import { TenantDomainConfigRepository } from './modules/tenants/tenant-domain/tenant-domain-config.repository';
+import { TenantDomainConfigRepository } from './modules/tenants/tenant-domain/domain-config.repository';
 
 async function bootstrap() {
   const env = envSchema.parse(process.env);

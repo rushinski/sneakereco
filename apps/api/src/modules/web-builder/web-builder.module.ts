@@ -1,17 +1,17 @@
 import { Module } from '@nestjs/common';
 
 import { AuditModule } from '../audit/audit.module';
+import { AuthPageDraftsRepository } from './auth-page-config/auth-page-config.repository';
+import { DesignFamilyRegistryRepository } from './design-registry/design-registry.repository';
+import { EmailDraftsRepository } from './email-config/email-config.repository';
+import { PreviewFixturesRepository } from './preview/preview-fixtures.repository';
+import { ReleaseHistoryRepository } from './release-sets/release-history.repository';
+import { ReleaseSetsRepository } from './release-sets/release-sets.repository';
+import { CapabilityContractValidatorService } from './shared/capability-contract-validator.service';
+import { ReleaseSetValidatorService } from './shared/release-set-validator.service';
+import { ThemeDraftsRepository } from './theme-config/theme-config.repository';
 import { WebBuilderController } from './web-builder.controller';
 import { WebBuilderService } from './web-builder.service';
-import { CapabilityContractValidatorService } from './capability-contract-validator.service';
-import { ReleaseSetValidatorService } from './release-set-validator.service';
-import { DesignFamilyRegistryRepository } from './design-family-registry.repository';
-import { PreviewFixturesRepository } from './preview-fixtures.repository';
-import { ThemeDraftsRepository } from './theme-drafts.repository';
-import { AuthPageDraftsRepository } from './auth-page-drafts.repository';
-import { EmailDraftsRepository } from './email-drafts.repository';
-import { ReleaseSetsRepository } from './release-sets.repository';
-import { ReleaseHistoryRepository } from './release-history.repository';
 
 @Module({
   imports: [AuditModule],

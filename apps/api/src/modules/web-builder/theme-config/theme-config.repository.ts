@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { generateId } from '@sneakereco/shared';
 
-import type { ThemeDraft } from './web-builder.types';
+import type { ThemeDraft } from '../shared/web-builder.types';
 
 @Injectable()
 export class ThemeDraftsRepository {

@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 
-import { ReleaseSetValidatorService } from '../../../../src/modules/web-builder/release-set-validator.service';
+import { ReleaseSetValidatorService } from '../../../../src/modules/web-builder/shared/release-set-validator.service';
 
 describe('ReleaseSetValidatorService', () => {
   const service = new ReleaseSetValidatorService();

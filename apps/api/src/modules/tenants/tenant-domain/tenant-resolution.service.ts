@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { TrustedHostService } from '../../../core/security/trusted-host.service';
-import { TenantDomainConfigRepository } from './tenant-domain-config.repository';
+import { TenantDomainConfigRepository } from './domain-config.repository';
 
 export interface TenantResolutionResult {
   tenantId: string | null;
