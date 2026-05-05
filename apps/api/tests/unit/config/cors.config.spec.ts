@@ -33,9 +33,22 @@ function runOriginCheck(
 }
 
 describe('buildCorsOptions', () => {
-  it('allows active origins found in tenant_hostnames', async () => {
+  function createConfigMock() {
+    return {
+      getOrThrow: jest.fn((key: string) => {
+        if (key === 'PLATFORM_URL') return 'https://sneakereco.test';
+        throw new Error(`Unexpected config key: ${key}`);
+      }),
+      get: jest.fn((key: string) => {
+        if (key === 'PLATFORM_DASHBOARD_URL') return 'https://dashboard.sneakereco.test';
+        return undefined;
+      }),
+    };
+  }
+
+  it('allows configured platform origins without a tenant-hostname lookup', async () => {
     const db = createDbMock({
-      hostname: 'sneakereco.test',
+      hostname: 'ignored.test',
       status: 'active',
     });
     const valkey = {
@@ -43,10 +56,28 @@ describe('buildCorsOptions', () => {
       setJson: jest.fn(),
     };
 
-    const options = buildCorsOptions(db as never, valkey as never);
+    const options = buildCorsOptions(db as never, valkey as never, createConfigMock() as never);
 
     await expect(runOriginCheck(options.origin!, 'https://sneakereco.test')).resolves.toBe(
       'https://sneakereco.test',
+    );
+    expect(db.systemDb.select).not.toHaveBeenCalled();
+  });
+
+  it('allows active origins found in tenant_hostnames', async () => {
+    const db = createDbMock({
+      hostname: 'heatkings.test',
+      status: 'active',
+    });
+    const valkey = {
+      getJson: jest.fn().mockResolvedValue(null),
+      setJson: jest.fn(),
+    };
+
+    const options = buildCorsOptions(db as never, valkey as never, createConfigMock() as never);
+
+    await expect(runOriginCheck(options.origin!, 'https://heatkings.test')).resolves.toBe(
+      'https://heatkings.test',
     );
   });
 
@@ -57,7 +88,7 @@ describe('buildCorsOptions', () => {
       setJson: jest.fn(),
     };
 
-    const options = buildCorsOptions(db as never, valkey as never);
+    const options = buildCorsOptions(db as never, valkey as never, createConfigMock() as never);
 
     await expect(runOriginCheck(options.origin!, 'https://unknown.test')).resolves.toBe(false);
   });
@@ -72,7 +103,7 @@ describe('buildCorsOptions', () => {
       setJson: jest.fn(),
     };
 
-    const options = buildCorsOptions(db as never, valkey as never);
+    const options = buildCorsOptions(db as never, valkey as never, createConfigMock() as never);
 
     await expect(runOriginCheck(options.origin!, 'https://www.soleshead.com')).resolves.toBe(
       'https://www.soleshead.com',

@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 
 import { describe, expect, it } from '@jest/globals';
+import { ConfigService } from '@nestjs/config';
 
 import { RequestHostRepository } from '../../../src/common/routing/request-host.repository';
 import { RequestHostResolverService } from '../../../src/common/routing/request-host-resolver.service';
@@ -19,6 +20,6 @@ describe('Nest DI metadata', () => {
       RequestHostResolverService,
     ) as unknown[];
 
-    expect(tokens).toEqual([RequestHostRepository, ValkeyService]);
+    expect(tokens).toEqual([ConfigService, RequestHostRepository, ValkeyService]);
   });
 });

@@ -24,17 +24,3 @@ ALTER TABLE "tenant_hostnames" ADD CONSTRAINT "tenant_hostnames_surface_check" C
 ALTER TABLE "tenant_hostnames" ADD CONSTRAINT "tenant_hostnames_host_kind_check" CHECK ("tenant_hostnames"."host_kind" in ('platform', 'managed', 'admin-managed', 'custom', 'admin-custom', 'alias'));
 --> statement-breakpoint
 ALTER TABLE "tenant_hostnames" ADD CONSTRAINT "tenant_hostnames_status_check" CHECK ("tenant_hostnames"."status" in ('active', 'disabled', 'pending_verification'));
---> statement-breakpoint
-INSERT INTO "tenant_hostnames" (
-	"id",
-	"tenant_id",
-	"hostname",
-	"surface",
-	"host_kind",
-	"is_canonical",
-	"redirect_to_hostname",
-	"status"
-) VALUES
-	('thn_platform_site_test', null, 'sneakereco.test', 'platform', 'platform', true, null, 'active'),
-	('thn_platform_admin_test', null, 'dashboard.sneakereco.test', 'platform-admin', 'platform', true, null, 'active'),
-	('thn_platform_api_test', null, 'api.sneakereco.test', 'platform', 'platform', true, null, 'active');

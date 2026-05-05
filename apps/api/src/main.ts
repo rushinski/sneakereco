@@ -53,7 +53,7 @@ async function bootstrap() {
 
   // Fastify-native plugins replace the old Express middleware stack.
   await app.register(cookie as any);
-  await app.register(cors as any, buildCorsOptions(db, valkey));
+  await app.register(cors as any, buildCorsOptions(db, valkey, config));
   await app.register(helmet as any, security.helmetOptions as any);
 
   app.enableVersioning({ type: VersioningType.URI });

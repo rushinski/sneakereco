@@ -30,13 +30,8 @@ export class OnboardingOriginGuard implements CanActivate {
     const rawOrigin = Array.isArray(request.headers.origin)
       ? request.headers.origin[0]
       : request.headers.origin;
-    const origin = await this.requestHostResolver.resolveOrigin(rawOrigin);
 
-    if (
-      !origin ||
-      origin.tenantId !== null ||
-      (origin.surface !== 'platform' && origin.surface !== 'platform-admin')
-    ) {
+    if (!this.requestHostResolver.isPlatformOrigin(rawOrigin)) {
       throw new ForbiddenException('Platform origin required');
     }
 

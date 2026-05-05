@@ -28,16 +28,24 @@ export class RequestContextMiddleware implements NestMiddleware {
 
   private async handle(req: RequestLike, next: Next): Promise<void> {
     try {
-      const resolvedHost = await this.requestHostResolver.resolveHost(
-        this.readHeaderValue(req.headers.host) ?? req.hostname,
-      );
+      const transportHost = this.readHeaderValue(req.headers.host) ?? req.hostname;
+      const rawOrigin = this.readHeaderValue(req.headers.origin);
+      const [resolvedTransportHost, resolvedOriginHost] = await Promise.all([
+        this.requestHostResolver.resolveHost(transportHost),
+        rawOrigin ? this.requestHostResolver.resolveOrigin(rawOrigin) : Promise.resolve(null),
+      ]);
+      const resolvedHost = resolvedOriginHost ?? resolvedTransportHost;
       const surface = this.mapResolvedSurface(resolvedHost?.surface);
       const tenantId = resolvedHost?.tenantId ?? null;
       const pool = await this.resolvePool(surface, tenantId);
+      const normalizedOriginHost = this.requestHostResolver.normalizeOrigin(rawOrigin);
+      const normalizedTransportHost = this.requestHostResolver.normalizeHost(transportHost);
+      const requestHost =
+        resolvedHost?.hostname ?? normalizedOriginHost ?? normalizedTransportHost ?? '';
 
       const ctx: RequestContext = {
         requestId: String(this.readHeaderValue(req.headers['x-request-id']) ?? ''),
-        host: resolvedHost?.hostname ?? '',
+        host: requestHost,
         hostType: this.mapHostType(surface),
         surface,
         canonicalHost: resolvedHost?.canonicalHost ?? null,

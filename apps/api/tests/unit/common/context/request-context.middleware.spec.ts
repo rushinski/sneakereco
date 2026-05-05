@@ -25,7 +25,8 @@ describe('request surface resolution', () => {
 describe('RequestContextMiddleware', () => {
   it('classifies dashboard-origin API requests as platform-admin', async () => {
     const requestHostResolver = {
-      resolveHost: jest.fn().mockResolvedValue({
+      resolveHost: jest.fn().mockResolvedValue(null),
+      resolveOrigin: jest.fn().mockResolvedValue({
         hostname: 'dashboard.sneakereco.test',
         tenantId: null,
         surface: 'platform-admin',
@@ -35,6 +36,8 @@ describe('RequestContextMiddleware', () => {
         redirectToHostname: null,
         status: 'active',
       }),
+      normalizeOrigin: jest.fn().mockReturnValue('dashboard.sneakereco.test'),
+      normalizeHost: jest.fn().mockReturnValue('api.sneakereco.test'),
     };
     const poolResolver = {
       resolveTenantPool: jest.fn(),
@@ -69,6 +72,9 @@ describe('RequestContextMiddleware', () => {
   it('marks requests unknown when host is not found', async () => {
     const requestHostResolver = {
       resolveHost: jest.fn().mockResolvedValue(null),
+      resolveOrigin: jest.fn().mockResolvedValue(null),
+      normalizeOrigin: jest.fn().mockReturnValue(null),
+      normalizeHost: jest.fn().mockReturnValue('unknown.test'),
     };
     const poolResolver = {
       resolveTenantPool: jest.fn(),
@@ -113,6 +119,9 @@ describe('RequestContextMiddleware', () => {
         redirectToHostname: null,
         status: 'active',
       }),
+      resolveOrigin: jest.fn().mockResolvedValue(null),
+      normalizeOrigin: jest.fn().mockReturnValue(null),
+      normalizeHost: jest.fn().mockReturnValue('admin.heatkings.test'),
     };
     const poolResolver = {
       resolveTenantPool: jest.fn().mockResolvedValue({

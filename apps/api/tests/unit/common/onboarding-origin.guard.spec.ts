@@ -9,16 +9,7 @@ describe('OnboardingOriginGuard', () => {
       getAllAndOverride: jest.fn().mockReturnValue(true),
     };
     const requestHostResolver = {
-      resolveOrigin: jest.fn().mockResolvedValue({
-        hostname: 'sneakereco.test',
-        tenantId: null,
-        surface: 'platform',
-        hostKind: 'platform',
-        canonicalHost: 'sneakereco.test',
-        isCanonicalHost: true,
-        redirectToHostname: null,
-        status: 'active',
-      }),
+      isPlatformOrigin: jest.fn().mockReturnValue(true),
     };
 
     const guard = new OnboardingOriginGuard(reflector as never, requestHostResolver as never);
@@ -43,16 +34,7 @@ describe('OnboardingOriginGuard', () => {
       getAllAndOverride: jest.fn().mockReturnValue(true),
     };
     const requestHostResolver = {
-      resolveOrigin: jest.fn().mockResolvedValue({
-        hostname: 'dashboard.sneakereco.test',
-        tenantId: null,
-        surface: 'platform-admin',
-        hostKind: 'platform',
-        canonicalHost: 'dashboard.sneakereco.test',
-        isCanonicalHost: true,
-        redirectToHostname: null,
-        status: 'active',
-      }),
+      isPlatformOrigin: jest.fn().mockReturnValue(true),
     };
 
     const guard = new OnboardingOriginGuard(reflector as never, requestHostResolver as never);
@@ -77,16 +59,7 @@ describe('OnboardingOriginGuard', () => {
       getAllAndOverride: jest.fn().mockReturnValue(true),
     };
     const requestHostResolver = {
-      resolveOrigin: jest.fn().mockResolvedValue({
-        hostname: 'heatkings.test',
-        tenantId: 'tnt_123',
-        surface: 'customer',
-        hostKind: 'custom',
-        canonicalHost: 'heatkings.test',
-        isCanonicalHost: true,
-        redirectToHostname: null,
-        status: 'active',
-      }),
+      isPlatformOrigin: jest.fn().mockReturnValue(false),
     };
 
     const guard = new OnboardingOriginGuard(reflector as never, requestHostResolver as never);

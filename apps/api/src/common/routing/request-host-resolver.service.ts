@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 import { ValkeyService } from '../../core/valkey/valkey.service';
+import { isPlatformHostname, readPlatformHosts } from './platform-hosts';
 import { RequestHostRepository } from './request-host.repository';
 import type { ResolvedRequestHost } from './request-host.types';
 
@@ -9,10 +11,15 @@ const REQUEST_HOST_MISS_CACHE_TTL_SECONDS = 60;
 
 @Injectable()
 export class RequestHostResolverService {
+  private readonly platformHosts;
+
   constructor(
+    config: ConfigService,
     private readonly repository: RequestHostRepository,
     private readonly valkey: ValkeyService,
-  ) {}
+  ) {
+    this.platformHosts = readPlatformHosts(config);
+  }
 
   normalizeHost(host: string | undefined | null): string | null {
     if (!host) {
@@ -43,6 +50,11 @@ export class RequestHostResolverService {
     const normalizedHost = this.normalizeHost(host);
     if (!normalizedHost) {
       return null;
+    }
+
+    const platformHost = this.resolvePlatformHost(normalizedHost);
+    if (platformHost) {
+      return platformHost;
     }
 
     const cacheKey = this.buildCacheKey(normalizedHost);
@@ -81,7 +93,35 @@ export class RequestHostResolverService {
     return this.resolveHost(normalizedOriginHost);
   }
 
+  isPlatformOrigin(origin: string | undefined | null): boolean {
+    const normalizedOriginHost = this.normalizeOrigin(origin);
+    if (!normalizedOriginHost) {
+      return false;
+    }
+
+    return isPlatformHostname(normalizedOriginHost, this.platformHosts);
+  }
+
   buildCacheKey(hostname: string): string {
     return `request-host:${hostname}`;
+  }
+
+  private resolvePlatformHost(hostname: string): ResolvedRequestHost | null {
+    if (!isPlatformHostname(hostname, this.platformHosts)) {
+      return null;
+    }
+
+    const isDashboardHost = hostname === this.platformHosts.dashboard;
+
+    return {
+      hostname,
+      tenantId: null,
+      surface: isDashboardHost ? 'platform-admin' : 'platform',
+      hostKind: 'platform',
+      canonicalHost: this.platformHosts.dashboard,
+      isCanonicalHost: hostname === this.platformHosts.dashboard,
+      redirectToHostname: isDashboardHost ? null : this.platformHosts.dashboard,
+      status: 'active',
+    };
   }
 }

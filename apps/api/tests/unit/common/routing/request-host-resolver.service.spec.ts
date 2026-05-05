@@ -3,6 +3,19 @@ import { describe, expect, it, jest } from '@jest/globals';
 import { RequestHostResolverService } from '../../../../src/common/routing/request-host-resolver.service';
 
 describe('RequestHostResolverService', () => {
+  function createConfigMock() {
+    return {
+      getOrThrow: jest.fn((key: string) => {
+        if (key === 'PLATFORM_URL') return 'https://sneakereco.test';
+        throw new Error(`Unexpected config key: ${key}`);
+      }),
+      get: jest.fn((key: string) => {
+        if (key === 'PLATFORM_DASHBOARD_URL') return 'https://dashboard.sneakereco.test';
+        return undefined;
+      }),
+    };
+  }
+
   it('returns null for malformed host input', async () => {
     const repository = {
       findByHostname: jest.fn(),
@@ -12,9 +25,41 @@ describe('RequestHostResolverService', () => {
       setJson: jest.fn(),
     };
 
-    const service = new RequestHostResolverService(repository as never, valkey as never);
+    const service = new RequestHostResolverService(
+      createConfigMock() as never,
+      repository as never,
+      valkey as never,
+    );
 
     await expect(service.resolveHost('%%%')).resolves.toBeNull();
+    expect(repository.findByHostname).not.toHaveBeenCalled();
+  });
+
+  it('resolves platform hosts from env without hitting the repository', async () => {
+    const repository = {
+      findByHostname: jest.fn(),
+    };
+    const valkey = {
+      getJson: jest.fn(),
+      setJson: jest.fn(),
+    };
+
+    const service = new RequestHostResolverService(
+      createConfigMock() as never,
+      repository as never,
+      valkey as never,
+    );
+
+    await expect(service.resolveHost('dashboard.sneakereco.test')).resolves.toEqual({
+      hostname: 'dashboard.sneakereco.test',
+      tenantId: null,
+      surface: 'platform-admin',
+      hostKind: 'platform',
+      canonicalHost: 'dashboard.sneakereco.test',
+      isCanonicalHost: true,
+      redirectToHostname: null,
+      status: 'active',
+    });
     expect(repository.findByHostname).not.toHaveBeenCalled();
   });
 
@@ -35,7 +80,11 @@ describe('RequestHostResolverService', () => {
       setJson: jest.fn(),
     };
 
-    const service = new RequestHostResolverService(repository as never, valkey as never);
+    const service = new RequestHostResolverService(
+      createConfigMock() as never,
+      repository as never,
+      valkey as never,
+    );
 
     await expect(service.resolveHost('admin.heatkings.test')).resolves.toEqual({
       hostname: 'admin.heatkings.test',
@@ -66,7 +115,11 @@ describe('RequestHostResolverService', () => {
       setJson: jest.fn(),
     };
 
-    const service = new RequestHostResolverService(repository as never, valkey as never);
+    const service = new RequestHostResolverService(
+      createConfigMock() as never,
+      repository as never,
+      valkey as never,
+    );
 
     await service.resolveHost('heatkings.sneakereco.test');
 

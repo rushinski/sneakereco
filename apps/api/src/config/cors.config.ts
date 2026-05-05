@@ -1,7 +1,9 @@
 import type { FastifyCorsOptions } from '@fastify/cors';
+import type { ConfigService } from '@nestjs/config';
 import { eq } from 'drizzle-orm';
 import { tenantHostnames } from '@sneakereco/db';
 
+import { isPlatformHostname, readPlatformHosts } from '../common/routing/platform-hosts';
 import type { DatabaseService } from '../core/database/database.service';
 import type { ValkeyService } from '../core/valkey/valkey.service';
 import {
@@ -27,7 +29,10 @@ function normalizeOriginHostname(origin: string): string | null {
 export function buildCorsOptions(
   db: DatabaseService,
   valkey: ValkeyService,
+  config: ConfigService,
 ): FastifyCorsOptions {
+  const platformHosts = readPlatformHosts(config);
+
   return {
     credentials: CORS_CREDENTIALS,
     methods: CORS_ALLOWED_METHODS,
@@ -42,6 +47,11 @@ export function buildCorsOptions(
         const hostname = normalizeOriginHostname(origin);
         if (!hostname) {
           cb(null, false);
+          return;
+        }
+
+        if (isPlatformHostname(hostname, platformHosts)) {
+          cb(null, origin);
           return;
         }
 
