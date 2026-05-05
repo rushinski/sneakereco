@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test:unit": "jest --config tests/jest.unit.config.js",
     "test:integration": "doppler run -- jest --config tests/jest.integration.config.js",
-    "clean": "rm -rf dist"
+    "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\""
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",
