@@ -34,6 +34,7 @@ import type {
   tagBrands,
   tagModels,
   tenantDomainConfig,
+  tenantHostnames,
   tenantEmailConfig,
   tenantMembers,
   tenantOnboarding,
@@ -71,6 +72,9 @@ export type NewTenantOnboarding = InferInsertModel<typeof tenantOnboarding>;
 
 export type TenantDomainConfig = InferSelectModel<typeof tenantDomainConfig>;
 export type NewTenantDomainConfig = InferInsertModel<typeof tenantDomainConfig>;
+
+export type TenantHostname = InferSelectModel<typeof tenantHostnames>;
+export type NewTenantHostname = InferInsertModel<typeof tenantHostnames>;
 
 export type TenantThemeConfig = InferSelectModel<typeof tenantThemeConfig>;
 export type NewTenantThemeConfig = InferInsertModel<typeof tenantThemeConfig>;

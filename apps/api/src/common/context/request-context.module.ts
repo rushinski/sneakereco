@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { CommonModule } from '../common.module';
 import { AuthModule } from '../../modules/auth/auth.module';
 
 import { RequestContextMiddleware } from './request-context.middleware';
@@ -10,7 +11,7 @@ import { RequestContextMiddleware } from './request-context.middleware';
  * PoolResolverService (exported from AuthModule) is in scope.
  */
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, CommonModule],
   providers: [RequestContextMiddleware],
   exports: [RequestContextMiddleware],
 })

@@ -27,6 +27,7 @@ const PREFIXES = {
   orderAccessToken: 'oat',
   tenantOnboarding: 'tob',
   tenantDomainConfig: 'tdc',
+  tenantHostname: 'thn',
   tenantCognitoConfig: 'tcc',
   tenantThemeConfig: 'ttc',
   authSubjectRevocation: 'asr',

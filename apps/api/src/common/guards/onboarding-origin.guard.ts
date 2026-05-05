@@ -3,7 +3,7 @@ import { ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
 import { ONBOARDING_ONLY_KEY } from '../decorators/onboarding-only.decorator';
-import { OriginResolverService } from '../services/origin-resolver.service';
+import { RequestHostResolverService } from '../routing/request-host-resolver.service';
 
 type RequestWithHeaders = {
   headers: Record<string, string | string[] | undefined>;
@@ -13,7 +13,7 @@ type RequestWithHeaders = {
 export class OnboardingOriginGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
-    private readonly originResolver: OriginResolverService,
+    private readonly requestHostResolver: RequestHostResolverService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -30,9 +30,13 @@ export class OnboardingOriginGuard implements CanActivate {
     const rawOrigin = Array.isArray(request.headers.origin)
       ? request.headers.origin[0]
       : request.headers.origin;
-    const origin = await this.originResolver.classifyOrigin(rawOrigin);
+    const origin = await this.requestHostResolver.resolveOrigin(rawOrigin);
 
-    if (origin.origin !== 'platform') {
+    if (
+      !origin ||
+      origin.tenantId !== null ||
+      (origin.surface !== 'platform' && origin.surface !== 'platform-admin')
+    ) {
       throw new ForbiddenException('Platform origin required');
     }
 

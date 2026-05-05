@@ -11,7 +11,7 @@ import { generateId } from '@sneakereco/shared';
 
 import type { DrizzleTransaction } from '../../../core/database/database.service';
 import { DatabaseService } from '../../../core/database/database.service';
-import { OriginResolverService } from '../../../common/services/origin-resolver.service';
+import { ValkeyService } from '../../../core/valkey/valkey.service';
 import { EmailService } from '../../communications/email/email.service';
 import { CognitoProvisioningService } from '../cognito-provisioning.service';
 
@@ -39,7 +39,7 @@ export class OnboardingService {
     private readonly cognitoProvisioning: CognitoProvisioningService,
     private readonly email: EmailService,
     private readonly config: ConfigService,
-    private readonly originResolver: OriginResolverService,
+    private readonly valkey: ValkeyService,
   ) {}
 
   async requestAccount(dto: RequestOnboardingDto) {
@@ -154,6 +154,28 @@ export class OnboardingService {
         },
         tx,
       );
+      await this.onboardingRepository.upsertHostname(
+        {
+          id: generateId('tenantHostname'),
+          tenantId,
+          hostname: `${subdomain}.${platformHost}`.toLowerCase(),
+          surface: 'customer',
+          hostKind: 'managed',
+          isCanonical: true,
+        },
+        tx,
+      );
+      await this.onboardingRepository.upsertHostname(
+        {
+          id: generateId('tenantHostname'),
+          tenantId,
+          hostname: adminDomain.toLowerCase(),
+          surface: 'store-admin',
+          hostKind: 'admin-managed',
+          isCanonical: true,
+        },
+        tx,
+      );
 
       this.logger.log(`Creating Cognito pool for tenantId=${tenantId}`);
       const poolResult = await this.cognitoProvisioning.createTenantCustomerPool({
@@ -193,9 +215,13 @@ export class OnboardingService {
 
     // Invite link points to the web app's admin setup page on the tenant's subdomain.
     // Derive the base domain from PLATFORM_URL (e.g. http://sneakereco.test:3002 → sneakereco.test).
-    // Invalidate the CORS origin cache for the new tenant's hostname so the
-    // 5-minute cache doesn't serve a stale 'unknown' classification.
-    await this.originResolver.invalidateOriginCache(`${approval.subdomain}.${platformHost}`);
+    // Invalidate any cached misses for the new managed hostnames.
+    await this.valkey.del(
+      `request-host:${approval.subdomain}.${platformHost}`.toLowerCase(),
+      `cors-origin:${approval.subdomain}.${platformHost}`.toLowerCase(),
+      `request-host:${approval.adminDomain}`.toLowerCase(),
+      `cors-origin:${approval.adminDomain}`.toLowerCase(),
+    );
     const inviteLink = `https://${approval.subdomain}.${platformHost}/admin/setup/${inviteToken}`;
 
     await this.email.sendOnboardingInvite({

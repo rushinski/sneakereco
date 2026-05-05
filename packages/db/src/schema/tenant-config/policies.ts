@@ -4,6 +4,7 @@ import { sneakerecoAppRole } from '../shared/roles';
 import { currentTenantScope, tenantAdminScope } from '../shared/rls';
 
 import { tenantDomainConfig } from './tenant-domain-config';
+import { tenantHostnames } from './tenant-hostnames';
 import { tenantEmailConfig } from './tenant-email-config';
 import { tenantOnboarding } from './tenant-onboarding';
 import { tenantSeoConfig } from './tenant-seo-config';
@@ -55,3 +56,10 @@ export const tenantDomainConfigAdminManagePolicy = pgPolicy('tenant_domain_confi
   using: tenantAdminScope(tenantDomainConfig.tenantId),
   withCheck: tenantAdminScope(tenantDomainConfig.tenantId),
 }).link(tenantDomainConfig);
+
+export const tenantHostnamesAdminManagePolicy = pgPolicy('tenant_hostnames_admin_manage', {
+  for: 'all',
+  to: sneakerecoAppRole,
+  using: tenantAdminScope(tenantHostnames.tenantId),
+  withCheck: tenantAdminScope(tenantHostnames.tenantId),
+}).link(tenantHostnames);

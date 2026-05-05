@@ -3,6 +3,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 import {
   tenantCognitoConfig,
   tenantDomainConfig,
+  tenantHostnames,
   tenantMembers,
   tenantOnboarding,
   tenants,
@@ -188,6 +189,45 @@ export class OnboardingRepository {
         set: {
           adminDomain: config.adminDomain,
           subdomain: config.subdomain,
+          updatedAt: new Date(),
+        },
+      });
+  }
+
+  async upsertHostname(
+    input: {
+      id: string;
+      tenantId: string | null;
+      hostname: string;
+      surface: 'platform' | 'platform-admin' | 'customer' | 'store-admin';
+      hostKind: 'platform' | 'managed' | 'admin-managed' | 'custom' | 'admin-custom' | 'alias';
+      isCanonical: boolean;
+      redirectToHostname?: string | null;
+      status?: 'active' | 'disabled' | 'pending_verification';
+    },
+    tx: DrizzleTransaction,
+  ): Promise<void> {
+    await tx
+      .insert(tenantHostnames)
+      .values({
+        id: input.id,
+        tenantId: input.tenantId,
+        hostname: input.hostname,
+        surface: input.surface,
+        hostKind: input.hostKind,
+        isCanonical: input.isCanonical,
+        redirectToHostname: input.redirectToHostname ?? null,
+        status: input.status ?? 'active',
+      })
+      .onConflictDoUpdate({
+        target: tenantHostnames.hostname,
+        set: {
+          tenantId: input.tenantId,
+          surface: input.surface,
+          hostKind: input.hostKind,
+          isCanonical: input.isCanonical,
+          redirectToHostname: input.redirectToHostname ?? null,
+          status: input.status ?? 'active',
           updatedAt: new Date(),
         },
       });

@@ -1,16 +1,12 @@
 import type { NestMiddleware } from '@nestjs/common';
 import { Injectable } from '@nestjs/common';
 
-import { OriginResolverService } from '../services/origin-resolver.service';
+import { RequestHostResolverService } from '../routing/request-host-resolver.service';
 import { PoolResolverService } from '../../modules/auth/shared/pool-resolver/pool-resolver.service';
 import type { PoolCredentials } from '../../modules/auth/shared/cognito/cognito.types';
 
 import { RequestCtx, type RequestContext } from './request-context';
-import {
-  normalizeAppSurfaceHeader,
-  resolveRequestSurface,
-  type AppSurface,
-} from './request-surface';
+import type { AppSurface } from './request-surface';
 
 type RequestLike = {
   headers: Record<string, string | string[] | undefined>;
@@ -22,7 +18,7 @@ type Next = (error?: unknown) => void;
 @Injectable()
 export class RequestContextMiddleware implements NestMiddleware {
   constructor(
-    private readonly originResolver: OriginResolverService,
+    private readonly requestHostResolver: RequestHostResolverService,
     private readonly poolResolver: PoolResolverService,
   ) {}
 
@@ -32,42 +28,23 @@ export class RequestContextMiddleware implements NestMiddleware {
 
   private async handle(req: RequestLike, next: Next): Promise<void> {
     try {
-      const transportHost =
-        this.originResolver.normalizeHost(this.readHeaderValue(req.headers.host) ?? req.hostname) ??
-        '';
-      const rawOrigin = this.readHeaderValue(req.headers.origin);
-      const originHost = this.originResolver.normalizeHost(rawOrigin);
-      const originContext = rawOrigin
-        ? await this.originResolver.classifyOrigin(rawOrigin)
-        : { origin: 'unknown' as const, tenantId: null, tenantSlug: null };
-      const resolvedHost = originHost && originContext.origin !== 'unknown' ? originHost : transportHost;
-      const tenant = resolvedHost
-        ? await this.originResolver.resolveTenantByHost(resolvedHost)
-        : null;
-      const resolution = resolveRequestSurface({
-        appHost: resolvedHost,
-        appSurface: normalizeAppSurfaceHeader(this.readHeaderValue(req.headers['x-app-surface'])),
-        tenant: tenant
-          ? {
-              subdomain: tenant.subdomain,
-              customDomain: tenant.customDomain,
-              adminDomain: tenant.adminDomain,
-            }
-          : null,
-        platformHosts: this.originResolver.getPlatformHosts(),
-      });
-      const pool = await this.resolvePool(resolution.surface, tenant?.tenantId ?? null);
+      const resolvedHost = await this.requestHostResolver.resolveHost(
+        this.readHeaderValue(req.headers.host) ?? req.hostname,
+      );
+      const surface = this.mapResolvedSurface(resolvedHost?.surface);
+      const tenantId = resolvedHost?.tenantId ?? null;
+      const pool = await this.resolvePool(surface, tenantId);
 
       const ctx: RequestContext = {
         requestId: String(this.readHeaderValue(req.headers['x-request-id']) ?? ''),
-        host: resolvedHost,
-        hostType: resolution.hostType,
-        surface: resolution.surface,
-        canonicalHost: resolution.canonicalHost,
-        isCanonicalHost: resolution.isCanonicalHost,
-        origin: this.mapSurfaceToOrigin(resolution.surface),
-        tenantId: tenant?.tenantId ?? null,
-        tenantSlug: tenant?.tenantSlug ?? null,
+        host: resolvedHost?.hostname ?? '',
+        hostType: this.mapHostType(surface),
+        surface,
+        canonicalHost: resolvedHost?.canonicalHost ?? null,
+        isCanonicalHost: resolvedHost?.isCanonicalHost ?? false,
+        origin: this.mapSurfaceToOrigin(surface),
+        tenantId,
+        tenantSlug: null,
         pool,
         user: null,
       };
@@ -103,6 +80,28 @@ export class RequestContextMiddleware implements NestMiddleware {
       return 'store-admin';
     }
     return surface;
+  }
+
+  private mapResolvedSurface(surface: 'platform' | AppSurface | undefined): AppSurface {
+    if (surface === 'platform') {
+      return 'platform-admin';
+    }
+
+    return surface ?? 'unknown';
+  }
+
+  private mapHostType(surface: AppSurface): RequestContext['hostType'] {
+    if (surface === 'platform-admin') {
+      return 'platform';
+    }
+    if (surface === 'store-admin') {
+      return 'store-admin-host';
+    }
+    if (surface === 'customer') {
+      return 'store-public';
+    }
+
+    return 'unknown';
   }
 
   private readHeaderValue(value: string | string[] | undefined): string | undefined {

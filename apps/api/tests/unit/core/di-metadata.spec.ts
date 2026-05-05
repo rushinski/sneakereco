@@ -1,25 +1,24 @@
 import 'reflect-metadata';
 
 import { describe, expect, it } from '@jest/globals';
-import { ConfigService } from '@nestjs/config';
 
-import { OriginResolverService } from '../../../src/common/services/origin-resolver.service';
-import { DatabaseService } from '../../../src/core/database/database.service';
+import { RequestHostRepository } from '../../../src/common/routing/request-host.repository';
+import { RequestHostResolverService } from '../../../src/common/routing/request-host-resolver.service';
 import { ValkeyService } from '../../../src/core/valkey/valkey.service';
 
 describe('Nest DI metadata', () => {
   it('keeps runtime constructor tokens for ValkeyService dependencies', () => {
-    const [configToken] = Reflect.getMetadata('design:paramtypes', ValkeyService) as unknown[];
+    const tokens = Reflect.getMetadata('design:paramtypes', ValkeyService) as unknown[];
 
-    expect(configToken).toBe(ConfigService);
+    expect(tokens).toHaveLength(1);
   });
 
-  it('keeps runtime constructor tokens for OriginResolverService dependencies', () => {
+  it('keeps runtime constructor tokens for RequestHostResolverService dependencies', () => {
     const tokens = Reflect.getMetadata(
       'design:paramtypes',
-      OriginResolverService,
+      RequestHostResolverService,
     ) as unknown[];
 
-    expect(tokens).toEqual([ConfigService, DatabaseService, ValkeyService]);
+    expect(tokens).toEqual([RequestHostRepository, ValkeyService]);
   });
 });

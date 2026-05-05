@@ -21,7 +21,6 @@ import { DatabaseModule } from './core/database/database.module';
 import { AuthGuard } from './common/guards/auth.guard';
 import { OnboardingOriginGuard } from './common/guards/onboarding-origin.guard';
 import { RolesGuard } from './common/guards/roles.guard';
-import { CorsMiddleware } from './common/middleware/cors.middleware';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { AddressesModule } from './modules/addresses/addresses.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -99,7 +98,6 @@ import { TenantsModule } from './modules/tenants/tenants.module';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    // RequestContext must run before CorsMiddleware so origin is classified once.
-    consumer.apply(RequestIdMiddleware, RequestContextMiddleware, CorsMiddleware).forRoutes('*');
+    consumer.apply(RequestIdMiddleware, RequestContextMiddleware).forRoutes('*');
   }
 }

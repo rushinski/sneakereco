@@ -24,29 +24,26 @@ describe('request surface resolution', () => {
 
 describe('RequestContextMiddleware', () => {
   it('classifies dashboard-origin API requests as platform-admin', async () => {
-    const originResolver = {
-      normalizeHost: jest.fn((value: string | undefined | null) => {
-        if (!value) {
-          return null;
-        }
-
-        return new URL(value.includes('://') ? value : `https://${value}`).hostname.toLowerCase();
-      }),
-      classifyOrigin: jest.fn().mockResolvedValue({
-        origin: 'platform',
+    const requestHostResolver = {
+      resolveHost: jest.fn().mockResolvedValue({
+        hostname: 'dashboard.sneakereco.test',
         tenantId: null,
-        tenantSlug: null,
+        surface: 'platform-admin',
+        hostKind: 'platform',
+        canonicalHost: 'dashboard.sneakereco.test',
+        isCanonicalHost: true,
+        redirectToHostname: null,
+        status: 'active',
       }),
-      resolveTenantByHost: jest.fn().mockResolvedValue(null),
-      getPlatformHosts: jest
-        .fn()
-        .mockReturnValue({ platform: 'sneakereco.test', dashboard: 'dashboard.sneakereco.test' }),
     };
     const poolResolver = {
       resolveTenantPool: jest.fn(),
     };
 
-    const middleware = new RequestContextMiddleware(originResolver as never, poolResolver as never);
+    const middleware = new RequestContextMiddleware(
+      requestHostResolver as never,
+      poolResolver as never,
+    );
     let capturedSurface: string | undefined;
 
     await (middleware as any).handle(
@@ -67,5 +64,88 @@ describe('RequestContextMiddleware', () => {
 
     expect(capturedSurface).toBe('platform-admin');
     expect(poolResolver.resolveTenantPool).not.toHaveBeenCalled();
+  });
+
+  it('marks requests unknown when host is not found', async () => {
+    const requestHostResolver = {
+      resolveHost: jest.fn().mockResolvedValue(null),
+    };
+    const poolResolver = {
+      resolveTenantPool: jest.fn(),
+    };
+
+    const middleware = new RequestContextMiddleware(
+      requestHostResolver as never,
+      poolResolver as never,
+    );
+    let captured = RequestCtx.get();
+
+    await (middleware as any).handle(
+      {
+        headers: {
+          host: 'unknown.test',
+        },
+        hostname: 'unknown.test',
+      },
+      () => {
+        captured = RequestCtx.get();
+      },
+    );
+
+    expect(captured).toMatchObject({
+      surface: 'unknown',
+      tenantId: null,
+      canonicalHost: null,
+      isCanonicalHost: false,
+    });
+    expect(poolResolver.resolveTenantPool).not.toHaveBeenCalled();
+  });
+
+  it('derives surface and tenant from resolved host row', async () => {
+    const requestHostResolver = {
+      resolveHost: jest.fn().mockResolvedValue({
+        hostname: 'admin.heatkings.test',
+        tenantId: 'tnt_heatkings',
+        surface: 'store-admin',
+        hostKind: 'admin-custom',
+        canonicalHost: 'admin.heatkings.test',
+        isCanonicalHost: true,
+        redirectToHostname: null,
+        status: 'active',
+      }),
+    };
+    const poolResolver = {
+      resolveTenantPool: jest.fn().mockResolvedValue({
+        userPoolId: 'pool_platform',
+        clientId: 'client_store_admin',
+      }),
+    };
+
+    const middleware = new RequestContextMiddleware(
+      requestHostResolver as never,
+      poolResolver as never,
+    );
+    let captured = RequestCtx.get();
+
+    await (middleware as any).handle(
+      {
+        headers: {
+          host: 'admin.heatkings.test',
+        },
+        hostname: 'admin.heatkings.test',
+      },
+      () => {
+        captured = RequestCtx.get();
+      },
+    );
+
+    expect(captured).toMatchObject({
+      host: 'admin.heatkings.test',
+      surface: 'store-admin',
+      tenantId: 'tnt_heatkings',
+      canonicalHost: 'admin.heatkings.test',
+      isCanonicalHost: true,
+    });
+    expect(poolResolver.resolveTenantPool).toHaveBeenCalledWith('tnt_heatkings', 'admin');
   });
 });
