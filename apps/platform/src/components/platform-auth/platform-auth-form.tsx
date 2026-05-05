@@ -19,10 +19,12 @@ export function PlatformAuthForm(props: {
   description: string;
   submitLabel: string;
   fields: Field[];
+  defaultValues?: Record<string, string>;
   successHref?: string;
+  onSuccess?: (payload: Record<string, unknown>, router: ReturnType<typeof useRouter>) => void;
 }) {
   const router = useRouter();
-  const [values, setValues] = useState<Record<string, string>>({});
+  const [values, setValues] = useState<Record<string, string>>(() => ({ ...props.defaultValues }));
   const [error, setError] = useState<string>();
   const [success, setSuccess] = useState<string>();
   const [pending, setPending] = useState(false);
@@ -60,6 +62,11 @@ export function PlatformAuthForm(props: {
               setClientSession(payload.accessToken, payload.principal);
             }
 
+            if (props.onSuccess) {
+              props.onSuccess(payload, router);
+              return;
+            }
+
             setSuccess(payload.message ?? 'Success');
             if (props.successHref) {
               void router.push(props.successHref);
@@ -77,18 +84,22 @@ export function PlatformAuthForm(props: {
       {error ? <div className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</div> : null}
       {success ? <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">{success}</div> : null}
       <div className="space-y-4">
-        {props.fields.map((field) => (
-          <label key={field.name} className="block space-y-2">
-            <span className="text-sm font-medium text-slate-400">{field.label}</span>
-            <input
-              type={field.type ?? 'text'}
-              value={values[field.name] ?? ''}
-              onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))}
-              placeholder={field.placeholder}
-              className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-base text-white outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-400/10"
-            />
-          </label>
-        ))}
+        {props.fields.map((field) =>
+          field.type === 'hidden' ? (
+            <input key={field.name} type="hidden" value={values[field.name] ?? ''} readOnly />
+          ) : (
+            <label key={field.name} className="block space-y-2">
+              <span className="text-sm font-medium text-slate-400">{field.label}</span>
+              <input
+                type={field.type ?? 'text'}
+                value={values[field.name] ?? ''}
+                onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))}
+                placeholder={field.placeholder}
+                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-base text-white outline-none transition focus:border-cyan-400 focus:ring-4 focus:ring-cyan-400/10"
+              />
+            </label>
+          ),
+        )}
       </div>
       <button
         type="submit"

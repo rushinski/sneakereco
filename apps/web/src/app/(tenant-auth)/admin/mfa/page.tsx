@@ -2,10 +2,15 @@ import { AuthForm } from '@/components/auth/auth-form';
 import { AuthFamilyShell } from '@/components/auth/auth-shell';
 
 export default async function TenantAdminMfaPage(props: {
-  searchParams: Promise<{ family?: string }>;
+  searchParams: Promise<{ family?: string; token?: string }>;
 }) {
   const searchParams = await props.searchParams;
   const family = searchParams.family === 'b' ? 'b' : 'a';
+
+  if (!searchParams.token) {
+    const { redirect } = await import('next/navigation');
+    redirect('/admin/login');
+  }
 
   return (
     <AuthFamilyShell
@@ -18,19 +23,16 @@ export default async function TenantAdminMfaPage(props: {
       <AuthForm
         endpoint="/api/auth/mfa"
         title="Complete MFA"
-        description="Use the challenge token from admin login and the authenticator code."
+        description="Enter the 6-digit code from your authenticator app."
         submitLabel="Verify code"
+        defaultValues={{ challengeSessionToken: searchParams.token ?? '' }}
+        successHref="/admin"
         fields={[
-          { name: 'challengeSessionToken', label: 'Challenge session token', placeholder: 'challenge_token' },
+          { name: 'challengeSessionToken', type: 'hidden', label: '' },
           { name: 'code', label: 'Authenticator code', placeholder: '123456' },
           { name: 'deviceId', label: 'Device id', placeholder: 'browser-main' },
         ]}
         links={[{ href: '/admin/login', label: 'Back to admin login' }]}
-        onSuccess={(payload, router) => {
-          if (typeof payload.accessToken === 'string') {
-            void router.push('/admin');
-          }
-        }}
       />
     </AuthFamilyShell>
   );

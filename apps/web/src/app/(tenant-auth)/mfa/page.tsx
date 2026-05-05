@@ -1,40 +1,38 @@
 import { AuthForm } from '@/components/auth/auth-form';
 import { AuthFamilyShell } from '@/components/auth/auth-shell';
 
-export default async function LoginPage(props: {
-  searchParams: Promise<{ family?: string }>;
+export default async function MfaPage(props: {
+  searchParams: Promise<{ family?: string; token?: string }>;
 }) {
   const searchParams = await props.searchParams;
   const family = searchParams.family === 'b' ? 'b' : 'a';
 
+  if (!searchParams.token) {
+    const { redirect } = await import('next/navigation');
+    redirect('/login');
+  }
+
   return (
     <AuthFamilyShell
       family={family}
-      eyebrow="Customer login"
-      title="Pick up where the storefront left off."
-      description="Same-origin auth keeps refresh and session control on the active tenant domain while still using the central Nest auth engine."
-      supportingLine="Password sign-in, email-code sign-in, and protected recovery paths."
+      eyebrow="Two-factor authentication"
+      title="Verify your identity with your authenticator app."
+      description="Enter the 6-digit code from your authenticator app to complete sign-in."
+      supportingLine="The code rotates every 30 seconds."
     >
       <AuthForm
-        endpoint="/api/auth/login"
-        title="Sign in"
-        description="Use your email and password, or switch to email code from the alternate route."
-        submitLabel="Sign in"
+        endpoint="/api/auth/mfa"
+        title="Authenticator challenge"
+        description="Enter your current authenticator code to continue."
+        submitLabel="Verify code"
+        defaultValues={{ challengeSessionToken: searchParams.token ?? '' }}
+        successHref="/account"
         fields={[
-          { name: 'email', label: 'Email', type: 'email', placeholder: 'you@example.com' },
-          { name: 'password', label: 'Password', type: 'password', placeholder: 'Password' },
+          { name: 'challengeSessionToken', type: 'hidden', label: '' },
+          { name: 'code', label: 'Authenticator code', placeholder: '123456' },
           { name: 'deviceId', label: 'Device id', placeholder: 'browser-main' },
         ]}
-        links={[
-          { href: '/register', label: 'Create account' },
-          { href: '/forgot-password', label: 'Forgot password' },
-          { href: '/otp', label: 'Sign in with email code instead' },
-        ]}
-        onSuccess={(payload, router) => {
-          if (typeof payload.accessToken === 'string') {
-            void router.push('/account');
-          }
-        }}
+        links={[{ href: '/login', label: 'Back to login' }]}
       />
     </AuthFamilyShell>
   );

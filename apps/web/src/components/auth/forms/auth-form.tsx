@@ -30,6 +30,7 @@ export function AuthForm(props: {
   defaultValues?: Record<string, string>;
   links?: AuthLink[];
   hint?: string;
+  successHref?: string;
   onSuccess?: (payload: Record<string, unknown>, router: ReturnType<typeof useRouter>) => void;
 }) {
   const router = useRouter();
@@ -81,7 +82,11 @@ export function AuthForm(props: {
             }
 
             setSuccess(typeof data.message === 'string' ? data.message : 'Success');
-            props.onSuccess?.(data, router);
+            if (props.onSuccess) {
+              props.onSuccess(data, router);
+            } else if (props.successHref) {
+              void router.push(props.successHref);
+            }
           } finally {
             setIsPending(false);
           }
@@ -95,18 +100,22 @@ export function AuthForm(props: {
       <AuthStatusBanner tone="danger" message={error} />
       <AuthStatusBanner tone="success" message={success} />
       <div className="space-y-4">
-        {props.fields.map((field) => (
-          <label key={field.name} className="block space-y-2">
-            <span className="text-sm font-medium text-zinc-500">{field.label}</span>
-            <input
-              type={field.type ?? 'text'}
-              value={values[field.name] ?? ''}
-              onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))}
-              placeholder={field.placeholder}
-              className="w-full rounded-2xl border border-black/10 bg-transparent px-4 py-3 text-base outline-none transition focus:border-red-500 focus:ring-4 focus:ring-red-500/10 dark:border-white/10"
-            />
-          </label>
-        ))}
+        {props.fields.map((field) =>
+          field.type === 'hidden' ? (
+            <input key={field.name} type="hidden" value={values[field.name] ?? ''} readOnly />
+          ) : (
+            <label key={field.name} className="block space-y-2">
+              <span className="text-sm font-medium text-zinc-500">{field.label}</span>
+              <input
+                type={field.type ?? 'text'}
+                value={values[field.name] ?? ''}
+                onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))}
+                placeholder={field.placeholder}
+                className="w-full rounded-2xl border border-black/10 bg-transparent px-4 py-3 text-base outline-none transition focus:border-red-500 focus:ring-4 focus:ring-red-500/10 dark:border-white/10"
+              />
+            </label>
+          ),
+        )}
       </div>
       {props.hint ? <p className="text-sm text-zinc-500">{props.hint}</p> : null}
       <button
