@@ -1,6 +1,6 @@
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { ForbiddenException, Injectable } from '@nestjs/common';
-import type { Request, Response } from 'express';
+import type { FastifyRequest } from 'fastify';
 
 import { CsrfService } from '../../core/security/csrf/csrf.service';
 
@@ -16,20 +16,14 @@ import { CsrfService } from '../../core/security/csrf/csrf.service';
 export class CsrfGuard implements CanActivate {
   constructor(private readonly csrfService: CsrfService) {}
 
-  canActivate(context: ExecutionContext): Promise<boolean> {
-    const http = context.switchToHttp();
-    const req = http.getRequest<Request>();
-    const res = http.getResponse<Response>();
+  canActivate(context: ExecutionContext): boolean {
+    const req = context.switchToHttp().getRequest<FastifyRequest>();
 
-    return new Promise((resolve, reject) => {
-      this.csrfService.protect(req, res, (error?: unknown) => {
-        if (!error) {
-          resolve(true);
-          return;
-        }
-
-        reject(new ForbiddenException('Invalid CSRF token'));
-      });
-    });
+    try {
+      this.csrfService.protect(req);
+      return true;
+    } catch {
+      throw new ForbiddenException('Invalid CSRF token');
+    }
   }
 }

@@ -10,7 +10,7 @@ import {
   Res,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import type { Request, Response } from 'express';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { Public } from '../../../common/decorators/public.decorator';
 import { ZodValidationPipe } from '../../../common/pipes/zod-validation.pipe';
@@ -59,9 +59,9 @@ export class OtpController {
   @Post('verify')
   @HttpCode(HttpStatus.OK)
   async verify(
-    @Req() request: Request,
+    @Req() request: FastifyRequest,
     @Body(new ZodValidationPipe(OtpVerifyDtoSchema)) dto: OtpVerifyDto,
-    @Res({ passthrough: true }) response: Response,
+    @Res({ passthrough: true }) response: FastifyReply,
   ) {
     const ctx = RequestCtx.get();
 

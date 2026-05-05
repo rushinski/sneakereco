@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { doubleCsrf } from 'csrf-csrf';
-import type { NextFunction, Request, Response } from 'express';
+import { randomBytes, timingSafeEqual } from 'crypto';
+
+import { ForbiddenException, Injectable } from '@nestjs/common';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { RequestCtx } from '../../../common/context/request-context';
 import {
@@ -17,49 +17,45 @@ import {
 
 @Injectable()
 export class CsrfService {
-  private readonly csrfByCookieName = new Map<string, ReturnType<typeof doubleCsrf>>();
-  private readonly csrfSecret: string;
-
-  constructor(private readonly configService: ConfigService) {
-    this.csrfSecret = this.configService.getOrThrow<string>('CSRF_SECRET');
+  generateToken(_req: FastifyRequest, reply: FastifyReply): string {
+    const token = randomBytes(32).toString('base64url');
+    reply.setCookie(this.resolveCookieName(), token, {
+      sameSite: 'none',
+      path: AUTH_COOKIE_PATH,
+      secure: true,
+      httpOnly: true,
+      partitioned: true,
+    });
+    return token;
   }
 
-  generateToken(req: Request, res: Response): string {
-    return this.getCsrf().generateCsrfToken(req, res);
-  }
+  protect(req: FastifyRequest): void {
+    if (CSRF_IGNORED_METHODS.includes(req.method as (typeof CSRF_IGNORED_METHODS)[number])) {
+      return;
+    }
 
-  protect(req: Request, res: Response, next: NextFunction): void {
-    this.getCsrf().doubleCsrfProtection(req, res, next);
+    const cookieName = this.resolveCookieName();
+    const cookieToken = req.cookies[cookieName];
+    const headerValue = req.headers[CSRF_HEADER_NAME];
+    const headerToken = Array.isArray(headerValue) ? headerValue[0] : headerValue;
+
+    if (!cookieToken || !headerToken) {
+      throw new ForbiddenException('Invalid CSRF token');
+    }
+
+    const cookieBuffer = Buffer.from(cookieToken);
+    const headerBuffer = Buffer.from(headerToken);
+    const isValid =
+      cookieBuffer.length === headerBuffer.length &&
+      timingSafeEqual(cookieBuffer, headerBuffer);
+
+    if (!isValid) {
+      throw new ForbiddenException('Invalid CSRF token');
+    }
   }
 
   isInvalidTokenError(error: unknown): boolean {
-    return error === this.getCsrf().invalidCsrfTokenError;
-  }
-
-  private getCsrf() {
-    const cookieName = this.resolveCookieName();
-
-    if (!this.csrfByCookieName.has(cookieName)) {
-      this.csrfByCookieName.set(
-        cookieName,
-        doubleCsrf({
-          getSecret: () => this.csrfSecret,
-          getSessionIdentifier: () => 'sneakereco',
-          cookieName,
-          cookieOptions: {
-            sameSite: 'none',
-            path: AUTH_COOKIE_PATH,
-            secure: true,
-            httpOnly: true,
-            partitioned: true,
-          },
-          getCsrfTokenFromRequest: (req) => req.headers[CSRF_HEADER_NAME] as string,
-          ignoredMethods: [...CSRF_IGNORED_METHODS],
-        }),
-      );
-    }
-
-    return this.csrfByCookieName.get(cookieName)!;
+    return error instanceof ForbiddenException && error.message === 'Invalid CSRF token';
   }
 
   private resolveCookieName(): string {

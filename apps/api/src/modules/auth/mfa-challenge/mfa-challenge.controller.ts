@@ -9,7 +9,7 @@ import {
   Res,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import type { Request, Response } from 'express';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { Public } from '../../../common/decorators/public.decorator';
 import { ZodValidationPipe } from '../../../common/pipes/zod-validation.pipe';
@@ -35,9 +35,9 @@ export class MfaChallengeController {
   @Post('mfa/challenge')
   @HttpCode(HttpStatus.OK)
   async challenge(
-    @Req() request: Request,
+    @Req() request: FastifyRequest,
     @Body(new ZodValidationPipe(MfaChallengeDtoSchema)) dto: MfaChallengeDto,
-    @Res({ passthrough: true }) response: Response,
+    @Res({ passthrough: true }) response: FastifyReply,
   ) {
     const ctx = RequestCtx.get();
     const surface = ctx?.surface;

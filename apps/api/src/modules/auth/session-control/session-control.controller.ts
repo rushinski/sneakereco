@@ -9,7 +9,7 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import type { Request, Response } from 'express';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { RequestCtx } from '../../../common/context/request-context';
 import { Roles } from '../../../common/decorators/roles.decorator';
@@ -34,9 +34,9 @@ export class SessionControlController {
   @Post('revoke-all')
   @HttpCode(HttpStatus.OK)
   async revokeAllSessions(
-    @Req() request: Request,
+    @Req() request: FastifyRequest,
     @CurrentUser() user: AuthenticatedUser,
-    @Res({ passthrough: true }) response: Response,
+    @Res({ passthrough: true }) response: FastifyReply,
   ) {
     const pool = this.resolveCurrentPool();
     const result = await this.sessionControl.revokeAllSessions({

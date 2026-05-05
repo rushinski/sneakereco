@@ -1,6 +1,7 @@
+import cookie from '@fastify/cookie';
 import { INestApplication } from '@nestjs/common';
+import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
-import cookieParser from 'cookie-parser';
 import request from 'supertest';
 
 import { RequestCtx } from '../../../src/common/context/request-context';
@@ -22,16 +23,16 @@ describe('Refresh surface isolation', () => {
         {
           provide: CsrfService,
           useValue: {
-            protect: (_req: unknown, _res: unknown, next: (error?: unknown) => void) => next(),
+            protect: (_req: unknown) => undefined,
           },
         },
       ],
     }).compile();
 
-    app = moduleRef.createNestApplication();
+    app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
     app.setGlobalPrefix('v1');
-    app.use(cookieParser());
-    app.use((req, _res, next) => {
+    await app.register(cookie as any);
+    app.getHttpAdapter().getInstance().addHook('onRequest', (req, _reply, done) => {
       const host = String(req.headers.host ?? 'admin.heatkings.com').toLowerCase();
       const surfaceHeader = req.headers['x-app-surface'];
       const surface = typeof surfaceHeader === 'string' ? surfaceHeader : 'customer';
@@ -53,10 +54,11 @@ describe('Refresh surface isolation', () => {
               : { userPoolId: 'pool_platform', clientId: 'client_store_admin' },
           user: null,
         },
-        () => next(),
+        () => done(),
       );
     });
     await app.init();
+    await app.getHttpAdapter().getInstance().ready();
   });
 
   afterEach(async () => {

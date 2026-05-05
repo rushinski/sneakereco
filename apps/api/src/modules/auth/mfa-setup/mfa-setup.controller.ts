@@ -10,7 +10,7 @@ import {
   Res,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import type { Request, Response } from 'express';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { Public } from '../../../common/decorators/public.decorator';
 import { ZodValidationPipe } from '../../../common/pipes/zod-validation.pipe';
@@ -45,11 +45,11 @@ export class MfaSetupController {
   @Post('mfa/setup/complete')
   @HttpCode(HttpStatus.OK)
   async complete(
-    @Req() request: Request,
+    @Req() request: FastifyRequest,
     @Body(new ZodValidationPipe(MfaSetupCompleteDtoSchema)) dto: MfaSetupCompleteDto,
     @Headers('x-client-context') clientContext: string | undefined,
     @Headers('x-tenant-id') tenantIdHeader: string | undefined,
-    @Res({ passthrough: true }) response: Response,
+    @Res({ passthrough: true }) response: FastifyReply,
   ) {
     const ctx = RequestCtx.get();
     const surface = ctx?.surface;

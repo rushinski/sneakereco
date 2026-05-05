@@ -9,7 +9,7 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import type { Request, Response } from 'express';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { CurrentUser } from '../../../common/decorators/user.decorator';
 import { CsrfGuard } from '../../../common/guards/csrf.guard';
@@ -30,10 +30,10 @@ export class LogoutController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(
-    @Req() request: Request,
+    @Req() request: FastifyRequest,
     @Headers('authorization') authorization: string | undefined,
     @CurrentUser() _user: AuthenticatedUser,
-    @Res({ passthrough: true }) response: Response,
+    @Res({ passthrough: true }) response: FastifyReply,
   ) {
     const accessToken = this.getBearerToken(authorization);
     const result = await this.logoutService.logout(accessToken, readRefreshCookie(request));

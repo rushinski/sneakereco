@@ -1,4 +1,4 @@
-import type { Request, Response } from 'express';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { RequestCtx } from '../../../../common/context/request-context';
 import type { CsrfService } from '../../../../core/security/csrf/csrf.service';
@@ -27,9 +27,9 @@ export function buildSurfaceCookieNames(surfaceKey: string) {
 }
 
 export function buildLoginResponse(
-  request: Request,
-  response: Response,
-  security: SecurityConfig,
+  request: FastifyRequest,
+  response: FastifyReply,
+  _security: SecurityConfig,
   csrfService: CsrfService,
   result: TokenResult,
   userType: UserType,
@@ -45,7 +45,7 @@ export function buildLoginResponse(
   };
 }
 
-export function resolveCurrentSurfaceKey(request: Request, surface?: UserType): string | null {
+export function resolveCurrentSurfaceKey(request: FastifyRequest, surface?: UserType): string | null {
   const ctx = RequestCtx.get();
   const resolvedSurface =
     surface ?? (ctx?.surface && ctx.surface !== 'unknown' ? ctx.surface : null);
@@ -62,20 +62,20 @@ export function resolveCurrentSurfaceKey(request: Request, surface?: UserType): 
   });
 }
 
-export function readRefreshCookie(request: Request, surface?: UserType): string | null {
+export function readRefreshCookie(request: FastifyRequest, surface?: UserType): string | null {
   const surfaceKey = resolveCurrentSurfaceKey(request, surface);
   if (!surfaceKey) {
     return null;
   }
 
   const cookieName = buildSurfaceCookieNames(surfaceKey).refresh;
-  return (request.cookies as Record<string, string | undefined>)[cookieName] ?? null;
+  return request.cookies[cookieName] ?? null;
 }
 
 export function clearAuthCookies(
-  request: Request,
-  response: Response,
-  security: SecurityConfig,
+  request: FastifyRequest,
+  response: FastifyReply,
+  _security: SecurityConfig,
   surface?: UserType,
 ): void {
   const surfaceKey = resolveCurrentSurfaceKey(request, surface);
@@ -94,7 +94,7 @@ export function clearAuthCookies(
   });
 
   response.clearCookie(cookieNames.csrf, {
-    httpOnly: false,
+    httpOnly: true,
     secure: true,
     sameSite: 'none',
     path: AUTH_COOKIE_PATH,
@@ -103,9 +103,9 @@ export function clearAuthCookies(
 }
 
 function setRefreshCookie(
-  request: Request,
-  response: Response,
-  security: SecurityConfig,
+  request: FastifyRequest,
+  response: FastifyReply,
+  _security: SecurityConfig,
   refreshToken: string,
   userType: UserType,
 ): void {
@@ -116,7 +116,7 @@ function setRefreshCookie(
 
   const cookieName = buildSurfaceCookieNames(surfaceKey).refresh;
 
-  response.cookie(cookieName, refreshToken, {
+  response.setCookie(cookieName, refreshToken, {
     httpOnly: true,
     secure: true,
     sameSite: 'none',

@@ -39,7 +39,7 @@ describe('Revoke all sessions', () => {
         {
           provide: CsrfService,
           useValue: {
-            protect: (_req: unknown, _res: unknown, next: (error?: unknown) => void) => next(),
+            protect: (_req: unknown) => undefined,
           },
         },
       ],

@@ -7,9 +7,9 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
-import type { Request } from 'express';
 import { Req } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
+import type { FastifyRequest } from 'fastify';
 
 import { Public } from '../../../common/decorators/public.decorator';
 import { CsrfGuard } from '../../../common/guards/csrf.guard';
@@ -28,7 +28,7 @@ export class RefreshController {
   @Throttle({ default: THROTTLE.refresh })
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  async refresh(@Req() request: Request) {
+  async refresh(@Req() request: FastifyRequest) {
     const ctx = RequestCtx.get();
     const surface = ctx?.surface;
 

@@ -1,6 +1,6 @@
 import { Controller, Get, Req, Res } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import type { Request, Response } from 'express';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { Public } from '../../../common/decorators/public.decorator';
 
@@ -15,7 +15,7 @@ export class CsrfController {
   @Get('csrf-token')
   @ApiOperation({ summary: 'Issue a CSRF token' })
   @ApiResponse({ status: 200, description: 'CSRF token issued.' })
-  issueCsrfToken(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+  issueCsrfToken(@Req() req: FastifyRequest, @Res({ passthrough: true }) res: FastifyReply) {
     const token = this.csrfService.generateToken(req, res);
     return { token };
   }
