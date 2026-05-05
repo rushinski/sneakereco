@@ -1,11 +1,14 @@
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import type { Request } from 'express';
 
 import type { AuthenticatedUser, UserType } from '../../modules/auth/auth.types';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { ROLES_KEY } from '../decorators/roles.decorator';
+
+type RequestWithUser = {
+  user?: AuthenticatedUser;
+};
 
 /**
  * Checks user.userType against @Roles() after AuthGuard validates the JWT.
@@ -35,7 +38,7 @@ export class RolesGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest<Request & { user?: AuthenticatedUser }>();
+    const request = context.switchToHttp().getRequest<RequestWithUser>();
 
     const user = request.user;
 

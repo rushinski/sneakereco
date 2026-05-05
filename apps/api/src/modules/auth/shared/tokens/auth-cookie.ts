@@ -29,7 +29,7 @@ export function buildSurfaceCookieNames(surfaceKey: string) {
 export function buildLoginResponse(
   request: FastifyRequest,
   response: FastifyReply,
-  _security: SecurityConfig,
+  security: SecurityConfig,
   csrfService: CsrfService,
   result: TokenResult,
   userType: UserType,

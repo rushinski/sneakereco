@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { ThrottlerGuard } from '@nestjs/throttler';
-import type { Request } from 'express';
+
+type TrackerRequest = {
+  user?: { sub?: string };
+  headers: Record<string, string | string[] | undefined>;
+  ip?: string;
+};
 
 /**
  * Extends the default ThrottlerGuard with a composite rate-limit key that
@@ -15,13 +20,14 @@ import type { Request } from 'express';
  */
 @Injectable()
 export class CustomThrottlerGuard extends ThrottlerGuard {
-  protected override getTracker(req: Request): Promise<string> {
-    const userId = (req as Request & { user?: { sub?: string } }).user?.sub;
-    const tenantId = req.headers['x-tenant-id'] as string | undefined;
+  protected override getTracker(req: TrackerRequest): Promise<string> {
+    const userId = req.user?.sub;
+    const tenantHeader = req.headers['x-tenant-id'];
+    const forwardedHeader = req.headers['x-forwarded-for'];
+    const tenantId = typeof tenantHeader === 'string' ? tenantHeader : tenantHeader?.[0];
+    const forwardedFor = typeof forwardedHeader === 'string' ? forwardedHeader : forwardedHeader?.[0];
     const ip =
-      (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ??
-      req.ip ??
-      'unknown';
+      forwardedFor?.split(',')[0]?.trim() ?? req.ip ?? 'unknown';
 
     if (userId && tenantId) {
       return Promise.resolve(`${tenantId}:${userId}`);

@@ -2,9 +2,15 @@ import type { CallHandler, ExecutionContext, NestInterceptor } from '@nestjs/com
 import { Injectable, Logger } from '@nestjs/common';
 import type { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
-import type { Request } from 'express';
 
 import type { AuthenticatedUser } from '../../modules/auth/auth.types';
+
+type RequestWithAuditContext = {
+  user?: AuthenticatedUser;
+  method: string;
+  url: string;
+  headers: Record<string, string | string[] | undefined>;
+};
 
 /**
  * Captures audit-worthy events (state-changing requests by authenticated users)
@@ -20,7 +26,8 @@ export class AuditInterceptor implements NestInterceptor {
   private static readonly AUDITABLE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
-    const request = context.switchToHttp().getRequest<Request & { user?: AuthenticatedUser }>();
+    const request = context.switchToHttp().getRequest<RequestWithAuditContext>();
+    const requestIdHeader = request.headers['x-request-id'];
 
     if (!AuditInterceptor.AUDITABLE_METHODS.has(request.method)) {
       return next.handle();
@@ -44,7 +51,8 @@ export class AuditInterceptor implements NestInterceptor {
           userId: user.cognitoSub,
           role: user.userType,
           duration,
-          requestId: request.headers['x-request-id'],
+          requestId:
+            typeof requestIdHeader === 'string' ? requestIdHeader : requestIdHeader?.[0],
         });
       }),
     );
