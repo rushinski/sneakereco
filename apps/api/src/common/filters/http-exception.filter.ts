@@ -1,6 +1,16 @@
 import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
 import { Catch, HttpException, HttpStatus, Logger } from '@nestjs/common';
-import type { Request, Response } from 'express';
+
+type RequestLike = {
+  method: string;
+  url: string;
+  headers: Record<string, unknown>;
+};
+
+type ReplyLike = {
+  code(statusCode: number): ReplyLike;
+  send(payload: unknown): void;
+};
 
 /**
  * Global exception filter. Formats all errors into the standard envelope:
@@ -27,8 +37,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
-    const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest<Request>();
+    const response = ctx.getResponse<ReplyLike>();
+    const request = ctx.getRequest<RequestLike>();
 
     const isHttpException = exception instanceof HttpException;
     const status = isHttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
@@ -43,14 +53,17 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     const { code, message, details } = this.extractErrorInfo(exception, status);
 
-    response.status(status).json({
+    response.code(status).send({
       error: {
         code,
         message,
         ...(details ? { details } : {}),
       },
       meta: {
-        requestId: request.headers['x-request-id'] as string | undefined,
+        requestId:
+          typeof request.headers['x-request-id'] === 'string'
+            ? (request.headers['x-request-id'] as string)
+            : undefined,
         timestamp: new Date().toISOString(),
       },
     });

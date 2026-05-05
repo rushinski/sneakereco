@@ -14,21 +14,19 @@ describe('CorsMiddleware', () => {
 
     const middleware = new CorsMiddleware(originResolver as never);
     const header = jest.fn();
-    const append = jest.fn();
-    const end = jest.fn();
-    const status = jest.fn(() => ({ end }));
+    const send = jest.fn();
+    const code = jest.fn(() => ({ send }));
     const next = jest.fn();
 
     await middleware.use(
       {
         headers: { origin: 'https://sneakereco.test' },
         method: 'OPTIONS',
-        path: '/v1/csrf-token',
+        url: '/v1/csrf-token',
       } as never,
       {
-        append,
         header,
-        status,
+        code,
       } as never,
       next,
     );
@@ -37,7 +35,7 @@ describe('CorsMiddleware', () => {
       'Access-Control-Allow-Headers',
       expect.stringContaining('X-App-Surface'),
     );
-    expect(status).toHaveBeenCalledWith(204);
-    expect(end).toHaveBeenCalled();
+    expect(code).toHaveBeenCalledWith(204);
+    expect(send).toHaveBeenCalled();
   });
 });

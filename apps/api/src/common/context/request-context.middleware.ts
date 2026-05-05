@@ -1,6 +1,5 @@
 import type { NestMiddleware } from '@nestjs/common';
 import { Injectable } from '@nestjs/common';
-import type { NextFunction, Request, Response } from 'express';
 
 import { OriginResolverService } from '../services/origin-resolver.service';
 import { PoolResolverService } from '../../modules/auth/shared/pool-resolver/pool-resolver.service';
@@ -13,6 +12,13 @@ import {
   type AppSurface,
 } from './request-surface';
 
+type RequestLike = {
+  headers: Record<string, string | string[] | undefined>;
+  hostname?: string;
+};
+
+type Next = (error?: unknown) => void;
+
 @Injectable()
 export class RequestContextMiddleware implements NestMiddleware {
   constructor(
@@ -20,11 +26,11 @@ export class RequestContextMiddleware implements NestMiddleware {
     private readonly poolResolver: PoolResolverService,
   ) {}
 
-  use(req: Request, res: Response, next: NextFunction): void {
-    void this.handle(req, res, next);
+  use(req: RequestLike, _res: unknown, next: Next): void {
+    void this.handle(req, next);
   }
 
-  private async handle(req: Request, res: Response, next: NextFunction): Promise<void> {
+  private async handle(req: RequestLike, next: Next): Promise<void> {
     try {
       const transportHost =
         this.originResolver.normalizeHost(this.readHeaderValue(req.headers.host) ?? req.hostname) ??

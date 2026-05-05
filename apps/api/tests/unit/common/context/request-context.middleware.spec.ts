@@ -57,8 +57,9 @@ describe('RequestContextMiddleware', () => {
           'x-app-surface': 'platform-admin',
         },
         hostname: 'api.sneakereco.test',
+        method: 'GET',
+        url: '/v1/auth/refresh',
       },
-      {} as never,
       () => {
         capturedSurface = RequestCtx.get()?.surface;
       },
