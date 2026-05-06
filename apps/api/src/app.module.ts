@@ -5,15 +5,15 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 
-import { HealthModule } from '@/core/health/health.module';
+import { HealthModule } from '@/core/observability/health/health.module';
 
 import { CustomThrottlerGuard } from './common/guards/throttler.guard';
-import { LoggingModule } from './core/logging/logging.module';
+import { LoggingModule } from '@/core/observability/logging/logging.module';
 import { ThrottlingModule } from './core/security/throttling/throttling.module';
 import { envSchema } from './config/env.schema';
 import { CognitoModule } from './core/cognito/cognito.module';
 import { CsrfModule } from './core/security/csrf/csrf.module';
-import { ValkeyModule } from './core/valkey/valkey.module';
+import { CacheModule } from './core/cache/cache.module';
 import { CommonModule } from './common/common.module';
 import { RequestContextModule } from './common/context/request-context.module';
 import { RequestContextMiddleware } from './common/context/request-context.middleware';
@@ -65,7 +65,7 @@ import { TenantsModule } from './modules/tenants/tenants.module';
     EventEmitterModule.forRoot({ wildcard: false }),
     ThrottlingModule,
     LoggingModule,
-    ValkeyModule,
+    CacheModule,
     CognitoModule,
     CsrfModule,
     CommonModule,

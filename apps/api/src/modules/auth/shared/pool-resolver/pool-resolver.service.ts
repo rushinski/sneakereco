@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-import { ValkeyService } from '../../../../core/valkey/valkey.service';
+import { CacheService } from '../../../../core/cache/cache.service';
 import type { PoolCredentials } from '../cognito/cognito.types';
 
 import { PoolResolverRepository } from './pool-resolver.repository';
@@ -16,7 +16,7 @@ export class PoolResolverService {
 
   constructor(
     private readonly repository: PoolResolverRepository,
-    private readonly valkey: ValkeyService,
+    private readonly valkey: CacheService,
     config: ConfigService,
   ) {
     this.platformPoolId = config.getOrThrow<string>('COGNITO_POOL_ID');

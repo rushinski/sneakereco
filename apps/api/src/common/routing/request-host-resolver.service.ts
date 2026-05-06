@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-import { ValkeyService } from '../../core/valkey/valkey.service';
+import { CacheService } from '../../core/cache/cache.service';
 import { isPlatformHostname, readPlatformHosts } from './platform-hosts';
 import { RequestHostRepository } from './request-host.repository';
 import type { ResolvedRequestHost } from './request-host.types';
@@ -16,7 +16,7 @@ export class RequestHostResolverService {
   constructor(
     config: ConfigService,
     private readonly repository: RequestHostRepository,
-    private readonly valkey: ValkeyService,
+    private readonly valkey: CacheService,
   ) {
     this.platformHosts = readPlatformHosts(config);
   }

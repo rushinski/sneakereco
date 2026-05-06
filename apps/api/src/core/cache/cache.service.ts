@@ -4,7 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
 @Injectable()
-export class ValkeyService implements OnModuleDestroy {
+export class CacheService implements OnModuleDestroy {
   readonly client: Redis;
 
   constructor(config: ConfigService) {

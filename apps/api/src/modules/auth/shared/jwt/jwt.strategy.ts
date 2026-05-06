@@ -4,7 +4,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import JwksClient from 'jwks-rsa';
 
-import { ValkeyService } from '../../../../core/valkey/valkey.service';
+import { CacheService } from '../../../../core/cache/cache.service';
 import { RequestCtx } from '../../../../common/context/request-context';
 import type { AuthenticatedUser, CognitoJwtPayload, TeamRole } from '../../auth.types';
 import { CognitoService } from '../cognito/cognito.service';
@@ -27,7 +27,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(
     private readonly repository: JwtStrategyRepository,
     private readonly cognito: CognitoService,
-    private readonly valkey: ValkeyService,
+    private readonly valkey: CacheService,
     config: ConfigService,
   ) {
     const region = config.getOrThrow<string>('AWS_REGION');

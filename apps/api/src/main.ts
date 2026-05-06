@@ -17,7 +17,7 @@ import { ZodValidationPipe } from './common/pipes/zod-validation.pipe';
 import { SecurityConfig, BODY_SIZE_LIMIT } from './config/security.config';
 import { buildCorsOptions } from './config/cors.config';
 import { DatabaseService } from './core/database/database.service';
-import { ValkeyService } from './core/valkey/valkey.service';
+import { CacheService } from './core/cache/cache.service';
 
 function parseBodyLimit(limit: string): number {
   const normalized = limit.trim().toLowerCase();
@@ -45,7 +45,7 @@ async function bootstrap() {
   const config = app.get(ConfigService);
   const db = app.get(DatabaseService);
   const security = app.get(SecurityConfig);
-  const valkey = app.get(ValkeyService);
+  const valkey = app.get(CacheService);
   const isProduction = config.getOrThrow<string>('NODE_ENV') === 'production';
   const port = config.getOrThrow<number>('PORT');
 

@@ -5,7 +5,7 @@ import { tenantHostnames } from '@sneakereco/db';
 
 import { isPlatformHostname, readPlatformHosts } from '../common/routing/platform-hosts';
 import type { DatabaseService } from '../core/database/database.service';
-import type { ValkeyService } from '../core/valkey/valkey.service';
+import type { CacheService } from '../core/cache/cache.service';
 import {
   CORS_ALLOWED_HEADERS,
   CORS_ALLOWED_METHODS,
@@ -21,6 +21,7 @@ function normalizeOriginHostname(origin: string): string | null {
     }
 
     return parsed.hostname.toLowerCase();
+
   } catch {
     return null;
   }
@@ -28,7 +29,7 @@ function normalizeOriginHostname(origin: string): string | null {
 
 export function buildCorsOptions(
   db: DatabaseService,
-  valkey: ValkeyService,
+  valkey: CacheService,
   config: ConfigService,
 ): FastifyCorsOptions {
   const platformHosts = readPlatformHosts(config);

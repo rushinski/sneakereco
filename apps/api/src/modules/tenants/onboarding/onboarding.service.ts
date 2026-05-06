@@ -11,7 +11,7 @@ import { generateId } from '@sneakereco/shared';
 
 import type { DrizzleTransaction } from '../../../core/database/database.service';
 import { DatabaseService } from '../../../core/database/database.service';
-import { ValkeyService } from '../../../core/valkey/valkey.service';
+import { CacheService } from '../../../core/cache/cache.service';
 import { EmailService } from '../../communications/email/email.service';
 import { CognitoProvisioningService } from '../cognito-provisioning.service';
 
@@ -39,7 +39,7 @@ export class OnboardingService {
     private readonly cognitoProvisioning: CognitoProvisioningService,
     private readonly email: EmailService,
     private readonly config: ConfigService,
-    private readonly valkey: ValkeyService,
+    private readonly valkey: CacheService,
   ) {}
 
   async requestAccount(dto: RequestOnboardingDto) {
